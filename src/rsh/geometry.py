@@ -1,8 +1,8 @@
 """Bound-safe Frenet–Serret geometry for RSH.
 
-The path is generated from prescribed curvature and torsion schedules.  The
+The path is generated from prescribed curvature and torsion schedules. The
 central sample is then translated to the origin as an explicit coordinate
-normalisation.  The normalisation is part of the construction; it is not an
+normalisation. The normalisation is part of the construction; it is not an
 empirical result.
 """
 from __future__ import annotations
@@ -11,7 +11,12 @@ from dataclasses import dataclass, replace
 import math
 from typing import Callable, Sequence, Tuple
 
-from .constants import KAPPA_MAX, PSI
+from .constants import (
+    KAPPA_MAX,
+    PSI,
+    TAU_MAX_EXCLUSIVE,
+    TAU_MIN_EXCLUSIVE,
+)
 
 Vec3 = Tuple[float, float, float]
 Schedule = Callable[[float], float]
@@ -30,7 +35,8 @@ def cross(a: Vec3, b: Vec3) -> Vec3:
 
 
 def norm(v: Vec3) -> float:
-    return math.sqrt(dot(v, v))
+    """Return a stable Euclidean norm without squaring components first."""
+    return math.hypot(*v)
 
 
 def add(a: Vec3, b: Vec3) -> Vec3:
@@ -47,12 +53,18 @@ def scale(v: Vec3, amount: float) -> Vec3:
 
 def normalize(v: Vec3) -> Vec3:
     magnitude = norm(v)
+    if not math.isfinite(magnitude):
+        raise ValueError("cannot normalize a non-finite vector")
     if magnitude <= 1.0e-15:
         raise ValueError("cannot normalize a near-zero vector")
     return scale(v, 1.0 / magnitude)
 
 
-def orthonormalize(tangent: Vec3, normal: Vec3, binormal: Vec3) -> tuple[Vec3, Vec3, Vec3]:
+def orthonormalize(
+    tangent: Vec3,
+    normal: Vec3,
+    binormal: Vec3,
+) -> tuple[Vec3, Vec3, Vec3]:
     tangent = normalize(tangent)
     normal = sub(normal, scale(tangent, dot(normal, tangent)))
     normal = normalize(normal)
@@ -82,14 +94,24 @@ class ModelConfig:
             raise ValueError("samples must be odd so p=0.5 is represented exactly")
         if not math.isfinite(self.s0) or not math.isfinite(self.s1) or self.s1 <= self.s0:
             raise ValueError("s1 must be finite and greater than s0")
-        if not (0.0 < self.kappa_fraction <= 1.0):
-            raise ValueError("kappa_fraction must be in (0, 1]")
+        if not math.isfinite(self.kappa_fraction) or not (
+            0.0 < self.kappa_fraction <= 1.0
+        ):
+            raise ValueError("kappa_fraction must be finite and in (0, 1]")
+        if not math.isfinite(self.tau_floor) or not math.isfinite(self.tau_amplitude):
+            raise ValueError("torsion schedule parameters must be finite")
         if self.tau_amplitude < 0.0:
             raise ValueError("tau_amplitude must be non-negative")
         tau_min = self.tau_floor
         tau_max = self.tau_floor + 2.0 * self.tau_amplitude
-        if not (0.0 < tau_min < 1.0 and 0.0 < tau_max < 1.0):
-            raise ValueError("the torsion schedule must remain strictly inside (0, 1)")
+        if not (
+            TAU_MIN_EXCLUSIVE < tau_min < TAU_MAX_EXCLUSIVE
+            and TAU_MIN_EXCLUSIVE < tau_max < TAU_MAX_EXCLUSIVE
+        ):
+            raise ValueError(
+                "the torsion schedule must remain strictly inside "
+                f"({TAU_MIN_EXCLUSIVE:g}, {TAU_MAX_EXCLUSIVE:g})"
+            )
         return self
 
 
@@ -140,7 +162,7 @@ def kappa_schedule(s: float, config: ModelConfig = ModelConfig()) -> float:
 
 
 def tau_schedule(s: float, config: ModelConfig = ModelConfig()) -> float:
-    """Smooth torsion schedule strictly inside the open interval (0, 1)."""
+    """Smooth torsion schedule strictly inside the configured open interval."""
     return config.tau_floor + config.tau_amplitude * (
         1.0 + math.sin(0.25 * s * PSI)
     )
@@ -164,7 +186,7 @@ def integrate_path(
     kappa_fn: Schedule | None = None,
     tau_fn: Schedule | None = None,
 ) -> tuple[Sample, ...]:
-    """Integrate the Frenet–Serret frame with a midpoint/Heun step.
+    """Integrate position and the Frenet–Serret frame with a midpoint step.
 
     The frame is re-orthonormalised after every step to control numerical drift.
     Custom schedules are accepted for research experiments, but are checked at
@@ -184,10 +206,17 @@ def integrate_path(
     def checked_values(s: float) -> tuple[float, float]:
         kappa = float(kappa_fn(s))
         tau = float(tau_fn(s))
-        if not math.isfinite(kappa) or not (0.0 <= kappa <= KAPPA_MAX + 1.0e-12):
+        if not math.isfinite(kappa) or not (
+            0.0 <= kappa <= KAPPA_MAX + 1.0e-12
+        ):
             raise ValueError(f"curvature schedule violates its bound at s={s!r}")
-        if not math.isfinite(tau) or not (0.0 < tau < 1.0):
-            raise ValueError(f"torsion schedule leaves (0, 1) at s={s!r}")
+        if not math.isfinite(tau) or not (
+            TAU_MIN_EXCLUSIVE < tau < TAU_MAX_EXCLUSIVE
+        ):
+            raise ValueError(
+                "torsion schedule leaves "
+                f"({TAU_MIN_EXCLUSIVE:g}, {TAU_MAX_EXCLUSIVE:g}) at s={s!r}"
+            )
         return kappa, tau
 
     for index in range(config.samples):
@@ -231,11 +260,14 @@ def integrate_path(
         tangent_prime, normal_prime, binormal_prime = _frame_derivative(
             tangent_mid, normal_mid, binormal_mid, kappa_mid, tau_mid
         )
+
+        # Position obeys x' = T, so the same midpoint frame used for the
+        # derivative must advance the coordinates.
+        position = add(position, scale(tangent_mid, ds))
         tangent = add(tangent, scale(tangent_prime, ds))
         normal = add(normal, scale(normal_prime, ds))
         binormal = add(binormal, scale(binormal_prime, ds))
         tangent, normal, binormal = orthonormalize(tangent, normal, binormal)
-        position = add(position, scale(tangent, ds))
 
     return tuple(rows)
 
@@ -247,7 +279,12 @@ def centre_path(rows: Sequence[Sample]) -> tuple[Sample, ...]:
     centre = rows[len(rows) // 2]
     offset = centre.position
     return tuple(
-        replace(sample, x=sample.x - offset[0], y=sample.y - offset[1], z=sample.z - offset[2])
+        replace(
+            sample,
+            x=sample.x - offset[0],
+            y=sample.y - offset[1],
+            z=sample.z - offset[2],
+        )
         for sample in rows
     )
 
@@ -256,7 +293,10 @@ def build_path(config: ModelConfig = ModelConfig()) -> tuple[Sample, ...]:
     return centre_path(integrate_path(config))
 
 
-def logical_sample_indices(logical_count: int, rendered_count: int) -> tuple[int, ...]:
+def logical_sample_indices(
+    logical_count: int,
+    rendered_count: int,
+) -> tuple[int, ...]:
     """Map a large logical field to bounded representatives with exact integers.
 
     No allocation proportional to ``logical_count`` is performed.
@@ -267,4 +307,7 @@ def logical_sample_indices(logical_count: int, rendered_count: int) -> tuple[int
         raise ValueError("rendered_count must be positive")
     if rendered_count > logical_count:
         raise ValueError("rendered_count cannot exceed logical_count")
-    return tuple((index * logical_count) // rendered_count for index in range(rendered_count))
+    return tuple(
+        (index * logical_count) // rendered_count
+        for index in range(rendered_count)
+    )
