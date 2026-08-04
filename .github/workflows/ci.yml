@@ -40,5 +40,18 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Reject excluded legacy terminology
+        shell: bash
         run: |
-          ! grep -RinE --exclude-dir=.git --exclude='*.svg' --exclude='ci.yml' '(verschoor|dave mode|knot|everse|anus)' .
+          set +e
+          grep -RinE --exclude-dir=.git --exclude='*.svg' --exclude='ci.yml' '(verschoor|dave mode|knot|everse|anus)' .
+          status=$?
+          set -e
+
+          if [ "$status" -eq 0 ]; then
+            echo "Excluded terminology was found." >&2
+            exit 1
+          fi
+          if [ "$status" -ne 1 ]; then
+            echo "Terminology scan failed with grep status $status." >&2
+            exit "$status"
+          fi
