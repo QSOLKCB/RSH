@@ -86,6 +86,11 @@ class TissueConfig:
     qf_floor: float = 0.0
 
     def validate(self) -> "TissueConfig":
+        for name in ("cells", "ticks", "geometry_samples"):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise ValueError(f"{name} must be a non-boolean integer")
+
         if self.cells < 3 or self.cells > 4096:
             raise ValueError("cells must be in [3, 4096]")
         if self.ticks < 1 or self.ticks > 100_000:
@@ -405,10 +410,15 @@ def _metrics(
     sidecar_pressure: float,
 ) -> TissueMetrics:
     count = len(cells)
-    phase_coherence = math.hypot(
-        sum(math.cos(cell.phase) for cell in cells),
-        sum(math.sin(cell.phase) for cell in cells),
-    ) / count
+    phase_coherence = _clamp(
+        math.hypot(
+            sum(math.cos(cell.phase) for cell in cells),
+            sum(math.sin(cell.phase) for cell in cells),
+        )
+        / count,
+        0.0,
+        1.0,
+    )
 
     bindings = [cell.binding for cell in cells]
     binding_mean = sum(bindings) / count
@@ -486,14 +496,36 @@ def _report_receipt(report: TissueReport) -> str:
 def validate_audit_chain(
     ticks: tuple[TissueTick, ...],
     seed_receipt: str,
+    *,
+    expected_ticks: int,
+    terminal_receipt: str | None = None,
 ) -> bool:
+    """Validate a complete receipt chain with an explicit expected length.
+
+    Requiring the expected length prevents an empty or truncated prefix from
+    being accepted merely because every remaining link is internally valid.
+    ``terminal_receipt`` may additionally pin the final tick identity when a
+    report or external manifest publishes it separately.
+    """
+    if isinstance(expected_ticks, bool) or not isinstance(expected_ticks, int):
+        return False
+    if expected_ticks < 1 or len(ticks) != expected_ticks:
+        return False
+    if not isinstance(seed_receipt, str) or not seed_receipt:
+        return False
+
     previous = seed_receipt
-    for tick in ticks:
+    for expected_index, tick in enumerate(ticks, start=1):
+        if tick.schema != TICK_SCHEMA or tick.index != expected_index:
+            return False
         if tick.previous_receipt != previous:
             return False
         if tick.receipt != _tick_receipt(tick):
             return False
         previous = tick.receipt
+
+    if terminal_receipt is not None and previous != terminal_receipt:
+        return False
     return True
 
 
@@ -573,7 +605,11 @@ def simulate_tissue(
     )
     pass_centre = max(tick.centre_error for tick in ticks) <= 1.0e-12
     pass_qf_floor = q_values[-1] >= config.qf_floor
-    audit_chain_valid = validate_audit_chain(ticks, seed_receipt)
+    audit_chain_valid = validate_audit_chain(
+        ticks,
+        seed_receipt,
+        expected_ticks=config.ticks,
+    )
     pass_all = (
         pass_constitution
         and pass_bounds
