@@ -47,6 +47,13 @@ target_link_libraries(rsh-cpp PRIVATE "${RSH_FFI_SHARED}")
 set_target_properties(rsh-cpp PROPERTIES BUILD_RPATH "${RSH_CARGO_TARGET}/release")
 
 if(RSH_ENABLE_CUDA)
+  if(RSH_CUDA_ARCHITECTURES STREQUAL "native" AND CMAKE_VERSION VERSION_LESS 3.24)
+    message(FATAL_ERROR
+      "RSH_CUDA_ARCHITECTURES=native requires CMake 3.24 or newer. "
+      "Use an explicit numeric architecture such as 120, or upgrade CMake."
+    )
+  endif()
+
   enable_language(CUDA)
   if(RSH_CUDA_ARCHITECTURES)
     set(CMAKE_CUDA_ARCHITECTURES "${RSH_CUDA_ARCHITECTURES}")
