@@ -34,17 +34,42 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ConstitutionTests(unittest.TestCase):
-    def test_default_constitution_is_valid_and_stable(self) -> None:
-        self.assertEqual(validate_constitution(), ())
-        self.assertEqual(
-            constitution_hash(),
-            "090416435f8ae2adc7555dab356eafef7aadfeabdb99c68e7c381ddf3bf9e544",
+    def test_default_constitution_is_valid_stable_and_isolated(self) -> None:
+        expected_hash = (
+            "090416435f8ae2adc7555dab356eafef7aadfeabdb99c68e7c381ddf3bf9e544"
         )
+        self.assertEqual(validate_constitution(), ())
+        self.assertEqual(constitution_hash(), expected_hash)
         report = constitution_report()
         self.assertTrue(report["pass_all"])
+        published = json.loads(
+            (ROOT / "conformance" / "constitution_v1.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertEqual(report["constitution"], published)
         self.assertIn(
             "subjective-awareness-or-qualia-claim",
             report["constitution"]["refusals"],
+        )
+
+        report["constitution"]["invariants"]["psi"] = 0.0
+        self.assertEqual(constitution_hash(), expected_hash)
+        self.assertTrue(constitution_report()["pass_all"])
+
+    def test_malformed_constitution_is_rejected(self) -> None:
+        self.assertEqual(
+            validate_constitution([]),
+            ("constitution must be a JSON object",),
+        )
+        report = constitution_report()
+        altered = report["constitution"]
+        altered["ordered_objectives"] = list(
+            reversed(altered["ordered_objectives"])
+        )
+        self.assertIn(
+            "ordered objectives mismatch",
+            validate_constitution(altered),
         )
 
 
