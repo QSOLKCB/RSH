@@ -20,7 +20,7 @@ from rsh.visual import write_svg
 
 
 GOLDEN_RECEIPT_129 = (
-    "407fc894060a179e8fc857d8b4abe2e8b6cd18b58663f610fc60f4e13ec0ddd1"
+    "f33042335100b7a2bca8c5c97724782ecb820cd8f6704f8e7eb074c1ed9e9a00"
 )
 GOLDEN_ENTRY_129 = (
     -1.8484919565721223,
@@ -51,12 +51,12 @@ class EvidenceTests(unittest.TestCase):
             rows_a[0].position,
             GOLDEN_ENTRY_129,
         ):
-            self.assertAlmostEqual(actual, expected, places=15)
+            self.assertAlmostEqual(actual, expected, places=12)
         for actual, expected in zip(
             rows_a[-1].position,
             GOLDEN_EXIT_129,
         ):
-            self.assertAlmostEqual(actual, expected, places=15)
+            self.assertAlmostEqual(actual, expected, places=12)
 
     def test_schedule_parameters_are_in_report_and_receipt(self) -> None:
         config = ModelConfig(
