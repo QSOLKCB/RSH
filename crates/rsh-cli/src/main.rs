@@ -1,7 +1,7 @@
 use rsh_core::{
     build_and_verify, check_python_conformance, conformance_json, kappa_max,
-    logical_sample_indices, psi, report_json, trace_csv, ModelConfig,
-    CANONICAL_FLOAT_PRECISION, IMPLEMENTATION, MODEL_NAME, MODEL_VERSION,
+    logical_sample_indices, psi, report_json, trace_csv, ModelConfig, CANONICAL_FLOAT_PRECISION,
+    IMPLEMENTATION, MODEL_NAME, MODEL_VERSION,
 };
 use serde_json::json;
 use std::env;
@@ -89,7 +89,10 @@ fn command_info() -> Result<i32, String> {
         "runtime": "native Rust",
         "tau_interval": "(0, 1)"
     });
-    println!("{}", serde_json::to_string_pretty(&payload).map_err(|error| error.to_string())?);
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&payload).map_err(|error| error.to_string())?
+    );
     Ok(0)
 }
 
@@ -112,8 +115,14 @@ fn command_verify(arguments: impl Iterator<Item = String>) -> Result<i32, String
         "  max_kappa / bound    = {:.6} / {:.6}",
         report.max_kappa, report.kappa_bound
     );
-    println!("  tau range            = [{:.6}, {:.6}]", report.min_tau, report.max_tau);
-    println!("  frame_norm_error     = {:.3e}", report.max_frame_norm_error);
+    println!(
+        "  tau range            = [{:.6}, {:.6}]",
+        report.min_tau, report.max_tau
+    );
+    println!(
+        "  frame_norm_error     = {:.3e}",
+        report.max_frame_norm_error
+    );
     println!(
         "  frame_orthogonality  = {:.3e}",
         report.max_frame_orthogonality_error
@@ -128,10 +137,15 @@ fn command_trace(arguments: impl Iterator<Item = String>) -> Result<i32, String>
         return Err("trace accepts --output, not --json".into());
     }
     let (rows, _) = build_and_verify(parsed.config)?;
-    let path = parsed.output.unwrap_or_else(|| PathBuf::from("rsh_trace_rust.csv"));
-    fs::write(&path, trace_csv(&rows))
-        .map_err(|error| format!("{}: {error}", path.display()))?;
-    println!("RSH Rust trace -> {} ({} samples)", path.display(), rows.len());
+    let path = parsed
+        .output
+        .unwrap_or_else(|| PathBuf::from("rsh_trace_rust.csv"));
+    fs::write(&path, trace_csv(&rows)).map_err(|error| format!("{}: {error}", path.display()))?;
+    println!(
+        "RSH Rust trace -> {} ({} samples)",
+        path.display(),
+        rows.len()
+    );
     Ok(0)
 }
 
@@ -162,9 +176,15 @@ fn command_conformance(arguments: impl Iterator<Item = String>) -> Result<i32, S
     }
     let status = if result.pass { "PASS" } else { "FAIL" };
     println!("RSH Rust conformance [{status}]");
-    println!("  entry_max_abs_error  = {:.3e}", result.entry_max_abs_error);
+    println!(
+        "  entry_max_abs_error  = {:.3e}",
+        result.entry_max_abs_error
+    );
     println!("  exit_max_abs_error   = {:.3e}", result.exit_max_abs_error);
-    println!("  tolerance            = {:.3e}", result.coordinate_tolerance);
+    println!(
+        "  tolerance            = {:.3e}",
+        result.coordinate_tolerance
+    );
     println!("  rust_receipt         = {}", result.rust_receipt);
     println!("  python_receipt       = {}", result.python_golden_receipt);
     println!("  receipt_identical    = {}", result.receipt_identical);

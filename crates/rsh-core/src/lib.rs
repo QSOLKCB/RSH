@@ -5,7 +5,7 @@
 //! cross-runtime conformance coordinates.
 
 use serde::Serialize;
-use serde_json::{Map, Value};
+use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 
@@ -23,11 +23,7 @@ pub const GOLDEN_ENTRY_129: [f64; 3] = [
     -0.6353766408175766,
     -0.16593646474199972,
 ];
-pub const GOLDEN_EXIT_129: [f64; 3] = [
-    1.2097010814305758,
-    1.2168907843927106,
-    0.9663511535281694,
-];
+pub const GOLDEN_EXIT_129: [f64; 3] = [1.2097010814305758, 1.2168907843927106, 0.9663511535281694];
 pub const GOLDEN_COORDINATE_TOLERANCE: f64 = 1.0e-12;
 
 #[inline]
@@ -68,11 +64,11 @@ impl Vec3 {
         self.x.hypot(self.y).hypot(self.z)
     }
 
-    pub fn add(self, other: Self) -> Self {
+    pub fn plus(self, other: Self) -> Self {
         Self::new(self.x + other.x, self.y + other.y, self.z + other.z)
     }
 
-    pub fn sub(self, other: Self) -> Self {
+    pub fn minus(self, other: Self) -> Self {
         Self::new(self.x - other.x, self.y - other.y, self.z - other.z)
     }
 
@@ -128,7 +124,7 @@ impl ModelConfig {
         if self.samples < 3 {
             return Err("samples must be at least 3".into());
         }
-        if self.samples % 2 == 0 {
+        if self.samples.is_multiple_of(2) {
             return Err("samples must be odd so p=0.5 is represented exactly".into());
         }
         if !self.s0.is_finite() || !self.s1.is_finite() || self.s1 <= self.s0 {
@@ -209,9 +205,15 @@ pub fn tau_schedule(s: f64, config: ModelConfig) -> f64 {
     config.tau_floor + config.tau_amplitude * (1.0 + (0.25 * s * psi()).sin())
 }
 
-fn orthonormalize(tangent: Vec3, normal: Vec3, _binormal: Vec3) -> Result<(Vec3, Vec3, Vec3), String> {
+fn orthonormalize(
+    tangent: Vec3,
+    normal: Vec3,
+    _binormal: Vec3,
+) -> Result<(Vec3, Vec3, Vec3), String> {
     let tangent = tangent.normalize()?;
-    let normal = normal.sub(tangent.scale(normal.dot(tangent))).normalize()?;
+    let normal = normal
+        .minus(tangent.scale(normal.dot(tangent)))
+        .normalize()?;
     let binormal = tangent.cross(normal).normalize()?;
     Ok((tangent, normal, binormal))
 }
@@ -224,7 +226,7 @@ fn frame_derivative(
     tau: f64,
 ) -> (Vec3, Vec3, Vec3) {
     let tangent_prime = normal.scale(kappa);
-    let normal_prime = tangent.scale(-kappa).add(binormal.scale(tau));
+    let normal_prime = tangent.scale(-kappa).plus(binormal.scale(tau));
     let binormal_prime = normal.scale(-tau);
     (tangent_prime, normal_prime, binormal_prime)
 }
@@ -279,9 +281,9 @@ pub fn integrate_path(config: ModelConfig) -> Result<Vec<Sample>, String> {
 
         let (tangent_prime, normal_prime, binormal_prime) =
             frame_derivative(tangent, normal, binormal, kappa, tau);
-        let tangent_mid = tangent.add(tangent_prime.scale(0.5 * ds));
-        let normal_mid = normal.add(normal_prime.scale(0.5 * ds));
-        let binormal_mid = binormal.add(binormal_prime.scale(0.5 * ds));
+        let tangent_mid = tangent.plus(tangent_prime.scale(0.5 * ds));
+        let normal_mid = normal.plus(normal_prime.scale(0.5 * ds));
+        let binormal_mid = binormal.plus(binormal_prime.scale(0.5 * ds));
         let (tangent_mid, normal_mid, binormal_mid) =
             orthonormalize(tangent_mid, normal_mid, binormal_mid)?;
 
@@ -289,10 +291,10 @@ pub fn integrate_path(config: ModelConfig) -> Result<Vec<Sample>, String> {
         let (tangent_prime, normal_prime, binormal_prime) =
             frame_derivative(tangent_mid, normal_mid, binormal_mid, kappa_mid, tau_mid);
 
-        position = position.add(tangent_mid.scale(ds));
-        tangent = tangent.add(tangent_prime.scale(ds));
-        normal = normal.add(normal_prime.scale(ds));
-        binormal = binormal.add(binormal_prime.scale(ds));
+        position = position.plus(tangent_mid.scale(ds));
+        tangent = tangent.plus(tangent_prime.scale(ds));
+        normal = normal.plus(normal_prime.scale(ds));
+        binormal = binormal.plus(binormal_prime.scale(ds));
         (tangent, normal, binormal) = orthonormalize(tangent, normal, binormal)?;
     }
 
@@ -300,7 +302,7 @@ pub fn integrate_path(config: ModelConfig) -> Result<Vec<Sample>, String> {
 }
 
 pub fn centre_path(rows: &mut [Sample]) -> Result<(), String> {
-    if rows.len() < 3 || rows.len() % 2 == 0 {
+    if rows.len() < 3 || rows.len().is_multiple_of(2) {
         return Err("centre_path requires an odd number of at least 3 samples".into());
     }
     let centre = rows[rows.len() / 2].position();
@@ -360,7 +362,9 @@ pub struct VerifyReport {
 
 fn min_max(values: impl Iterator<Item = f64>) -> Result<(f64, f64), String> {
     let mut iterator = values;
-    let first = iterator.next().ok_or_else(|| "cannot summarize an empty sequence".to_string())?;
+    let first = iterator
+        .next()
+        .ok_or_else(|| "cannot summarize an empty sequence".to_string())?;
     let mut minimum = first;
     let mut maximum = first;
     for value in iterator {
@@ -383,7 +387,7 @@ pub fn verify(rows: &[Sample], config: ModelConfig) -> Result<VerifyReport, Stri
     for pair in rows.windows(2) {
         let gap = pair[1].p - pair[0].p;
         gap_error = gap_error.max(((gap - ideal_gap).abs()) / ideal_gap);
-        path_length += pair[1].position().sub(pair[0].position()).norm();
+        path_length += pair[1].position().minus(pair[0].position()).norm();
     }
 
     let mut frame_norm_error: f64 = 0.0;
@@ -391,7 +395,9 @@ pub fn verify(rows: &[Sample], config: ModelConfig) -> Result<VerifyReport, Stri
     for (index, row) in rows.iter().copied().enumerate() {
         let frame = [row.tangent(), row.normal(), row.binormal()];
         if !frame.iter().all(|vector| vector.is_finite()) {
-            return Err(format!("sample {index} contains a non-finite frame component"));
+            return Err(format!(
+                "sample {index} contains a non-finite frame component"
+            ));
         }
         for vector in frame {
             frame_norm_error = frame_norm_error.max((vector.norm() - 1.0).abs());
@@ -452,7 +458,7 @@ pub fn verify(rows: &[Sample], config: ModelConfig) -> Result<VerifyReport, Stri
         exit: rows[rows.len() - 1].position().as_array(),
         endpoint_separation: rows[rows.len() - 1]
             .position()
-            .sub(rows[0].position())
+            .minus(rows[0].position())
             .norm(),
         pass_centre,
         pass_kappa,
@@ -502,24 +508,45 @@ fn canonical_vec3(value: [f64; 3]) -> Result<Value, String> {
 
 pub fn canonical_report_bytes(report: &VerifyReport) -> Result<Vec<u8>, String> {
     let mut payload: BTreeMap<String, Value> = BTreeMap::new();
-    payload.insert("centering_mode".into(), Value::String(report.centering_mode.clone()));
+    payload.insert(
+        "centering_mode".into(),
+        Value::String(report.centering_mode.clone()),
+    );
     payload.insert("centre".into(), canonical_vec3(report.centre)?);
     payload.insert("centre_error".into(), canonical_float(report.centre_error)?);
-    payload.insert("centre_parameter".into(), canonical_float(report.centre_parameter)?);
-    payload.insert("endpoint_separation".into(), canonical_float(report.endpoint_separation)?);
+    payload.insert(
+        "centre_parameter".into(),
+        canonical_float(report.centre_parameter)?,
+    );
+    payload.insert(
+        "endpoint_separation".into(),
+        canonical_float(report.endpoint_separation)?,
+    );
     payload.insert("entry".into(), canonical_vec3(report.entry)?);
     payload.insert("exit".into(), canonical_vec3(report.exit)?);
     payload.insert("kappa_bound".into(), canonical_float(report.kappa_bound)?);
-    payload.insert("kappa_fraction".into(), canonical_float(report.kappa_fraction)?);
-    payload.insert("kappa_violations".into(), Value::from(report.kappa_violations));
-    payload.insert("max_frame_norm_error".into(), canonical_float(report.max_frame_norm_error)?);
+    payload.insert(
+        "kappa_fraction".into(),
+        canonical_float(report.kappa_fraction)?,
+    );
+    payload.insert(
+        "kappa_violations".into(),
+        Value::from(report.kappa_violations),
+    );
+    payload.insert(
+        "max_frame_norm_error".into(),
+        canonical_float(report.max_frame_norm_error)?,
+    );
     payload.insert(
         "max_frame_orthogonality_error".into(),
         canonical_float(report.max_frame_orthogonality_error)?,
     );
     payload.insert("max_kappa".into(), canonical_float(report.max_kappa)?);
     payload.insert("max_radius".into(), canonical_float(report.max_radius)?);
-    payload.insert("max_sampling_gap_error".into(), canonical_float(report.max_sampling_gap_error)?);
+    payload.insert(
+        "max_sampling_gap_error".into(),
+        canonical_float(report.max_sampling_gap_error)?,
+    );
     payload.insert("max_tau".into(), canonical_float(report.max_tau)?);
     payload.insert("min_kappa".into(), canonical_float(report.min_kappa)?);
     payload.insert("min_radius".into(), canonical_float(report.min_radius)?);
@@ -536,7 +563,10 @@ pub fn canonical_report_bytes(report: &VerifyReport) -> Result<Vec<u8>, String> 
     payload.insert("s0".into(), canonical_float(report.s0)?);
     payload.insert("s1".into(), canonical_float(report.s1)?);
     payload.insert("samples".into(), Value::from(report.samples));
-    payload.insert("tau_amplitude".into(), canonical_float(report.tau_amplitude)?);
+    payload.insert(
+        "tau_amplitude".into(),
+        canonical_float(report.tau_amplitude)?,
+    );
     payload.insert("tau_floor".into(), canonical_float(report.tau_floor)?);
     payload.insert("tau_violations".into(), Value::from(report.tau_violations));
     payload.insert("version".into(), Value::String(report.version.clone()));
@@ -602,9 +632,7 @@ pub fn logical_sample_indices(logical_count: u64, rendered_count: u64) -> Result
         return Err("rendered_count cannot exceed logical_count".into());
     }
     Ok((0..rendered_count)
-        .map(|index| {
-            ((index as u128 * logical_count as u128) / rendered_count as u128) as u64
-        })
+        .map(|index| ((index as u128 * logical_count as u128) / rendered_count as u128) as u64)
         .collect())
 }
 
@@ -617,9 +645,7 @@ pub fn conformance_json(result: &ConformanceResult) -> Result<String, String> {
 }
 
 pub fn trace_csv(rows: &[Sample]) -> String {
-    let mut output = String::from(
-        "p,s,x,y,z,kappa,tau,tx,ty,tz,nx,ny,nz,bx,by,bz,radius\n",
-    );
+    let mut output = String::from("p,s,x,y,z,kappa,tau,tx,ty,tz,nx,ny,nz,bx,by,bz,radius\n");
     for row in rows {
         let values = [
             row.p,
