@@ -1,0 +1,51 @@
+name: Rust source normalizer
+
+on:
+  push:
+    branches: [agent/rust-core-and-pages]
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/rust-core-and-pages
+      - name: Install stable Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt,clippy
+          rustup default stable
+      - name: Apply mechanical cleanup
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("crates/rsh-core/src/lib.rs")
+          text = path.read_text(encoding="utf-8")
+          text = text.replace("use serde_json::{Map, Value};", "use serde_json::Value;")
+          text = text.replace("pub fn add(self, other: Self)", "pub fn plus(self, other: Self)")
+          text = text.replace("pub fn sub(self, other: Self)", "pub fn minus(self, other: Self)")
+          text = text.replace(".add(", ".plus(")
+          text = text.replace(".sub(", ".minus(")
+          text = text.replace("self.samples % 2 == 0", "self.samples.is_multiple_of(2)")
+          text = text.replace("rows.len() % 2 == 0", "rows.len().is_multiple_of(2)")
+          path.write_text(text, encoding="utf-8")
+          PY
+          cargo fmt --all
+          cargo generate-lockfile
+          cargo clippy --workspace --all-targets -- -D warnings
+          cargo test --workspace --locked
+      - name: Commit normalized sources
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Cargo.lock crates/rsh-core/src/lib.rs crates/rsh-cli/src/main.rs
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "Normalize Rust sources and lock dependencies"
+          git push origin HEAD:agent/rust-core-and-pages
