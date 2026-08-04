@@ -8,41 +8,62 @@ section() {
   printf '\n== %s ==\n' "$1"
 }
 
-run_optional() {
+run_required() {
   label=$1
   shift
   printf '%s: ' "$label"
-  if command -v "$1" >/dev/null 2>&1; then
-    printf '\n'
-    "$@" || true
-  else
+  if ! command -v "$1" >/dev/null 2>&1; then
     printf 'not found\n'
+    ready=0
+    return
+  fi
+  printf '\n'
+  if "$@"; then
+    :
+  else
+    status=$?
+    printf '%s failed with exit %s\n' "$label" "$status" >&2
     ready=0
   fi
 }
 
 section "Host"
-uname -a || true
+uname -a || ready=0
 if [ -r /etc/os-release ]; then
-  cat /etc/os-release
+  cat /etc/os-release || ready=0
 fi
 getconf GNU_LIBC_VERSION 2>/dev/null || true
 
 section "Toolchain"
-run_optional "CMake" cmake --version
-run_optional "C++ compiler" c++ --version
-run_optional "Rust compiler" rustc --version
-run_optional "Cargo" cargo --version
-run_optional "CUDA compiler" nvcc --version
+run_required "CMake" cmake --version
+run_required "C++ compiler" c++ --version
+run_required "Rust compiler" rustc --version
+run_required "Cargo" cargo --version
+run_required "CUDA compiler" nvcc --version
 
 section "NVIDIA runtime"
 if command -v nvidia-smi >/dev/null 2>&1; then
-  nvidia-smi || ready=0
+  if nvidia-smi; then
+    :
+  else
+    status=$?
+    printf 'nvidia-smi failed with exit %s\n' "$status" >&2
+    ready=0
+  fi
   printf '\nDetected devices:\n'
-  nvidia-smi --query-gpu=index,name,driver_version,compute_cap,memory.total --format=csv || true
+  if nvidia-smi --query-gpu=index,name,driver_version,compute_cap,memory.total --format=csv; then
+    :
+  else
+    status=$?
+    printf 'nvidia-smi device query failed with exit %s\n' "$status" >&2
+    ready=0
+  fi
   capability=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | sed -n '1p' | tr -d '. ')
   if [ -n "$capability" ]; then
     printf 'Suggested CMake option: -DRSH_CUDA_ARCHITECTURES=%s\n' "$capability"
+  else
+    printf 'Unable to determine a CUDA compute capability.\n' >&2
+    ready=0
   fi
 else
   printf 'nvidia-smi: not found\n'
@@ -51,7 +72,7 @@ fi
 
 section "Diagnostics"
 if command -v compute-sanitizer >/dev/null 2>&1; then
-  compute-sanitizer --version || true
+  compute-sanitizer --version || printf 'compute-sanitizer could not report its version (optional)\n' >&2
 else
   printf 'compute-sanitizer: not found (optional)\n'
 fi
