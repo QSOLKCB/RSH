@@ -51,6 +51,7 @@ jobs:
         run: cargo test --locked --workspace
       - name: Native evidence smoke suite
         run: |
+          cargo run --locked -p rsh-cli -- verify --help
           cargo run --locked -p rsh-cli -- verify -n 129 --json /tmp/rsh_rust_verify.json
           cargo run --locked -p rsh-cli -- conformance --json /tmp/rsh_rust_conformance.json
           cargo run --locked -p rsh-cli -- trace -n 65 -o /tmp/rsh_rust_trace.csv
