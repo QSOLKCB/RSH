@@ -67,7 +67,12 @@
   function render() {
     const width = canvas.clientWidth;
     const height = canvas.clientHeight;
-    context.clearRect(0, 0, width, height);
+
+    context.save();
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.restore();
+
     drawGrid(width, height);
 
     const yaw = phase * 0.22 + pointerX * 0.42;
