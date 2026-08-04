@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="RSH — bounded Frenet–Serret geometry with deterministic Python and Rust evidence runners.">
+  <title>RSH — Robitaille–Slade Helix</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="hero">
+    <nav>
+      <a class="brand" href="./" aria-label="RSH home">RSH<span>²</span></a>
+      <div class="nav-links">
+        <a href="#contracts">Contracts</a>
+        <a href="#implementations">Implementations</a>
+        <a href="https://github.com/QSOLKCB/RSH">Source</a>
+      </div>
+    </nav>
+
+    <div class="hero-grid">
+      <section class="intro">
+        <p class="eyebrow">ROBITAILLE–SLADE HELIX · EVIDENCE RUNNER</p>
+        <h1>Bounded geometry.<br><em>Reproducible evidence.</em></h1>
+        <p class="lede">RSH prescribes curvature and torsion inside explicit bounds, integrates the Frenet–Serret frame, and verifies the resulting path with portable conformance evidence.</p>
+        <div class="actions">
+          <a class="primary" href="https://github.com/QSOLKCB/RSH">Open repository</a>
+          <a class="secondary" href="#implementations">View implementation stack</a>
+        </div>
+      </section>
+
+      <section class="visual" aria-label="Schematic bounded helix projection">
+        <div class="scope-note">SCHEMATIC PROJECTION · NOT EVIDENCE</div>
+        <canvas id="helix" width="760" height="620"></canvas>
+        <div class="axis x">κ ≤ √2 − 1</div>
+        <div class="axis y">0 &lt; τ &lt; 1</div>
+        <div class="centre-mark">p = 0.5</div>
+      </section>
+    </div>
+  </header>
+
+  <main>
+    <section id="contracts" class="panel contracts">
+      <div>
+        <p class="eyebrow">REFERENCE CONTRACT</p>
+        <h2>The model states what it can prove.</h2>
+        <p>Centre placement is a coordinate normalisation. Receipts prove canonical report identity. Neither claim is inflated into experimental physics.</p>
+      </div>
+      <dl>
+        <div><dt>ψ</dt><dd>√(2 + √5)</dd></div>
+        <div><dt>κ(s)</dt><dd>0 ≤ κ ≤ √2 − 1</dd></div>
+        <div><dt>τ(s)</dt><dd>0 &lt; τ &lt; 1</dd></div>
+        <div><dt>Centre</dt><dd>exact discrete p = 0.5</dd></div>
+        <div><dt>Receipt</dt><dd>domain-separated SHA-256</dd></div>
+        <div><dt>Runtime</dt><dd>offline and deterministic</dd></div>
+      </dl>
+    </section>
+
+    <section id="implementations" class="implementations">
+      <p class="eyebrow">IMPLEMENTATION STACK</p>
+      <h2>One contract. Progressively faster runtimes.</h2>
+      <div class="cards">
+        <article class="card active">
+          <span class="number">01</span>
+          <h3>Python oracle</h3>
+          <p>Readable equations, report schema, golden coordinates, receipts, exports, and tests.</p>
+          <strong>REFERENCE</strong>
+        </article>
+        <article class="card active">
+          <span class="number">02</span>
+          <h3>Rust core</h3>
+          <p>Native geometry and CLI implementation checked against the Python conformance bundle.</p>
+          <strong>IN DEVELOPMENT</strong>
+        </article>
+        <article class="card">
+          <span class="number">03</span>
+          <h3>WASM bridge</h3>
+          <p>Offline browser access to the verified Rust core without creating a second JavaScript model.</p>
+          <strong>NEXT</strong>
+        </article>
+        <article class="card">
+          <span class="number">04</span>
+          <h3>WGSL compute</h3>
+          <p>WebGPU batch evaluation and visual kernels validated against shared conformance vectors.</p>
+          <strong>PLANNED</strong>
+        </article>
+      </div>
+    </section>
+
+    <section class="terminal panel">
+      <div>
+        <p class="eyebrow">RUN THE REFERENCE</p>
+        <h2>No server. No telemetry. No ceremony.</h2>
+      </div>
+      <pre><code><span>$</span> python3 rsh_runner.py verify -n 129
+RSH verify [PASS]
+receipt = f33042335100b7a2…
+
+<span>$</span> cargo run -p rsh-cli -- conformance
+RSH Rust conformance [PASS]</code></pre>
+    </section>
+  </main>
+
+  <footer>
+    <p>J. Robitaille / DeltaKingZero · Trent Slade / QSOL-IMC</p>
+    <p>RSH v2 · MPL-2.0</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
