@@ -1,6 +1,11 @@
+import { createGpuScheduleRunner } from "./gpu.js";
+
 const textDecoder = new TextDecoder("utf-8");
+const GPU_GRID_SAMPLES = 4096;
+const GPU_RESIDUAL_THRESHOLD = 1e-4;
 
 const canvas = document.getElementById("helix");
+const gpuCanvas = document.getElementById("gpu-field");
 const controls = document.getElementById("controls");
 const runButton = document.getElementById("run-button");
 const runMessage = document.getElementById("run-message");
@@ -10,17 +15,25 @@ const reportStatus = document.getElementById("report-status");
 const abiBadge = document.getElementById("abi-badge");
 const downloadReport = document.getElementById("download-report");
 const downloadTrace = document.getElementById("download-trace");
+const gpuStatus = document.getElementById("gpu-status");
+const gpuBadge = document.getElementById("gpu-badge");
+const gpuMessage = document.getElementById("gpu-message");
+const downloadGpu = document.getElementById("download-gpu");
 
 if (!(canvas instanceof HTMLCanvasElement)) {
   throw new Error("RSH canvas is unavailable");
+}
+if (!(gpuCanvas instanceof HTMLCanvasElement)) {
+  throw new Error("RSH WebGPU field canvas is unavailable");
 }
 if (!(controls instanceof HTMLFormElement)) {
   throw new Error("RSH controls are unavailable");
 }
 
 const context = canvas.getContext("2d");
-if (!context) {
-  throw new Error("RSH requires a 2D canvas context");
+const gpuContext = gpuCanvas.getContext("2d");
+if (!context || !gpuContext) {
+  throw new Error("RSH requires 2D canvas contexts");
 }
 
 const fields = {
@@ -47,8 +60,20 @@ const metrics = {
   receipt: document.getElementById("metric-receipt"),
 };
 
+const gpuMetrics = {
+  grid: document.getElementById("gpu-grid"),
+  workgroup: document.getElementById("gpu-workgroup"),
+  precision: document.getElementById("gpu-precision"),
+  adapter: document.getElementById("gpu-adapter"),
+  kappa: document.getElementById("gpu-kappa-residual"),
+  tau: document.getElementById("gpu-tau-residual"),
+  maximum: document.getElementById("gpu-max-residual"),
+  gate: document.getElementById("gpu-gate"),
+};
+
 const state = {
   wasm: null,
+  gpu: null,
   payload: null,
   points: [],
   extent: 1,
@@ -56,6 +81,10 @@ const state = {
   pointerY: 0,
   phase: 0,
   pass: false,
+  gpuGeneration: 0,
+  gpuField: [],
+  gpuSidecar: null,
+  gpuKappaBound: 1,
 };
 
 function setRuntimeState(kind, message) {
@@ -66,6 +95,26 @@ function setRuntimeState(kind, message) {
 function setRunMessage(message, kind = "") {
   runMessage.textContent = message;
   runMessage.dataset.kind = kind;
+}
+
+function setGpuMessage(message, kind = "") {
+  gpuMessage.textContent = message;
+  gpuMessage.dataset.kind = kind;
+}
+
+function resetGpuEvidence(status = "NOT RUN", kind = "") {
+  state.gpuGeneration += 1;
+  state.gpuField = [];
+  state.gpuSidecar = null;
+  state.gpuKappaBound = 1;
+  gpuStatus.textContent = status;
+  gpuStatus.dataset.kind = kind;
+  gpuBadge.textContent = "WGSL —";
+  for (const metric of Object.values(gpuMetrics)) {
+    metric.textContent = "—";
+  }
+  downloadGpu.disabled = true;
+  renderGpuField();
 }
 
 function resetEvidence(status = "NOT RUN", kind = "") {
@@ -81,6 +130,7 @@ function resetEvidence(status = "NOT RUN", kind = "") {
   }
   downloadReport.disabled = true;
   downloadTrace.disabled = true;
+  resetGpuEvidence();
 }
 
 function syncControlLabels() {
@@ -126,6 +176,7 @@ function validateExports(exports) {
     "memory",
     "rsh_abi_version",
     "rsh_run",
+    "rsh_schedule",
     "rsh_output_ptr",
     "rsh_output_len",
   ];
@@ -140,11 +191,30 @@ function readWasmOutput() {
   const exports = state.wasm.exports;
   const pointer = Number(exports.rsh_output_ptr());
   const length = Number(exports.rsh_output_len());
-  if (!Number.isInteger(pointer) || !Number.isInteger(length) || length < 1) {
+  if (!Number.isInteger(pointer) || pointer < 0 || !Number.isInteger(length) || length < 1) {
     throw new Error("WASM returned an invalid output buffer");
   }
   const bytes = new Uint8Array(exports.memory.buffer, pointer, length);
   return JSON.parse(textDecoder.decode(bytes));
+}
+
+function requestScheduleOracle(config) {
+  const status = Number(state.wasm.exports.rsh_schedule(
+    GPU_GRID_SAMPLES,
+    config.s0,
+    config.s1,
+    config.kappaFraction,
+    config.tauFloor,
+    config.tauAmplitude,
+  ));
+  const payload = readWasmOutput();
+  if (status !== 0 || payload.schema === "RSH-BROWSER-ERROR-V1") {
+    throw new Error(payload.message || "The Rust core rejected the WGSL schedule grid");
+  }
+  if (payload.schema !== "RSH-SCHEDULE-RUN-V1") {
+    throw new Error(`Unexpected schedule schema: ${payload.schema}`);
+  }
+  return payload;
 }
 
 function runVerifiedGeometry() {
@@ -189,11 +259,105 @@ function runVerifiedGeometry() {
         : "FAIL · the report contains a contract violation",
       state.pass ? "pass" : "fail",
     );
+    void runGpuConformance(config);
   } catch (error) {
     resetEvidence("REJECTED", "fail");
     setRunMessage(error instanceof Error ? error.message : String(error), "fail");
   } finally {
     runButton.disabled = false;
+  }
+}
+
+async function runGpuConformance(config) {
+  const generation = state.gpuGeneration + 1;
+  state.gpuGeneration = generation;
+  state.gpuField = [];
+  state.gpuSidecar = null;
+  downloadGpu.disabled = true;
+  gpuStatus.textContent = "RUNNING";
+  gpuStatus.dataset.kind = "";
+  setGpuMessage("Evaluating 4,096 f32 schedule samples and comparing them with the rsh-core f64 oracle…");
+
+  if (!state.gpu?.available) {
+    gpuStatus.textContent = "CPU/WASM FALLBACK";
+    gpuStatus.dataset.kind = "fallback";
+    gpuBadge.textContent = "NO WEBGPU";
+    setGpuMessage(
+      state.gpu?.reason || "WebGPU is unavailable; verified geometry remains on the Rust/WASM path.",
+      "fallback",
+    );
+    return;
+  }
+
+  try {
+    const oracle = requestScheduleOracle(config);
+    const result = await state.gpu.run(config, oracle);
+    if (generation !== state.gpuGeneration) return;
+
+    const gatePassed = result.maximum <= GPU_RESIDUAL_THRESHOLD;
+    state.gpuField = result.rows;
+    state.gpuKappaBound = Number(oracle.kappa_bound);
+    state.gpuSidecar = {
+      schema: "RSH-WEBGPU-RESIDUAL-SIDECAR-V1",
+      model: oracle.model,
+      model_version: oracle.model_version,
+      backend: "webgpu",
+      authority: "residual sidecar only",
+      configuration: {
+        samples: oracle.samples,
+        s0: oracle.s0,
+        s1: oracle.s1,
+        kappa_fraction: oracle.kappa_fraction,
+        tau_floor: oracle.tau_floor,
+        tau_amplitude: oracle.tau_amplitude,
+      },
+      metadata: result.metadata,
+      residuals: {
+        max_abs_kappa_vs_wasm_f64: result.maxKappa,
+        max_abs_tau_vs_wasm_f64: result.maxTau,
+        residual_max_vs_cpu: result.maximum,
+        threshold: GPU_RESIDUAL_THRESHOLD,
+      },
+      residual_gate_passed: gatePassed,
+      verified_subset: gatePassed,
+      visual_verified: false,
+      evidence_note: "The CPU/WASM report remains authoritative. This sidecar records an f32 WebGPU residual comparison and never replaces the geometry receipt.",
+    };
+
+    gpuStatus.textContent = gatePassed ? "RESIDUAL PASS" : "DISPLAY ONLY";
+    gpuStatus.dataset.kind = gatePassed ? "pass" : "fail";
+    gpuBadge.textContent = `WGSL · ${result.metadata.f_precision}`;
+    gpuMetrics.grid.textContent = String(oracle.samples);
+    gpuMetrics.workgroup.textContent = String(result.metadata.workgroup_size);
+    gpuMetrics.precision.textContent = result.metadata.f_precision;
+    gpuMetrics.adapter.textContent = result.metadata.adapter;
+    gpuMetrics.kappa.textContent = scientific(result.maxKappa);
+    gpuMetrics.tau.textContent = scientific(result.maxTau);
+    gpuMetrics.maximum.textContent = scientific(result.maximum);
+    gpuMetrics.gate.textContent = gatePassed
+      ? `≤ ${GPU_RESIDUAL_THRESHOLD.toExponential(1)}`
+      : `> ${GPU_RESIDUAL_THRESHOLD.toExponential(1)}`;
+    downloadGpu.disabled = false;
+    setGpuMessage(
+      gatePassed
+        ? "The 4,096-sample f32 field passed the published residual gate. The visual remains display-only."
+        : "The field exceeded the published residual gate and has been restricted to display-only mode.",
+      gatePassed ? "pass" : "fail",
+    );
+    renderGpuField();
+  } catch (error) {
+    if (generation !== state.gpuGeneration) return;
+    state.gpuField = [];
+    state.gpuSidecar = null;
+    gpuStatus.textContent = "CPU/WASM FALLBACK";
+    gpuStatus.dataset.kind = "fallback";
+    gpuBadge.textContent = "GPU ERROR";
+    downloadGpu.disabled = true;
+    setGpuMessage(
+      `${error instanceof Error ? error.message : String(error)} Verified geometry remains on the Rust/WASM path.`,
+      "fallback",
+    );
+    renderGpuField();
   }
 }
 
@@ -244,12 +408,18 @@ function traceCsv(payload) {
   return `${header}\n${rows.join("\n")}\n`;
 }
 
-function resize() {
+function resizeCanvas(target, targetContext) {
   const ratio = Math.min(window.devicePixelRatio || 1, 2);
-  const box = canvas.getBoundingClientRect();
-  canvas.width = Math.max(1, Math.floor(box.width * ratio));
-  canvas.height = Math.max(1, Math.floor(box.height * ratio));
-  context.setTransform(ratio, 0, 0, ratio, 0, 0);
+  const box = target.getBoundingClientRect();
+  target.width = Math.max(1, Math.floor(box.width * ratio));
+  target.height = Math.max(1, Math.floor(box.height * ratio));
+  targetContext.setTransform(ratio, 0, 0, ratio, 0, 0);
+}
+
+function resize() {
+  resizeCanvas(canvas, context);
+  resizeCanvas(gpuCanvas, gpuContext);
+  renderGpuField();
 }
 
 function rotate(point, yaw, pitch) {
@@ -268,23 +438,63 @@ function rotate(point, yaw, pitch) {
   };
 }
 
-function drawGrid(width, height) {
-  context.save();
-  context.strokeStyle = "rgba(145, 164, 170, 0.11)";
-  context.lineWidth = 1;
-  for (let x = 0; x <= width; x += 48) {
-    context.beginPath();
-    context.moveTo(x, 0);
-    context.lineTo(x, height);
-    context.stroke();
+function drawGrid(targetContext, width, height, spacing = 48) {
+  targetContext.save();
+  targetContext.strokeStyle = "rgba(145, 164, 170, 0.11)";
+  targetContext.lineWidth = 1;
+  for (let x = 0; x <= width; x += spacing) {
+    targetContext.beginPath();
+    targetContext.moveTo(x, 0);
+    targetContext.lineTo(x, height);
+    targetContext.stroke();
   }
-  for (let y = 0; y <= height; y += 48) {
-    context.beginPath();
-    context.moveTo(0, y);
-    context.lineTo(width, y);
-    context.stroke();
+  for (let y = 0; y <= height; y += spacing) {
+    targetContext.beginPath();
+    targetContext.moveTo(0, y);
+    targetContext.lineTo(width, y);
+    targetContext.stroke();
   }
-  context.restore();
+  targetContext.restore();
+}
+
+function renderGpuField() {
+  const width = gpuCanvas.clientWidth;
+  const height = gpuCanvas.clientHeight;
+  if (width < 1 || height < 1) return;
+
+  gpuContext.clearRect(0, 0, width, height);
+  drawGrid(gpuContext, width, height, 42);
+
+  if (state.gpuField.length === 0) {
+    gpuContext.save();
+    gpuContext.fillStyle = "rgba(145, 164, 170, 0.82)";
+    gpuContext.font = "700 12px ui-monospace, monospace";
+    gpuContext.textAlign = "center";
+    gpuContext.fillText("WAITING FOR WGSL FIELD OR CPU/WASM FALLBACK", width / 2, height / 2);
+    gpuContext.restore();
+    return;
+  }
+
+  const padding = 28;
+  const plotWidth = Math.max(1, width - padding * 2);
+  const plotHeight = Math.max(1, height - padding * 2);
+  const drawSeries = (selector, maximum, strokeStyle) => {
+    gpuContext.beginPath();
+    state.gpuField.forEach((row, index) => {
+      const x = padding + row.p * plotWidth;
+      const y = padding + (1 - Math.min(1, Math.max(0, selector(row) / maximum))) * plotHeight;
+      if (index === 0) gpuContext.moveTo(x, y);
+      else gpuContext.lineTo(x, y);
+    });
+    gpuContext.lineJoin = "round";
+    gpuContext.lineCap = "round";
+    gpuContext.lineWidth = 1.8;
+    gpuContext.strokeStyle = strokeStyle;
+    gpuContext.stroke();
+  };
+
+  drawSeries((row) => row.kappa, state.gpuKappaBound, "rgba(101, 217, 192, 0.95)");
+  drawSeries((row) => row.tau, 1, "rgba(226, 166, 91, 0.90)");
 }
 
 function render() {
@@ -295,7 +505,7 @@ function render() {
   context.setTransform(1, 0, 0, 1, 0, 0);
   context.clearRect(0, 0, canvas.width, canvas.height);
   context.restore();
-  drawGrid(width, height);
+  drawGrid(context, width, height);
 
   if (state.points.length === 0) {
     context.save();
@@ -412,6 +622,15 @@ downloadTrace.addEventListener("click", () => {
   );
 });
 
+downloadGpu.addEventListener("click", () => {
+  if (!state.gpuSidecar) return;
+  download(
+    "rsh_webgpu_residual_4096.json",
+    "application/json",
+    `${JSON.stringify(state.gpuSidecar, null, 2)}\n`,
+  );
+});
+
 async function start() {
   syncControlLabels();
   resetEvidence();
@@ -430,7 +649,36 @@ async function start() {
     }
 
     abiBadge.textContent = `ABI ${abiVersion} · WASM`;
-    setRuntimeState("pass", "Rust/WASM core loaded · no JavaScript geometry model");
+    setRuntimeState("pass", "Rust/WASM core loaded · WebGPU residual layer probing");
+
+    try {
+      state.gpu = await createGpuScheduleRunner("./wgsl/kappa_tau_field.wgsl", (lost) => {
+        state.gpu = {
+          available: false,
+          reason: `WebGPU device lost: ${lost.message || lost.reason || "unknown reason"}`,
+        };
+        resetGpuEvidence("CPU/WASM FALLBACK", "fallback");
+        setGpuMessage(state.gpu.reason, "fallback");
+      });
+    } catch (error) {
+      state.gpu = {
+        available: false,
+        reason: error instanceof Error ? error.message : String(error),
+      };
+    }
+
+    if (state.gpu.available) {
+      gpuStatus.textContent = "READY";
+      gpuStatus.dataset.kind = "pass";
+      gpuBadge.textContent = "WGSL · f32";
+      setGpuMessage("WebGPU adapter ready. The next verified run will produce a residual sidecar.", "pass");
+    } else {
+      gpuStatus.textContent = "CPU/WASM FALLBACK";
+      gpuStatus.dataset.kind = "fallback";
+      gpuBadge.textContent = "NO WEBGPU";
+      setGpuMessage(state.gpu.reason, "fallback");
+    }
+
     setRunMessage("Ready. Running the default verified configuration…", "pass");
     runButton.disabled = false;
     runVerifiedGeometry();
