@@ -40,7 +40,10 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: CUDA preflight
-        run: scripts/cuda_preflight.sh | tee cuda-preflight.txt
+        shell: bash
+        run: |
+          set -o pipefail
+          scripts/cuda_preflight.sh | tee cuda-preflight.txt
 
       - name: Install stable Rust
         run: |
@@ -80,6 +83,7 @@ jobs:
       - name: Package evidence
         if: always()
         run: |
+          mkdir -p artifacts/cuda-hardware
           cp cuda-preflight.txt artifacts/cuda-hardware/ 2>/dev/null || true
           python3 scripts/package_evidence.py \
             artifacts/cuda-hardware \
