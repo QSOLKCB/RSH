@@ -206,14 +206,24 @@ fn command_sample(mut arguments: impl Iterator<Item = String>) -> Result<i32, St
 }
 
 fn run() -> Result<i32, String> {
-    let mut arguments = env::args().skip(1);
-    let command = arguments.next().unwrap_or_else(|| "help".into());
-    match command.as_str() {
+    let arguments = env::args().skip(1).collect::<Vec<_>>();
+    let command = arguments.first().map(String::as_str).unwrap_or("help");
+    let subcommand_arguments = arguments.iter().skip(1).cloned().collect::<Vec<_>>();
+
+    if subcommand_arguments
+        .iter()
+        .any(|argument| matches!(argument.as_str(), "-h" | "--help"))
+    {
+        print!("{}", usage());
+        return Ok(0);
+    }
+
+    match command {
         "info" => command_info(),
-        "verify" => command_verify(arguments),
-        "trace" => command_trace(arguments),
-        "conformance" => command_conformance(arguments),
-        "sample" => command_sample(arguments),
+        "verify" => command_verify(subcommand_arguments.into_iter()),
+        "trace" => command_trace(subcommand_arguments.into_iter()),
+        "conformance" => command_conformance(subcommand_arguments.into_iter()),
+        "sample" => command_sample(subcommand_arguments.into_iter()),
         "help" | "-h" | "--help" => {
             print!("{}", usage());
             Ok(0)
