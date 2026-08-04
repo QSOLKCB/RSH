@@ -73,9 +73,10 @@ RshSummaryV1        = 232 bytes
 RshSchedulePointV1  = 32 bytes
 ```
 
-The header contains matching C++ `static_assert` checks, while the Rust crate
-exports runtime size probes. Structures include `struct_size` and `abi_version`
-so later additive revisions can reject incompatible callers cleanly.
+The header contains matching 64-bit C++ `static_assert` checks, while the Rust
+crate exports runtime size probes. Structures include `struct_size` and
+`abi_version` so later additive revisions can reject incompatible callers
+cleanly.
 
 ## C++17 consumer
 
@@ -115,8 +116,9 @@ build/cuda/rsh-cuda
 
 `RSH_CUDA_ARCHITECTURES` is optional. An empty value preserves the CUDA compiler
 default, while values such as `native`, `89`, or `120` make the intended target
-explicit. CMake prints the effective setting and passes a human-readable form to
-the sidecar.
+explicit. The `native` value requires CMake 3.24 or newer; older supported CMake
+versions must use an explicit numeric architecture. CMake prints the effective
+setting and passes a human-readable form to the sidecar.
 
 The executable accepts:
 
@@ -175,7 +177,7 @@ It validates only the sampled κ/τ field against the f64 Rust FFI oracle.
 Run a non-mutating environment report:
 
 ```bash
-scripts/cuda_preflight.sh
+sh scripts/cuda_preflight.sh
 ```
 
 Run repeated execution, strict sidecar validation, CPU-reference comparison, and
