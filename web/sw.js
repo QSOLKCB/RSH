@@ -32,18 +32,16 @@ self.addEventListener("fetch", (event) => {
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
 
+  const revalidation = fetch(event.request).then(async (response) => {
+    if (response.ok) {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put(event.request, response.clone());
+    }
+    return response;
+  });
+
+  event.waitUntil(revalidation.then(() => undefined).catch(() => undefined));
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const network = fetch(event.request)
-        .then((response) => {
-          if (response.ok) {
-            const copy = response.clone();
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          }
-          return response;
-        })
-        .catch(() => cached);
-      return cached || network;
-    }),
+    caches.match(event.request).then((cached) => cached || revalidation),
   );
 });
