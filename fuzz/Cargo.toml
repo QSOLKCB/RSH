@@ -1,0 +1,23 @@
+[package]
+name = "rsh-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+rsh-core = { path = "../crates/rsh-core" }
+rsh-numerics = { path = "../crates/rsh-numerics" }
+
+[[bin]]
+name = "frenet_path"
+path = "fuzz_targets/frenet_path.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]
+members = ["."]
