@@ -1,0 +1,30 @@
+{
+  "schema": "RSH-WGSL-CONFORMANCE-V1",
+  "model": "Robitaille-Slade-Helix",
+  "model_version": "2.0.0",
+  "wasm_schedule_schema": "RSH-SCHEDULE-RUN-V1",
+  "shader": "web/wgsl/kappa_tau_field.wgsl",
+  "entry_point": "main",
+  "configuration": {
+    "samples": 4096,
+    "s0": 0.0,
+    "s1": 4.0,
+    "kappa_fraction": 0.85,
+    "tau_floor": 0.22,
+    "tau_amplitude": 0.13
+  },
+  "workgroup_size": 64,
+  "precision": "f32",
+  "residual_threshold": 0.0001,
+  "requirements": {
+    "cpu_wasm_f64_oracle": true,
+    "browser_fallback": true,
+    "gpu_receipt_authority": false,
+    "visual_verified": false
+  },
+  "notes": [
+    "CI executes the additive rsh_schedule ABI and checks an f32 arithmetic reference against the f64 oracle.",
+    "The browser executes the actual WGSL kernel on the available WebGPU adapter and records the observed residual sidecar.",
+    "A GPU residual sidecar never replaces the CPU/WASM geometry report or receipt."
+  ]
+}
