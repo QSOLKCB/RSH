@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="RSH — verified bounded Frenet–Serret geometry with Python, Rust, WebAssembly, and residual-gated WebGPU schedules.">
+  <meta name="description" content="RSH — verified bounded Frenet–Serret geometry with Python, Rust, WebAssembly, residual-gated WebGPU, and native C++/CUDA adapters.">
   <meta name="theme-color" content="#081014">
   <title>RSH — Robitaille–Slade Helix</title>
   <link rel="stylesheet" href="style.css">
@@ -12,7 +12,7 @@
 <body>
   <header class="hero">
     <nav>
-      <a class="brand" href="./" aria-label="RSH home">RSH<span>⁴</span></a>
+      <a class="brand" href="./" aria-label="RSH home">RSH<span>⁵</span></a>
       <div class="nav-links">
         <a href="#laboratory">Laboratory</a>
         <a href="#webgpu">WebGPU</a>
@@ -24,9 +24,9 @@
 
     <div class="hero-grid">
       <section class="intro">
-        <p class="eyebrow">ROBITAILLE–SLADE HELIX · WASM + WEBGPU LAB</p>
+        <p class="eyebrow">ROBITAILLE–SLADE HELIX · WASM + WEBGPU + NATIVE ABI</p>
         <h1>Verified geometry.<br><em>Residual-gated acceleration.</em></h1>
-        <p class="lede">Rust/WASM still produces the geometry report and receipt. WGSL evaluates a 4,096-sample f32 schedule field, measures its residual against the rsh-core f64 oracle, and falls back cleanly when WebGPU is unavailable.</p>
+        <p class="lede">Rust/WASM produces the geometry report and receipt. WGSL evaluates a 4,096-sample f32 schedule field, while the versioned C ABI lets C++ and optional CUDA consumers use the same Rust authority without cloning the model.</p>
         <div class="runtime-line" aria-live="polite">
           <span id="runtime-light" class="runtime-light loading"></span>
           <strong id="runtime-status">Loading Rust/WASM core…</strong>
@@ -159,7 +159,7 @@
       <div>
         <p class="eyebrow">REFERENCE CONTRACT</p>
         <h2>The model states what it can prove.</h2>
-        <p>Centre placement is a coordinate normalisation. Receipts prove canonical report identity. GPU residuals prove only agreement of the sampled f32 schedule within the published threshold.</p>
+        <p>Centre placement is a coordinate normalisation. Receipts prove canonical report identity. Accelerator residuals prove only agreement of sampled f32 schedules within a published threshold.</p>
       </div>
       <dl>
         <div><dt>ψ</dt><dd>√(2 + √5)</dd></div>
@@ -167,7 +167,7 @@
         <div><dt>τ(s)</dt><dd>0 &lt; τ &lt; 1</dd></div>
         <div><dt>Centre</dt><dd>exact discrete p = 0.5</dd></div>
         <div><dt>Receipt</dt><dd>domain-separated SHA-256</dd></div>
-        <div><dt>GPU gate</dt><dd>max f32 residual ≤ 1×10⁻⁴</dd></div>
+        <div><dt>Accelerator gate</dt><dd>max f32 residual ≤ 1×10⁻⁴</dd></div>
       </dl>
     </section>
 
@@ -200,12 +200,13 @@
           <strong>IMPLEMENTED · v2.3</strong>
         </article>
       </div>
+      <p class="boundary-note"><strong>C++ ABI · CUDA OPTIONAL</strong> — v2.4 adds a fixed-layout native C boundary, dependency-free C++17 consumer, and optional CUDA schedule kernel. All three call or compare against <code>rsh-core</code>; none becomes a second geometry oracle.</p>
     </section>
 
     <section class="terminal panel">
       <div>
-        <p class="eyebrow">FOUR RUNTIMES</p>
-        <h2>No server process. No telemetry. No GPU promotion ceremony.</h2>
+        <p class="eyebrow">FIVE RUNTIME SURFACES</p>
+        <h2>No server process. No telemetry. No adapter promotion ceremony.</h2>
       </div>
       <pre><code><span>$</span> python3 rsh_runner.py verify -n 129
 RSH verify [PASS]
@@ -217,13 +218,19 @@ RSH Rust conformance [PASS]
 RSH browser report [PASS]
 
 <span>&gt;</span> navigator.gpu → kappa_tau_field.wgsl
-RSH residual sidecar [PASS | FALLBACK]</code></pre>
+RSH residual sidecar [PASS | FALLBACK]
+
+<span>$</span> build/native/rsh-cpp verify --samples 129
+RSH C++ FFI verify [PASS]
+
+<span>$</span> build/cuda/rsh-cuda
+RSH CUDA sidecar [OPTIONAL]</code></pre>
     </section>
   </main>
 
   <footer>
     <p>J. Robitaille / DeltaKingZero · Trent Slade / QSOL-IMC</p>
-    <p>RSH v2.3.0 · MPL-2.0 · offline after first load</p>
+    <p>RSH v2.4.0 · MPL-2.0 · offline after first load</p>
   </footer>
 
   <noscript><p class="noscript">The RSH browser laboratory requires JavaScript to load the verified WebAssembly core.</p></noscript>
