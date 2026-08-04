@@ -43,18 +43,18 @@ jobs:
         run: |
           rustup toolchain install stable --profile minimal --component rustfmt,clippy
           rustup default stable
-      - name: Normalize formatting in the CI workspace
-        run: cargo fmt --all
+      - name: Check formatting
+        run: cargo fmt --all -- --check
       - name: Lint
-        run: cargo clippy --workspace --all-targets
+        run: cargo clippy --locked --workspace --all-targets -- -D warnings
       - name: Unit and conformance tests
-        run: cargo test --workspace
+        run: cargo test --locked --workspace
       - name: Native evidence smoke suite
         run: |
-          cargo run -p rsh-cli -- verify -n 129 --json /tmp/rsh_rust_verify.json
-          cargo run -p rsh-cli -- conformance --json /tmp/rsh_rust_conformance.json
-          cargo run -p rsh-cli -- trace -n 65 -o /tmp/rsh_rust_trace.csv
-          cargo run -p rsh-cli -- sample 16777216 12
+          cargo run --locked -p rsh-cli -- verify -n 129 --json /tmp/rsh_rust_verify.json
+          cargo run --locked -p rsh-cli -- conformance --json /tmp/rsh_rust_conformance.json
+          cargo run --locked -p rsh-cli -- trace -n 65 -o /tmp/rsh_rust_trace.csv
+          cargo run --locked -p rsh-cli -- sample 16777216 12
 
   pages-source:
     runs-on: ubuntu-latest
