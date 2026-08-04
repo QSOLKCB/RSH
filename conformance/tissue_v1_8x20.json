@@ -4,6 +4,12 @@
   "tissue_contract": "1.0.0",
   "geometry_model": "Robitaille-Slade-Helix",
   "geometry_model_contract": "2.0.0",
+  "reference_runtime": {
+    "implementation": "CPython",
+    "major": 3,
+    "minor": 12,
+    "receipt_scope": "runtime-specific deterministic identity"
+  },
   "configuration": {
     "cells": 8,
     "ticks": 20,
@@ -19,17 +25,21 @@
   "expected": {
     "constitution_hash": "090416435f8ae2adc7555dab356eafef7aadfeabdb99c68e7c381ddf3bf9e544",
     "seed_geometry_receipt": "f33042335100b7a2bca8c5c97724782ecb820cd8f6704f8e7eb074c1ed9e9a00",
-    "first_tick_receipt": "ce7a5d2d00503529072748f5c2083d99efad661735056ec4ddecb564cdba54cb",
-    "last_tick_receipt": "380ceec9663918889811a41c36eb615c9422de9950ecdc9dbc363830e705a320",
-    "report_receipt": "732fc6ccc5af543881528da7f9ec7717817af97c07e7f7973512685ab67e2622",
+    "reference_first_tick_receipt": "ce7a5d2d00503529072748f5c2083d99efad661735056ec4ddecb564cdba54cb",
+    "reference_last_tick_receipt": "380ceec9663918889811a41c36eb615c9422de9950ecdc9dbc363830e705a320",
+    "reference_report_receipt": "732fc6ccc5af543881528da7f9ec7717817af97c07e7f7973512685ab67e2622",
     "first_q_f": 0.2623914043443579,
     "final_q_f": 0.37926532158281384,
     "minimum_q_f": 0.2623914043443579,
     "maximum_q_f": 0.37926532158281384,
     "final_dissociation": 0.00005863114611954213,
+    "observable_absolute_tolerance": 1e-12,
     "maximum_centre_error": 1e-12
   },
   "requirements": {
+    "same_runtime_receipt_replay": true,
+    "cross_python_receipt_identity": false,
+    "cross_python_observable_conformance": true,
     "pass_constitution": true,
     "pass_bounds": true,
     "pass_centre": true,
