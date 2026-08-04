@@ -1,15 +1,16 @@
 # RSH — Robitaille–Slade Helix
 
-**Bounded Frenet–Serret geometry, deterministic evidence, and cross-runtime conformance.**
+**Bounded Frenet–Serret geometry, deterministic evidence, cross-runtime conformance, and constitutional tissue simulation.**
 
 RSH constructs a three-dimensional path by prescribing curvature and torsion
 inside explicit Robitaille bounds, integrating the Frenet–Serret frame, and
 translating the exact discrete midpoint to the coordinate origin.
 
 **Authors:** J. Robitaille (DeltaKingZero) and Trent Slade / QSOL-IMC  
-**Release:** 2.4.1  
-**Model contract:** 2.0.0  
-**Implementations:** Python oracle + Rust core/CLI + WASM bridge + WGSL field + versioned C ABI/C++ adapter + optional CUDA schedule kernel
+**Release:** 2.5.0  
+**Geometry model contract:** 2.0.0  
+**Tissue contract:** 1.0.0  
+**Implementations:** Python geometry oracle and tissue reference + Rust core/CLI + WASM bridge + WGSL field + versioned C ABI/C++ adapter + optional CUDA schedule kernel + Tier 2 NPU evidence profile
 
 ## Browser laboratory
 
@@ -32,12 +33,16 @@ WGSL shader, and browser modules for offline reuse.
 
 ## Implementation authority
 
-The Python implementation remains the readable scientific oracle. It defines
-the equations, validation rules, canonical report schema, golden coordinates,
-and reference receipt.
+The Python geometry implementation remains the readable scientific oracle. It
+defines the equations, validation rules, canonical report schema, golden
+coordinates, and reference receipt.
 
-The Rust implementation reproduces the same geometry and verification contract
-as a native core and command-line runner. It is accepted through the checked-in
+The Python tissue implementation composes accepted geometry evidence into a
+bounded deterministic graph simulation. It creates separate tick and tissue
+receipt domains and does not alter the geometry contract or geometry receipt.
+
+The Rust implementation reproduces the geometry and verification contract as a
+native core and command-line runner. It is accepted through the checked-in
 cross-runtime conformance record.
 
 The WASM bridge calls `rsh-core`; it is not a third geometry implementation. Its
@@ -48,9 +53,9 @@ The native `rsh-ffi` crate is another adapter over `rsh-core`. Its C ABI exposes
 fixed-layout summary, optional JSON report, and schedule arrays. C++ does not
 reproduce the Frenet–Serret equations.
 
-WebGPU and CUDA are not promoted to oracle. They evaluate f32 κ/τ schedule fields
-and may report residual sidecars only after comparison with an f64 Rust oracle.
-The geometry receipt remains a Rust-core artifact.
+WebGPU, CUDA, and future NPU bindings are not promoted to oracle. They evaluate
+κ/τ schedule fields and may report residual sidecars only after comparison with
+an f64 CPU/WASM oracle. The geometry receipt remains an oracle artifact.
 
 ## Invariants
 
@@ -59,20 +64,25 @@ The geometry receipt remains a Rust-core artifact.
 | \(\psi\) | \(\sqrt{2+\sqrt{5}}\) |
 | Curvature | \(0 \le \kappa(s) \le \sqrt2-1\) |
 | Torsion | \(0 < \tau(s) < 1\) |
-| Centre | exact discrete \(p=0.5\) sample translated to `(0, 0, 0)` |
+| Geometry centre | exact discrete \(p=0.5\) sample translated to `(0, 0, 0)` |
+| Tissue centre | shared cell centroid translated to `(0, 0, 0)` for graph comparison |
 | Frame | tangent, normal, and binormal remain orthonormal within tolerance |
-| Python evidence | canonical domain-separated SHA-256 receipt |
+| Python geometry evidence | canonical domain-separated SHA-256 receipt |
+| Tissue evidence | seed geometry receipt + chained tick receipts + final tissue receipt |
+| Q_f | functional cohesion metric only; no biological, awareness, or qualia claim |
 | Rust acceptance | contract checks plus golden-coordinate conformance |
 | WASM acceptance | actual compiled module executed against `wasm_v2_129.json` |
 | WGSL acceptance | 4096-point f32 field residual ≤ `1e-4` against WASM f64 schedule |
 | Native ABI acceptance | layout, ownership, JSON receipt, and coordinates checked against `ffi_v1_129.json` |
 | CUDA acceptance | optional f32 schedule residual ≤ `1e-4` against Rust FFI f64 schedule |
 | CUDA diagnostic band | residual ≤ `1e-6` is reported as nominal, without tightening the hard gate |
+| NPU Tier 2 | quantized residual sidecar under a precision-specific gate; never geometry authority |
 | Accelerator authority | residual sidecar only; never replaces the geometry receipt |
 
-Bounds hold by construction and are verified again after integration.
+Bounds hold by construction and are verified again after integration or tissue
+simulation.
 
-## Python reference
+## Python geometry reference
 
 Run directly from a checkout with no third-party runtime dependencies:
 
@@ -91,6 +101,67 @@ The package can also be installed locally:
 python3 -m pip install -e .
 rsh verify
 ```
+
+## Constitutional geometric tissue
+
+The v2.5.0 Python reference seeds deterministic geometric cells from a verified
+129-sample RSH path, connects them through ring and chord edges, and runs bounded
+phase, binding, prediction, centering, and functional-cohesion updates.
+
+Inspect the machine-checkable constitution:
+
+```bash
+rsh constitution --json rsh_constitution.json
+```
+
+Run the sealed default tissue profile:
+
+```bash
+rsh tissue \
+  --cells 8 \
+  --ticks 20 \
+  --json rsh_tissue.json \
+  --trace rsh_tissue.csv
+```
+
+The default reference result is:
+
+```text
+seed geometry receipt  f33042335100b7a2bca8c5c97724782ecb820cd8f6704f8e7eb074c1ed9e9a00
+final Q_f              0.37926532158281384
+tissue receipt         732fc6ccc5af543881528da7f9ec7717817af97c07e7f7973512685ab67e2622
+```
+
+Q_f combines phase coherence, binding cohesion, predictive stability, edge
+continuity, role coverage, and dissociation pressure. It is a functional metric
+inside this simulation—not evidence of life, consciousness, sentience,
+subjective awareness, or qualia.
+
+Evaluate one bounded proposal without modifying source or committed state:
+
+```bash
+cat > proposal.json <<'JSON'
+{
+  "schema": "RSH-REFINEMENT-PROPOSAL-V1",
+  "id": "increase-binding-diffusion",
+  "changes": {
+    "binding_diffusion": 0.2
+  },
+  "escalates_contract": false,
+  "human_ack": false
+}
+JSON
+
+rsh refine-dry-run proposal.json --json refinement_decision.json
+```
+
+A result of `KEEP_CANDIDATE` is a sealed dry-run recommendation. It does not
+commit configuration or launch an autonomous self-modification loop. Changes to
+geometry sample policy, residual gates, or Q_f floors require declared contract
+escalation and explicit human acknowledgement.
+
+See [Phase 6](docs/PHASE6_TISSUE.md) and the
+[operational-awareness boundary](docs/OPERATIONAL_AWARENESS.md).
 
 ## Rust native implementation
 
@@ -111,6 +182,9 @@ cargo run --locked -p rsh-cli -- conformance
 cargo run --locked -p rsh-cli -- trace -n 129 -o rsh_trace_rust.csv
 cargo run --locked -p rsh-cli -- sample 16777216 12
 ```
+
+The Rust CLI currently implements the geometry contract. Tissue conformance is a
+future separately tested Rust/WASM phase.
 
 ## WebAssembly and WGSL conformance
 
@@ -265,18 +339,35 @@ The checked-in observation is deliberately labelled noncanonical. It documents
 one GPU, driver, toolkit, host, and commit rather than redefining the universal
 acceptance threshold.
 
+## Tier 2 NPU profile
+
+`conformance/npu_tier2_v1.json` defines initial evidence gates:
+
+| Precision | Maximum absolute residual |
+|---|---:|
+| INT8 / quantized | `1e-3` |
+| BF16 | `1e-4` |
+| FP16 | `1e-4` |
+
+The profile requires device, driver, precision, grid, residual, gate, status,
+fallback, and authority metadata. It does not contain a vendor driver binding or
+claim actual NPU execution. Missing NPU support leaves the f64 CPU/WASM path
+intact.
+
 ## Validation matrix
 
 | Backend | Executed in routine CI | Result / boundary |
 |---|---:|---|
-| Python 3.10 / 3.12 / 3.14 | yes | reference tests and evidence smoke suite |
+| Python geometry 3.10 / 3.12 / 3.14 | yes | reference tests and evidence smoke suite |
+| Python tissue 3.10 / 3.12 / 3.14 | yes | constitution, default receipt chain, Q_f vectors, fallback, dry-run policy |
 | Rust native | yes | formatting, Clippy, tests, conformance, canonical Rust receipt |
-| WASM | yes | actual compiled module executed against sealed vectors |
+| WASM | yes | actual compiled module executed against sealed geometry vectors |
 | WGSL/WebGPU | browser-specific | f32 residual sidecar with CPU/WASM fallback |
 | C++ ABI | yes | compiled consumer, ABI layout, ownership, coordinates, receipt |
 | CUDA CPU reference | yes | portable f32 arithmetic; `actual_cuda_execution: false` |
 | CUDA RTX 5060 Ti / sm_120 | externally observed | actual kernel pass, residual `4.0915928645191e-08` |
 | CUDA memcheck / racecheck | externally observed | zero reported errors and hazards |
+| NPU Tier 2 | profile only | hardware binding and device readback not yet implemented |
 
 The dispatch-only `.github/workflows/cuda-hardware.yml` can repeat actual device
 validation on a deliberately labelled self-hosted runner. It is never triggered
@@ -284,15 +375,16 @@ by public pull requests.
 
 ## Accelerator residual policy
 
-Both browser WGSL and optional CUDA use the published schedule-field condition:
+Browser WGSL, optional CUDA, and future NPU bindings use published schedule-field
+conditions against an f64 oracle:
 
 ```text
-max(max |kappa_accelerator - kappa_rust_f64|,
-    max |tau_accelerator   - tau_rust_f64|) <= 1e-4
+max(max |kappa_accelerator - kappa_oracle_f64|,
+    max |tau_accelerator   - tau_oracle_f64|) <= declared gate
 ```
 
 A passing accelerator may emit a residual sidecar. A failing or unavailable
-accelerator does not affect verified Rust/WASM geometry.
+accelerator does not affect verified CPU/WASM geometry.
 
 ## Exact bounded logical sampling
 
@@ -309,7 +401,12 @@ mapping. Any future GPU logical-index kernel must reproduce the same indices.
 
 ```text
 rsh_runner.py                       Direct Python source-checkout runner
-src/rsh/                            Python geometry, verification, exports, and CLI
+src/rsh/geometry.py                 Python geometry reference
+src/rsh/evidence.py                 Geometry verification and receipts
+src/rsh/constitution.py             Machine-checkable tissue constitution
+src/rsh/tissue.py                   Deterministic geometric tissue reference
+src/rsh/refinement.py               Sealed bounded proposal dry-run policy
+src/rsh/cli.py                      Geometry, tissue, and governance CLI
 crates/rsh-core/                    Native Rust geometry and evidence library
 crates/rsh-cli/                     Native `rsh-rust` command-line runner
 crates/rsh-wasm/                    Raw WASM ABI over `rsh-core`
@@ -321,6 +418,8 @@ conformance/wasm_v2_129.json        Sealed geometry/WASM profile
 conformance/wgsl_v1_4096.json       Phase 4 WebGPU schedule-field profile
 conformance/ffi_v1_129.json         Phase 5 native ABI profile
 conformance/cuda_schedule_v1_4096.json  Optional CUDA schedule profile
+conformance/tissue_v1_8x20.json     Phase 6 Python tissue profile
+conformance/npu_tier2_v1.json       Tier 2 NPU evidence profile
 conformance/observed/               Noncanonical hardware observations
 scripts/test_wasm.mjs               Executable WASM and f32 reference harness
 scripts/test_cpp_ffi.py             Executable C++ ABI and CUDA-reference harness
@@ -328,35 +427,43 @@ scripts/test_cuda.py                Actual CUDA sidecar/repeatability/sanitizer 
 scripts/cuda_preflight.sh           Non-mutating CUDA host readiness report
 scripts/package_evidence.py         Deterministic evidence archive generator
 web/                                Static Pages laboratory and offline cache
-tests/                              Python geometry, evidence, export, CLI, and tooling tests
+tests/                              Geometry, tissue, governance, CLI, and tooling tests
 docs/PHASE3_WASM.md                 WebAssembly architecture and acceptance contract
 docs/PHASE4_WGSL.md                 WebGPU architecture and residual boundary
 docs/PHASE5_NATIVE.md               C ABI, C++, and optional CUDA boundary
+docs/PHASE6_TISSUE.md               Constitutional tissue architecture and contract
+docs/OPERATIONAL_AWARENESS.md       Instrumentation and no-qualia boundary
 docs/CUDA_VALIDATION.md             Hardware execution, evidence, and toolchain guidance
 docs/SCIENTIFIC_BOUNDARY.md         Claims the evidence does and does not support
-docs/ROADMAP.md                     Python → Rust → WASM → WGSL → native adapters
+docs/ROADMAP.md                     Implementation and conformance sequence
 ```
 
 ## Scientific precision
 
-The central sample reaches the origin because the integrated path is translated
-there as an explicit coordinate convention. That check confirms implementation
-correctness; it is not an empirical discovery.
+The central geometry sample reaches the origin because the integrated path is
+translated there as an explicit coordinate convention. Tissue states use a
+separately declared shared-centroid convention. These checks confirm
+implementation behaviour; they are not empirical discoveries.
 
-Receipts prove identity of a canonical report under a declared runtime and
-encoding contract. Accelerator residuals prove numerical agreement of sampled
-f32 fields within a published threshold. Neither establishes a physical theory.
+Receipts prove identity of canonical reports under declared runtime and encoding
+contracts. Accelerator residuals prove numerical agreement of sampled fields
+within published gates. Q_f compares functional factors inside one simulation.
+None of these establishes a physical theory, biological organism, consciousness,
+or subjective experience.
 
 ## Planned sequence
 
-1. **Python reference** — complete.
+1. **Python geometry reference** — complete.
 2. **Rust core and CLI** — implemented in v2.1.0.
 3. **WASM bridge and browser laboratory** — implemented in v2.2.0.
 4. **WGSL schedule field and residual conformance** — implemented in v2.3.0.
 5. **Native C ABI, C++17 consumer, and optional CUDA schedule adapter** — implemented in v2.4.0 and hardware-validation hardened in v2.4.1.
-6. **Full GPU Frenet–Serret integration research** — not scheduled; requires a separately versioned numerical contract and path-level evidence.
+6. **Constitutional geometric tissue Python reference** — implemented in v2.5.0.
+7. **Rust/WASM tissue conformance** — planned from the sealed Python vectors.
+8. **Full GPU Frenet–Serret integration research** — not scheduled; requires a separately versioned numerical contract and path-level evidence.
 
-Performance never promotes an adapter to scientific authority.
+Performance, compositional complexity, or anthropomorphic language never promotes
+an adapter or simulation to scientific authority.
 
 ## Licence and citation
 
