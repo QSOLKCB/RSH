@@ -56,18 +56,46 @@ Status: **implemented in v2.3.0**
 The GPU remains an accelerated field evaluator, not a scientific oracle. No GPU
 result replaces the geometry report or its domain-separated receipt.
 
-## Phase 5 — optional C++/CUDA adapter
+## Phase 5 — native C ABI, C++17 consumer, and optional CUDA schedule adapter
 
-Status: **optional on demand**
+Status: **implemented in v2.4.0**
 
-C++ is not a second canonical implementation. Add it only when required for an
-existing native integration, CUDA-specific benchmark, or stable C ABI consumer.
-Any such adapter must consume the same conformance vectors and publish its own
-runtime and compiler provenance.
+- `rsh-ffi` exports a versioned C ABI over `rsh-core`;
+- fixed-layout configuration, summary, byte-buffer, and schedule structures are
+  published in `include/rsh_ffi.h`;
+- runtime size probes and C++ `static_assert`s guard ABI layout drift;
+- Rust panics are contained and converted into an explicit status code;
+- thread-local UTF-8 errors describe rejected calls;
+- Rust-owned JSON and schedule buffers cross the boundary only through opaque
+  handles with matching release functions;
+- a dependency-free C++17 CLI consumes the ABI without reproducing geometry;
+- CMake builds the Rust library before linking the native adapter;
+- a 4096-point CPU f32 arithmetic reference validates the optional CUDA formula
+  against the f64 Rust FFI schedule in ordinary CI;
+- `rsh-cuda` may be built on CUDA-capable systems and records actual adapter,
+  compute capability, kernel block size, and readback residuals;
+- actual CUDA execution is never inferred from the portable arithmetic reference.
 
-A full WGSL or CUDA Frenet–Serret integrator would require a separately versioned
-numerical contract, path-level golden vectors, frame-error limits, and explicit
-adapter/compiler residual evidence. It is not assumed by the schedule-field work.
+The C++ and CUDA layers are adapters. Geometry, frame integration, centre
+normalisation, reports, and receipts remain authoritative in `rsh-core`.
+
+## Phase 6 — separately versioned GPU path integration research
+
+Status: **not scheduled**
+
+A full WGSL or CUDA Frenet–Serret integrator is not an automatic continuation of
+the schedule kernels. Before implementation, it requires:
+
+- a separately named and versioned numerical integration contract;
+- an explicit midpoint/frame update and re-orthonormalisation policy;
+- path-level golden vectors at multiple sample counts;
+- coordinate, tangent, normal, binormal, centre, and frame-error thresholds;
+- compiler flags, shader/compiler versions, adapter, driver, and precision
+  provenance;
+- clear separation between reproducible evidence and display interpolation;
+- a fallback that never suppresses the accepted Rust/WASM path.
+
+That work should begin with a conformance document and vectors, not a renderer.
 
 ## GitHub Pages
 
@@ -75,6 +103,9 @@ The `web/` source is assembled by `.github/workflows/pages.yml`. The workflow
 builds `rsh_wasm.wasm`, executes the WASM/WGSL source conformance harness, places
 the module under `web/pkg/`, validates the shader and browser assets, and only
 then uploads the artifact for deployment.
+
+Native C++, FFI, and CUDA artifacts are intentionally not shipped through Pages.
+They are built and tested through the repository's native CI path.
 
 ## Governance rule
 
