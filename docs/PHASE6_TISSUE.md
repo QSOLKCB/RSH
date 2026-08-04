@@ -46,8 +46,9 @@ RSH-TISSUE-TICK-V1
 RSH-TISSUE-EVIDENCE-V1
 ```
 
-A tissue receipt therefore proves identity of one declared simulation report. It
-does not replace or reinterpret the geometry receipt.
+A tissue receipt therefore proves identity of one declared simulation report
+within its runtime and encoding contract. It does not replace or reinterpret the
+geometry receipt.
 
 ## Constitution
 
@@ -202,26 +203,33 @@ rsh refine-dry-run proposal.json \
   --json refinement_decision.json
 ```
 
-## Sealed default profile
+## Default conformance profile
 
-`conformance/tissue_v1_8x20.json` fixes the default reference run:
+`conformance/tissue_v1_8x20.json` fixes the default configuration and observable
+reference values. Exact tissue receipts are scoped to CPython 3.12:
 
 ```text
+reference runtime        CPython 3.12
 cells                    8
 ticks                    20
 geometry samples         129
 seed geometry receipt    f33042335100b7a2bca8c5c97724782ecb820cd8f6704f8e7eb074c1ed9e9a00
 final Q_f                0.37926532158281384
-tissue report receipt    732fc6ccc5af543881528da7f9ec7717817af97c07e7f7973512685ab67e2622
+reference tissue receipt 732fc6ccc5af543881528da7f9ec7717817af97c07e7f7973512685ab67e2622
 ```
 
-The conformance test checks the constitution hash, geometry seed, first and last
-tick receipts, Q_f values, centering tolerance, bounds, and complete receipt
-chain.
+CPython 3.10, 3.12, and 3.14 must each replay identically within the same runtime.
+Across Python minor versions, the conformance suite compares constitution and
+geometry seeds exactly, then checks Q_f factors, dissociation, and centering under
+an absolute `1e-12` tolerance. Byte-identical tissue tick or report receipts are
+not claimed across Python minor versions because floating-point library details
+may change the canonical report bytes.
 
 ## Next implementation boundary
 
-A Rust or WASM tissue implementation should begin with the sealed Python vectors
-and reproduce the report within declared tolerances. No accelerator should be
-allowed to skip the f64 seed receipt, tick chain, functional-metric definition,
-or explicit no-qualia boundary.
+A Rust or WASM tissue implementation should begin with the sealed Python
+observables and reproduce the report within declared tolerances. Receipt byte
+identity must be treated as a separate serialization contract rather than
+assumed across runtimes. No accelerator should be allowed to skip the f64 seed
+receipt, tick chain, functional-metric definition, or explicit no-qualia
+boundary.
