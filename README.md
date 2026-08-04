@@ -192,7 +192,7 @@ python3 scripts/test_cpp_ffi.py \
 Start with the non-mutating preflight report:
 
 ```bash
-scripts/cuda_preflight.sh
+sh scripts/cuda_preflight.sh
 ```
 
 On a CUDA-capable machine with a supported NVIDIA toolkit and device:
@@ -205,8 +205,10 @@ cmake -S native/cpp -B build/cuda \
 cmake --build build/cuda --target rsh-cpp rsh-cuda --parallel
 ```
 
-For a pinned architecture, use a value such as `120` for sm_120. Leaving
-`RSH_CUDA_ARCHITECTURES` empty preserves the CUDA compiler default.
+The `native` architecture value requires CMake 3.24 or newer. With an older
+supported CMake release—or for a pinned reproducibility run—use an explicit
+numeric value such as `120` for sm_120. Leaving `RSH_CUDA_ARCHITECTURES` empty
+preserves the CUDA compiler default.
 
 The CUDA runtime accepts explicit controls while retaining the sealed defaults:
 
