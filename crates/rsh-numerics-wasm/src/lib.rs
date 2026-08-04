@@ -51,6 +51,13 @@ fn set_output(bytes: Vec<u8>) {
     });
 }
 
+fn serialization_failure_error() -> Vec<u8> {
+    format!(
+        "{{\"schema\":\"{ERROR_SCHEMA}\",\"abi_version\":{ABI_VERSION},\"runtime\":\"wasm32-unknown-unknown\",\"message\":\"serialization failure\"}}"
+    )
+    .into_bytes()
+}
+
 fn encode_error(message: &str) -> Vec<u8> {
     serde_json::to_vec(&PathError {
         schema: ERROR_SCHEMA,
@@ -58,9 +65,7 @@ fn encode_error(message: &str) -> Vec<u8> {
         runtime: "wasm32-unknown-unknown",
         message,
     })
-    .unwrap_or_else(|_| {
-        b"{\"schema\":\"RSH-FRENET-PATH-ERROR-V1\",\"message\":\"serialization failure\"}".to_vec()
-    })
+    .unwrap_or_else(|_| serialization_failure_error())
 }
 
 fn encode_path(config: ModelConfig) -> Result<(Vec<u8>, bool), String> {
@@ -181,8 +186,20 @@ mod tests {
 
         let payload = read_output();
         assert_eq!(payload["schema"], ERROR_SCHEMA);
+        assert_eq!(payload["abi_version"], ABI_VERSION);
+        assert_eq!(payload["runtime"], "wasm32-unknown-unknown");
         assert!(payload["message"]
             .as_str()
             .is_some_and(|message| message.contains("samples must be odd")));
+    }
+
+    #[test]
+    fn serialization_fallback_preserves_the_error_shape() {
+        let payload: Value = serde_json::from_slice(&serialization_failure_error())
+            .expect("valid serialization fallback JSON");
+        assert_eq!(payload["schema"], ERROR_SCHEMA);
+        assert_eq!(payload["abi_version"], ABI_VERSION);
+        assert_eq!(payload["runtime"], "wasm32-unknown-unknown");
+        assert_eq!(payload["message"], "serialization failure");
     }
 }
