@@ -14,11 +14,12 @@ offline caching.
   declared tolerance.
 - Curvature, torsion, centre normalisation, frame verification, and receipts are
   produced by `rsh-core`, not by JavaScript.
+- For the sealed 129-sample Phase 3 profile, the WebAssembly receipt must equal
+  the native Rust receipt for the same canonical report.
+- Python receipt identity remains reported separately because Python and Rust
+  follow distinct runtime paths.
 - Canvas projection is interface output. It is not an additional verified sample
   set and does not establish a physical interpretation.
-- Runtime receipt identity is reported separately. It is not silently assumed
-  across native and WebAssembly targets because transcendental floating-point
-  implementations may differ in their final bits.
 - The project makes computational and implementation claims only.
 
 ## Architecture
@@ -95,14 +96,24 @@ no npm packages. The probe verifies:
 - exact discrete midpoint placement within `1e-15`;
 - entry and exit coordinates within the Python `1e-12` tolerance;
 - finite bounded schedule and report values;
-- a lowercase 64-character SHA-256 receipt;
-- optional native-versus-WASM receipt identity reporting.
+- the sealed WebAssembly receipt;
+- exact receipt identity with the native Rust report generated in the same job.
+
+The current sealed result is:
+
+```text
+entry max abs error = 1.1102230246251565e-16
+exit max abs error  = 8.881784197001252e-16
+centre error        = 0
+WASM/native receipt = 9cccdea9db0e0cb4c30accab275a672efb9c69fed022f5087f273a87aa28f253
+```
 
 ## Acceptance
 
 - [x] The browser executes `rsh-core` through WebAssembly.
 - [x] The midpoint sample is at the coordinate origin within tolerance.
 - [x] The actual `.wasm` binary is executed in CI against the Python golden data.
+- [x] The sealed WebAssembly receipt equals the native Rust receipt.
 - [x] JavaScript contains no second curvature, torsion, or integration model.
 - [x] The laboratory works as static GitHub Pages content and caches for offline
       reuse after first load.
