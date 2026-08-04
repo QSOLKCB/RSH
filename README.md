@@ -7,7 +7,7 @@ inside explicit Robitaille bounds, integrating the Frenet–Serret frame, and
 translating the exact discrete midpoint to the coordinate origin.
 
 **Authors:** J. Robitaille (DeltaKingZero) and Trent Slade / QSOL-IMC  
-**Release:** 2.4.0  
+**Release:** 2.4.1  
 **Model contract:** 2.0.0  
 **Implementations:** Python oracle + Rust core/CLI + WASM bridge + WGSL field + versioned C ABI/C++ adapter + optional CUDA schedule kernel
 
@@ -66,7 +66,8 @@ The geometry receipt remains a Rust-core artifact.
 | WASM acceptance | actual compiled module executed against `wasm_v2_129.json` |
 | WGSL acceptance | 4096-point f32 field residual ≤ `1e-4` against WASM f64 schedule |
 | Native ABI acceptance | layout, ownership, JSON receipt, and coordinates checked against `ffi_v1_129.json` |
-| CUDA acceptance | optional 4096-point f32 schedule residual ≤ `1e-4` against Rust FFI f64 schedule |
+| CUDA acceptance | optional f32 schedule residual ≤ `1e-4` against Rust FFI f64 schedule |
+| CUDA diagnostic band | residual ≤ `1e-6` is reported as nominal, without tightening the hard gate |
 | Accelerator authority | residual sidecar only; never replaces the geometry receipt |
 
 Bounds hold by construction and are verified again after integration.
@@ -188,22 +189,96 @@ python3 scripts/test_cpp_ffi.py \
 
 ## Optional CUDA schedule adapter
 
+Start with the non-mutating preflight report:
+
+```bash
+scripts/cuda_preflight.sh
+```
+
 On a CUDA-capable machine with a supported NVIDIA toolkit and device:
 
 ```bash
 cmake -S native/cpp -B build/cuda \
   -DCMAKE_BUILD_TYPE=Release \
-  -DRSH_ENABLE_CUDA=ON
-cmake --build build/cuda --target rsh-cuda
-build/cuda/rsh-cuda
+  -DRSH_ENABLE_CUDA=ON \
+  -DRSH_CUDA_ARCHITECTURES=native
+cmake --build build/cuda --target rsh-cpp rsh-cuda --parallel
 ```
 
-The CUDA executable evaluates a 4096-point f32 κ/τ field, reads it back, compares
-it with the f64 Rust FFI oracle, and records the device, compute capability,
-block size, and residuals. It does not integrate the path or create a geometry
-receipt.
+For a pinned architecture, use a value such as `120` for sm_120. Leaving
+`RSH_CUDA_ARCHITECTURES` empty preserves the CUDA compiler default.
 
-See [the complete Phase 5 specification](docs/PHASE5_NATIVE.md).
+The CUDA runtime accepts explicit controls while retaining the sealed defaults:
+
+```bash
+build/cuda/rsh-cuda \
+  --samples 4096 \
+  --block-size 128 \
+  --threshold 1e-4 \
+  --device 0
+```
+
+The sidecar records the selected device, device UUID, compute capability,
+compiled architectures, CUDA driver/runtime/compile API versions, grid and block
+sizes, residuals, and the explicit denial of geometry-receipt authority.
+
+Run the hardware validation harness:
+
+```bash
+python3 scripts/test_cuda.py \
+  --executable build/cuda/rsh-cuda \
+  --cpu-reference build/cuda/rsh-cpp \
+  --profile conformance/cuda_schedule_v1_4096.json \
+  --runs 3 \
+  --sanitizers auto \
+  --output artifacts/cuda-hardware
+```
+
+Package the evidence without recursive self-hashes:
+
+```bash
+python3 scripts/package_evidence.py \
+  artifacts/cuda-hardware \
+  artifacts/RSH-cuda-hardware.zip
+```
+
+See [CUDA validation and hardware evidence](docs/CUDA_VALIDATION.md) and the
+complete [Phase 5 specification](docs/PHASE5_NATIVE.md).
+
+## Observed hardware validation
+
+The independent v2.4.0 follow-up audit genuinely executed the CUDA kernel on an
+NVIDIA GeForce RTX 5060 Ti using CUDA 13.1.115 and sm_120:
+
+```text
+samples / block size      4096 / 128
+CPU f32 maximum residual  4.6082406834901946e-08
+CUDA maximum residual     4.0915928645191e-08
+hard gate                 1.0e-04
+repeatability             3 matching selected outputs
+sanitizers                0 memcheck errors, 0 race hazards
+```
+
+The checked-in observation is deliberately labelled noncanonical. It documents
+one GPU, driver, toolkit, host, and commit rather than redefining the universal
+acceptance threshold.
+
+## Validation matrix
+
+| Backend | Executed in routine CI | Result / boundary |
+|---|---:|---|
+| Python 3.10 / 3.12 / 3.14 | yes | reference tests and evidence smoke suite |
+| Rust native | yes | formatting, Clippy, tests, conformance, canonical Rust receipt |
+| WASM | yes | actual compiled module executed against sealed vectors |
+| WGSL/WebGPU | browser-specific | f32 residual sidecar with CPU/WASM fallback |
+| C++ ABI | yes | compiled consumer, ABI layout, ownership, coordinates, receipt |
+| CUDA CPU reference | yes | portable f32 arithmetic; `actual_cuda_execution: false` |
+| CUDA RTX 5060 Ti / sm_120 | externally observed | actual kernel pass, residual `4.0915928645191e-08` |
+| CUDA memcheck / racecheck | externally observed | zero reported errors and hazards |
+
+The dispatch-only `.github/workflows/cuda-hardware.yml` can repeat actual device
+validation on a deliberately labelled self-hosted runner. It is never triggered
+by public pull requests.
 
 ## Accelerator residual policy
 
@@ -244,13 +319,18 @@ conformance/wasm_v2_129.json        Sealed geometry/WASM profile
 conformance/wgsl_v1_4096.json       Phase 4 WebGPU schedule-field profile
 conformance/ffi_v1_129.json         Phase 5 native ABI profile
 conformance/cuda_schedule_v1_4096.json  Optional CUDA schedule profile
+conformance/observed/               Noncanonical hardware observations
 scripts/test_wasm.mjs               Executable WASM and f32 reference harness
 scripts/test_cpp_ffi.py             Executable C++ ABI and CUDA-reference harness
+scripts/test_cuda.py                Actual CUDA sidecar/repeatability/sanitizer harness
+scripts/cuda_preflight.sh           Non-mutating CUDA host readiness report
+scripts/package_evidence.py         Deterministic evidence archive generator
 web/                                Static Pages laboratory and offline cache
-tests/                              Python geometry, evidence, export, and CLI tests
+tests/                              Python geometry, evidence, export, CLI, and tooling tests
 docs/PHASE3_WASM.md                 WebAssembly architecture and acceptance contract
 docs/PHASE4_WGSL.md                 WebGPU architecture and residual boundary
 docs/PHASE5_NATIVE.md               C ABI, C++, and optional CUDA boundary
+docs/CUDA_VALIDATION.md             Hardware execution, evidence, and toolchain guidance
 docs/SCIENTIFIC_BOUNDARY.md         Claims the evidence does and does not support
 docs/ROADMAP.md                     Python → Rust → WASM → WGSL → native adapters
 ```
@@ -271,7 +351,7 @@ f32 fields within a published threshold. Neither establishes a physical theory.
 2. **Rust core and CLI** — implemented in v2.1.0.
 3. **WASM bridge and browser laboratory** — implemented in v2.2.0.
 4. **WGSL schedule field and residual conformance** — implemented in v2.3.0.
-5. **Native C ABI, C++17 consumer, and optional CUDA schedule adapter** — implemented in v2.4.0.
+5. **Native C ABI, C++17 consumer, and optional CUDA schedule adapter** — implemented in v2.4.0 and hardware-validation hardened in v2.4.1.
 6. **Full GPU Frenet–Serret integration research** — not scheduled; requires a separately versioned numerical contract and path-level evidence.
 
 Performance never promotes an adapter to scientific authority.
