@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use RSH, please cite this software."
 title: "RSH: Robitaille–Slade Helix Geometry and Evidence Runner"
-version: 2.5.0
+version: 2.6.0
 type: software
 authors:
   - family-names: Robitaille
@@ -21,6 +21,10 @@ keywords:
   - constitutional governance
   - dry-run refinement
   - NPU residual profile
+  - Lie group integration
+  - SO(3) exponential map
+  - numerical fuzzing
+  - full-path GPU research
   - Rust
   - WebAssembly
   - WebGPU
