@@ -9,7 +9,7 @@ on:
         default: "native"
         type: string
       runs:
-        description: "Repeat executions"
+        description: "Repeat executions (1-20)"
         required: true
         default: "3"
         type: string
@@ -32,12 +32,37 @@ concurrency:
 
 jobs:
   cuda-hardware:
-    # This workflow is intentionally manual. Never add a pull_request trigger
-    # for a public repository using a private self-hosted GPU runner.
+    # This workflow is intentionally manual and main-only. Never add a
+    # pull_request trigger for a public repository using a private runner.
+    if: github.ref == 'refs/heads/main'
     runs-on: [self-hosted, linux, x64, nvidia, cuda]
     timeout-minutes: 60
+    env:
+      RSH_CUDA_ARCHITECTURES_INPUT: ${{ inputs.cuda_architectures }}
+      RSH_CUDA_RUNS_INPUT: ${{ inputs.runs }}
+      RSH_CUDA_SANITIZERS_INPUT: ${{ inputs.sanitizers }}
     steps:
       - uses: actions/checkout@v5
+
+      - name: Validate dispatch inputs
+        shell: bash
+        run: |
+          case "$RSH_CUDA_ARCHITECTURES_INPUT" in
+            ''|*[!A-Za-z0-9_.\;-]*)
+              echo "Invalid CUDA architecture input." >&2
+              exit 2
+              ;;
+          esac
+          case "$RSH_CUDA_RUNS_INPUT" in
+            ''|*[!0-9]*)
+              echo "Repeat count must be an integer in [1, 20]." >&2
+              exit 2
+              ;;
+          esac
+          if [ "$RSH_CUDA_RUNS_INPUT" -lt 1 ] || [ "$RSH_CUDA_RUNS_INPUT" -gt 20 ]; then
+            echo "Repeat count must be in [1, 20]." >&2
+            exit 2
+          fi
 
       - name: CUDA preflight
         shell: bash
@@ -55,7 +80,7 @@ jobs:
           cmake -S native/cpp -B build/cuda \
             -DCMAKE_BUILD_TYPE=Release \
             -DRSH_ENABLE_CUDA=ON \
-            -DRSH_CUDA_ARCHITECTURES='${{ inputs.cuda_architectures }}'
+            -DRSH_CUDA_ARCHITECTURES="$RSH_CUDA_ARCHITECTURES_INPUT"
 
       - name: Build adapters
         run: cmake --build build/cuda --target rsh-cpp rsh-cuda --parallel
@@ -71,8 +96,8 @@ jobs:
             --executable build/cuda/rsh-cuda \
             --cpu-reference build/cuda/rsh-cpp \
             --profile conformance/cuda_schedule_v1_4096.json \
-            --runs '${{ inputs.runs }}' \
-            --sanitizers '${{ inputs.sanitizers }}' \
+            --runs "$RSH_CUDA_RUNS_INPUT" \
+            --sanitizers "$RSH_CUDA_SANITIZERS_INPUT" \
             --output artifacts/cuda-hardware
           status=$?
           set -e
