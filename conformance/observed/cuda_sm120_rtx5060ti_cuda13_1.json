@@ -1,0 +1,67 @@
+{
+  "schema": "RSH-CUDA-HARDWARE-OBSERVATION-V1",
+  "authority": "observed-noncanonical",
+  "model": "Robitaille-Slade-Helix",
+  "model_version": "2.0.0",
+  "software_release": "2.4.0",
+  "tested_commit": "6ab304c0ac7c541c15ba7ada935bc0c4ae8da950",
+  "merged_as": "1792c9010e7af3ce024dbf420fdf5af30bf2198c",
+  "tested_at_utc": "2026-08-04T07:20:25Z",
+  "audit_bundle": {
+    "name": "RSH-audit-pr5-6ab304c-cuda-followup.zip",
+    "sha256": "bc4f6f870694b033ca9039b34bb0f41eb1c81da0662878ac96e081348576f60d",
+    "device_uuid_omitted_from_repository": true
+  },
+  "host": {
+    "gpu": "NVIDIA GeForce RTX 5060 Ti",
+    "gpu_memory_mib": 16311,
+    "compute_capability": "12.0",
+    "cuda_architecture": "sm_120",
+    "display_driver": "595.84",
+    "cuda_toolkit_nvcc": "13.1.115",
+    "compute_sanitizer": "2025.4.1.0"
+  },
+  "build": {
+    "cmake_cuda_architectures": "120",
+    "toolkit_installation": "user-local package extraction",
+    "system_driver_modified": false,
+    "standalone_run_installer_used": false,
+    "environment_workaround": "CUDA 13.1 math_functions.h rsqrt/rsqrtf noexcept compatibility patch for glibc 2.43; not an RSH source patch"
+  },
+  "configuration": {
+    "samples": 4096,
+    "block_size": 128,
+    "precision": "f32",
+    "residual_threshold": 0.0001
+  },
+  "cpu_f32_reference": {
+    "actual_cuda_execution": false,
+    "max_abs_kappa_vs_rust_f64": 4.1855259924616917e-08,
+    "max_abs_tau_vs_rust_f64": 4.6082406834901946e-08,
+    "maximum_residual": 4.6082406834901946e-08
+  },
+  "cuda_execution": {
+    "status": "PASS",
+    "actual_cuda_execution": true,
+    "exit_code": 0,
+    "max_abs_kappa_vs_rust_f64": 4.0915928645191e-08,
+    "max_abs_tau_vs_rust_f64": 3.573798124101302e-08,
+    "maximum_residual": 4.0915928645191e-08,
+    "geometry_receipt_authority": false
+  },
+  "repeatability": {
+    "runs": 3,
+    "identical_selected_outputs": true
+  },
+  "sanitizers": {
+    "memcheck_exit_code": 0,
+    "memcheck_errors": 0,
+    "racecheck_exit_code": 0,
+    "racecheck_hazards": 0
+  },
+  "interpretation": [
+    "This is one observed hardware/toolchain result, not a universal golden residual.",
+    "The checked-in acceptance gate remains 1e-4 across supported accelerators.",
+    "The CUDA adapter evaluates only the kappa/tau schedule and cannot create a geometry receipt."
+  ]
+}
