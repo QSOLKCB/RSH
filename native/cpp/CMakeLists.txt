@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 3.20)
 project(rsh_native_adapters LANGUAGES CXX)
 
 option(RSH_ENABLE_CUDA "Build the optional CUDA schedule residual executable" OFF)
+set(
+  RSH_CUDA_ARCHITECTURES
+  ""
+  CACHE STRING
+  "CUDA architectures for rsh-cuda (empty uses the compiler default; examples: native, 86, 89, 120)"
+)
 
 find_program(CARGO_EXECUTABLE cargo REQUIRED)
 set(RSH_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../..")
@@ -42,9 +48,24 @@ set_target_properties(rsh-cpp PROPERTIES BUILD_RPATH "${RSH_CARGO_TARGET}/releas
 
 if(RSH_ENABLE_CUDA)
   enable_language(CUDA)
+  if(RSH_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES "${RSH_CUDA_ARCHITECTURES}")
+  endif()
+  if(CMAKE_CUDA_ARCHITECTURES)
+    set(RSH_CUDA_ARCHITECTURES_EFFECTIVE "${CMAKE_CUDA_ARCHITECTURES}")
+  else()
+    set(RSH_CUDA_ARCHITECTURES_EFFECTIVE "compiler-default")
+  endif()
+  string(REPLACE ";" "," RSH_CUDA_ARCHITECTURES_LABEL "${RSH_CUDA_ARCHITECTURES_EFFECTIVE}")
+  message(STATUS "RSH CUDA architectures: ${RSH_CUDA_ARCHITECTURES_EFFECTIVE}")
+
   add_executable(rsh-cuda "${RSH_ROOT}/native/cuda/rsh_schedule_cuda.cu")
   add_dependencies(rsh-cuda rsh_ffi_build)
   target_compile_features(rsh-cuda PRIVATE cxx_std_17)
+  target_compile_definitions(
+    rsh-cuda
+    PRIVATE RSH_CUDA_ARCHITECTURES="${RSH_CUDA_ARCHITECTURES_LABEL}"
+  )
   target_include_directories(rsh-cuda PRIVATE "${RSH_ROOT}/include")
   target_link_libraries(rsh-cuda PRIVATE "${RSH_FFI_SHARED}")
   set_target_properties(
@@ -54,6 +75,9 @@ if(RSH_ENABLE_CUDA)
       CUDA_STANDARD_REQUIRED YES
       BUILD_RPATH "${RSH_CARGO_TARGET}/release"
   )
+  if(CMAKE_CUDA_ARCHITECTURES)
+    set_property(TARGET rsh-cuda PROPERTY CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}")
+  endif()
 endif()
 
 enable_testing()
