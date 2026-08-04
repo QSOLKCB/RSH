@@ -201,9 +201,7 @@ fn checked_schedule_config(input: &RshConfigV1) -> Result<(usize, ModelConfig), 
     {
         return Err("kappa_fraction must be finite and in (0, 1]".into());
     }
-    if !input.tau_floor.is_finite()
-        || !input.tau_amplitude.is_finite()
-        || input.tau_amplitude < 0.0
+    if !input.tau_floor.is_finite() || !input.tau_amplitude.is_finite() || input.tau_amplitude < 0.0
     {
         return Err("torsion schedule parameters are invalid".into());
     }
@@ -235,7 +233,7 @@ fn summary_from_report(report: &VerifyReport) -> Result<RshSummaryV1, String> {
         return Err("Rust core returned an invalid receipt encoding".into());
     }
     let mut output = RshSummaryV1 {
-        pass_all: u32::from(report.pass_all),
+        pass_all: if report.pass_all { 1 } else { 0 },
         samples: report.samples as u64,
         centre_error: report.centre_error,
         max_kappa: report.max_kappa,
@@ -337,7 +335,9 @@ unsafe fn schedule_impl(
         let kappa = kappa_schedule(s, model);
         let tau = tau_schedule(s, model);
         if !kappa.is_finite() || !(0.0 <= kappa && kappa <= kappa_max() + 1.0e-12) {
-            return Err(format!("curvature schedule violates its bound at index {index}"));
+            return Err(format!(
+                "curvature schedule violates its bound at index {index}"
+            ));
         }
         if !tau.is_finite() || !(TAU_MIN_EXCLUSIVE < tau && tau < TAU_MAX_EXCLUSIVE) {
             return Err(format!("torsion schedule leaves (0, 1) at index {index}"));
@@ -395,7 +395,9 @@ pub unsafe extern "C" fn rsh_ffi_verify(
     json: *mut RshOwnedBytesV1,
 ) -> i32 {
     clear_last_error();
-    match catch_unwind(AssertUnwindSafe(|| unsafe { verify_impl(config, summary, json) })) {
+    match catch_unwind(AssertUnwindSafe(|| unsafe {
+        verify_impl(config, summary, json)
+    })) {
         Ok(Ok(status)) => status,
         Ok(Err(error)) => {
             set_last_error(error);
@@ -419,7 +421,9 @@ pub unsafe extern "C" fn rsh_ffi_schedule(
     output: *mut RshOwnedScheduleV1,
 ) -> i32 {
     clear_last_error();
-    match catch_unwind(AssertUnwindSafe(|| unsafe { schedule_impl(config, output) })) {
+    match catch_unwind(AssertUnwindSafe(|| unsafe {
+        schedule_impl(config, output)
+    })) {
         Ok(Ok(status)) => status,
         Ok(Err(error)) => {
             set_last_error(error);
@@ -493,7 +497,7 @@ mod tests {
         assert_eq!(summary.pass_all, 1);
         assert_eq!(summary.samples, 129);
         assert!(summary.centre_error <= 1.0e-12);
-        assert_eq!(json.len > 0, true);
+        assert!(json.len > 0);
         let bytes = unsafe { std::slice::from_raw_parts(json.ptr, json.len) };
         let text = std::str::from_utf8(bytes).expect("UTF-8 report");
         assert!(text.contains("Robitaille-Slade-Helix"));
