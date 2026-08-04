@@ -74,10 +74,14 @@ jobs:
         run: cargo build --locked --release --target wasm32-unknown-unknown -p rsh-wasm
       - name: Produce native comparison report
         run: cargo run --locked -p rsh-cli -- verify -n 129 --json /tmp/rsh_native_129.json
-      - name: Execute WebAssembly conformance profile
+      - name: Execute WASM and Phase 4 conformance profiles
         run: |
           wasm=target/wasm32-unknown-unknown/release/rsh_wasm.wasm
-          node scripts/test_wasm.mjs "$wasm" conformance/wasm_v2_129.json /tmp/rsh_native_129.json
+          node scripts/test_wasm.mjs \
+            "$wasm" \
+            conformance/wasm_v2_129.json \
+            /tmp/rsh_native_129.json \
+            conformance/wgsl_v1_4096.json
 
   pages-source:
     runs-on: ubuntu-latest
@@ -87,17 +91,29 @@ jobs:
         run: |
           test -s web/index.html
           test -s web/style.css
+          test -s web/gpu.css
           test -s web/app.js
+          test -s web/gpu.js
           test -s web/sw.js
+          test -s web/wgsl/kappa_tau_field.wgsl
           test -s docs/PHASE3_WASM.md
+          test -s docs/PHASE4_WGSL.md
           test -s conformance/wasm_v2_129.json
+          test -s conformance/wgsl_v1_4096.json
           test -s scripts/test_wasm.mjs
           test -f web/.nojekyll
+          node --check web/app.js
+          node --check web/gpu.js
+          node --check web/sw.js
           grep -q '<title>RSH' web/index.html
           grep -q 'VERIFIED RUST/WASM SAMPLES' web/index.html
+          grep -q 'PHASE 4 · WEBGPU RESIDUAL HARNESS' web/index.html
           grep -q 'WebAssembly.instantiate' web/app.js
+          grep -q 'navigator.gpu' web/gpu.js
+          grep -q 'rsh_schedule' web/app.js
+          grep -q '@workgroup_size(64)' web/wgsl/kappa_tau_field.wgsl
           grep -q 'pkg/rsh_wasm.wasm' web/app.js
-          grep -q 'pkg/rsh_wasm.wasm' web/sw.js
+          grep -q 'wgsl/kappa_tau_field.wgsl' web/sw.js
 
   provenance-boundary:
     runs-on: ubuntu-latest
