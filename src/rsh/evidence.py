@@ -12,6 +12,7 @@ import time
 from typing import Any, Sequence
 
 from .constants import (
+    CANONICAL_FLOAT_PRECISION,
     KAPPA_MAX,
     MODEL_NAME,
     PSI,
@@ -67,7 +68,7 @@ def _canonical(value: Any) -> Any:
     if isinstance(value, float):
         if not math.isfinite(value):
             raise ValueError("non-finite values cannot be receipted")
-        return format(value, ".17e")
+        return format(value, f".{CANONICAL_FLOAT_PRECISION}e")
     if isinstance(value, dict):
         return {key: _canonical(value[key]) for key in sorted(value)}
     if isinstance(value, (tuple, list)):
