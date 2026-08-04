@@ -37,9 +37,12 @@ assert.equal(Number(exports.rsh_frenet_abi_version()), 1);
 function readPayload() {
   const pointer = Number(exports.rsh_frenet_output_ptr());
   const length = Number(exports.rsh_frenet_output_len());
-  assert.ok(Number.isInteger(pointer) && pointer >= 0, "invalid output pointer");
-  assert.ok(Number.isInteger(length) && length > 0, "invalid output length");
-  const bytes = new Uint8Array(exports.memory.buffer, pointer, length);
+  assert.ok(Number.isSafeInteger(pointer) && pointer >= 0, "invalid output pointer");
+  assert.ok(Number.isSafeInteger(length) && length > 0, "invalid output length");
+  const memory = exports.memory.buffer;
+  assert.ok(pointer <= memory.byteLength, "output pointer exceeds WASM memory");
+  assert.ok(length <= memory.byteLength - pointer, "output range exceeds WASM memory");
+  const bytes = new Uint8Array(memory, pointer, length);
   return JSON.parse(new TextDecoder("utf-8").decode(bytes));
 }
 
