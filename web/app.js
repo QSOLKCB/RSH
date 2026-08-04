@@ -68,6 +68,21 @@ function setRunMessage(message, kind = "") {
   runMessage.dataset.kind = kind;
 }
 
+function resetEvidence(status = "NOT RUN", kind = "") {
+  state.payload = null;
+  state.points = [];
+  state.extent = 1;
+  state.pass = false;
+
+  reportStatus.textContent = status;
+  reportStatus.dataset.kind = kind;
+  for (const metric of Object.values(metrics)) {
+    metric.textContent = "—";
+  }
+  downloadReport.disabled = true;
+  downloadTrace.disabled = true;
+}
+
 function syncControlLabels() {
   outputs.samples.textContent = fields.samples.value;
   outputs.kappaFraction.textContent = Number(fields.kappaFraction.value).toFixed(2);
@@ -133,7 +148,10 @@ function readWasmOutput() {
 }
 
 function runVerifiedGeometry() {
-  if (!state.wasm) return;
+  if (!state.wasm) {
+    setRunMessage("The Rust/WASM core is still loading. Please wait a moment.", "fail");
+    return;
+  }
 
   const config = configuration();
   runButton.disabled = true;
@@ -172,9 +190,7 @@ function runVerifiedGeometry() {
       state.pass ? "pass" : "fail",
     );
   } catch (error) {
-    state.pass = false;
-    reportStatus.textContent = "REJECTED";
-    reportStatus.dataset.kind = "fail";
+    resetEvidence("REJECTED", "fail");
     setRunMessage(error instanceof Error ? error.message : String(error), "fail");
   } finally {
     runButton.disabled = false;
@@ -212,7 +228,7 @@ function download(name, type, content) {
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
-  URL.revokeObjectURL(url);
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 function traceCsv(payload) {
@@ -398,6 +414,8 @@ downloadTrace.addEventListener("click", () => {
 
 async function start() {
   syncControlLabels();
+  resetEvidence();
+  runButton.disabled = true;
   resize();
   render();
 
@@ -414,8 +432,10 @@ async function start() {
     abiBadge.textContent = `ABI ${abiVersion} · WASM`;
     setRuntimeState("pass", "Rust/WASM core loaded · no JavaScript geometry model");
     setRunMessage("Ready. Running the default verified configuration…", "pass");
+    runButton.disabled = false;
     runVerifiedGeometry();
   } catch (error) {
+    resetEvidence("UNAVAILABLE", "fail");
     setRuntimeState("fail", "Rust/WASM core failed to load");
     setRunMessage(error instanceof Error ? error.message : String(error), "fail");
     runButton.disabled = true;
