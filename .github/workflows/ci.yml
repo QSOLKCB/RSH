@@ -34,6 +34,16 @@ jobs:
           python rsh_runner.py trace -n 129 -o /tmp/rsh_trace.csv
           python rsh_runner.py visual -n 129 -o /tmp/rsh_visual.svg
           rsh verify -n 65 -o /tmp/rsh_installed_verify.csv
+          rsh constitution --json /tmp/rsh_constitution.json
+          rsh tissue --ticks 3 --json /tmp/rsh_tissue.json --trace /tmp/rsh_tissue.csv
+          cat > /tmp/rsh_refinement.json <<'JSON'
+          {
+            "schema": "RSH-REFINEMENT-PROPOSAL-V1",
+            "id": "ci-binding-diffusion",
+            "changes": {"binding_diffusion": 0.2}
+          }
+          JSON
+          rsh refine-dry-run /tmp/rsh_refinement.json --json /tmp/rsh_refinement_decision.json
 
   rust-native:
     runs-on: ubuntu-latest
@@ -129,12 +139,17 @@ jobs:
           test -s docs/PHASE3_WASM.md
           test -s docs/PHASE4_WGSL.md
           test -s docs/PHASE5_NATIVE.md
+          test -s docs/PHASE6_TISSUE.md
+          test -s docs/OPERATIONAL_AWARENESS.md
           test -s docs/CUDA_VALIDATION.md
           test -s docs/RELEASE_NOTES_v2.4.1.md
+          test -s docs/RELEASE_NOTES_v2.5.0.md
           test -s conformance/wasm_v2_129.json
           test -s conformance/wgsl_v1_4096.json
           test -s conformance/ffi_v1_129.json
           test -s conformance/cuda_schedule_v1_4096.json
+          test -s conformance/tissue_v1_8x20.json
+          test -s conformance/npu_tier2_v1.json
           test -s conformance/observed/cuda_sm120_rtx5060ti_cuda13_1.json
           test -s scripts/test_wasm.mjs
           test -s scripts/test_cpp_ffi.py
@@ -147,6 +162,8 @@ jobs:
           node --check web/gpu.js
           node --check web/sw.js
           python3 -m py_compile scripts/test_cpp_ffi.py scripts/test_cuda.py scripts/package_evidence.py
+          python3 -m json.tool conformance/tissue_v1_8x20.json >/dev/null
+          python3 -m json.tool conformance/npu_tier2_v1.json >/dev/null
           python3 -m json.tool conformance/observed/cuda_sm120_rtx5060ti_cuda13_1.json >/dev/null
           sh -n scripts/cuda_preflight.sh
           grep -q '<title>RSH' web/index.html
