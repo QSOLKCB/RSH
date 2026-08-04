@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+      - name: Evidence smoke suite
+        run: |
+          python rsh_runner.py verify -n 129 -o /tmp/rsh_verify.csv --json /tmp/rsh_verify.json
+          python rsh_runner.py receipt -n 129
+          python rsh_runner.py parity -n 129 --workers 3
+          python rsh_runner.py visual -n 129 -o /tmp/rsh_visual.svg
+      - name: Reject legacy model terminology
+        run: |
+          ! grep -RinE --exclude-dir=.git --exclude='*.svg' '(verschoor|dave mode|knot|everse|anus)' .
