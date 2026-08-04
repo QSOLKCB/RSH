@@ -7,9 +7,9 @@ inside explicit Robitaille bounds, integrating the Frenet–Serret frame, and
 translating the exact discrete midpoint to the coordinate origin.
 
 **Authors:** J. Robitaille (DeltaKingZero) and Trent Slade / QSOL-IMC  
-**Release:** 2.3.0  
+**Release:** 2.4.0  
 **Model contract:** 2.0.0  
-**Implementations:** Python reference + native Rust core/CLI + Rust/WebAssembly bridge + residual-gated WGSL/WebGPU field
+**Implementations:** Python oracle + Rust core/CLI + WASM bridge + WGSL field + versioned C ABI/C++ adapter + optional CUDA schedule kernel
 
 ## Browser laboratory
 
@@ -41,31 +41,23 @@ as a native core and command-line runner. It is accepted through the checked-in
 cross-runtime conformance record.
 
 The WASM bridge calls `rsh-core`; it is not a third geometry implementation. Its
-raw ABI is additive:
+raw ABI supplies geometry reports, centreline samples, and f64 schedule grids to
+the browser.
 
-```text
-rsh_abi_version() -> u32
-rsh_run(samples, s0, s1, kappa_fraction, tau_floor, tau_amplitude) -> i32
-rsh_schedule(samples, s0, s1, kappa_fraction, tau_floor, tau_amplitude) -> i32
-rsh_output_ptr() -> pointer
-rsh_output_len() -> length
-```
+The native `rsh-ffi` crate is another adapter over `rsh-core`. Its C ABI exposes a
+fixed-layout summary, optional JSON report, and schedule arrays. C++ does not
+reproduce the Frenet–Serret equations.
 
-`rsh_run` produces the verified geometry report and centreline samples.
-`rsh_schedule` produces an f64 κ/τ grid for WebGPU residual comparison and
-accepts even grid sizes such as 4096. JavaScript does not reproduce the model
-equations.
-
-WebGPU is not promoted to oracle. It may export a residual sidecar only after its
-f32 field has been compared point-by-point with the WASM f64 grid. The geometry
-receipt remains a CPU/WASM artifact.
+WebGPU and CUDA are not promoted to oracle. They evaluate f32 κ/τ schedule fields
+and may report residual sidecars only after comparison with an f64 Rust oracle.
+The geometry receipt remains a Rust-core artifact.
 
 ## Invariants
 
 | Quantity | Contract |
 |---|---|
 | \(\psi\) | \(\sqrt{2+\sqrt{5}}\) |
-| Curvature | \(0 \le \kappa(s) \le \sqrt{2}-1\) |
+| Curvature | \(0 \le \kappa(s) \le \sqrt2-1\) |
 | Torsion | \(0 < \tau(s) < 1\) |
 | Centre | exact discrete \(p=0.5\) sample translated to `(0, 0, 0)` |
 | Frame | tangent, normal, and binormal remain orthonormal within tolerance |
@@ -73,8 +65,9 @@ receipt remains a CPU/WASM artifact.
 | Rust acceptance | contract checks plus golden-coordinate conformance |
 | WASM acceptance | actual compiled module executed against `wasm_v2_129.json` |
 | WGSL acceptance | 4096-point f32 field residual ≤ `1e-4` against WASM f64 schedule |
-| GPU authority | residual sidecar only; never replaces the geometry receipt |
-| Fallback | CPU/WASM remains fully functional without WebGPU |
+| Native ABI acceptance | layout, ownership, JSON receipt, and coordinates checked against `ffi_v1_129.json` |
+| CUDA acceptance | optional 4096-point f32 schedule residual ≤ `1e-4` against Rust FFI f64 schedule |
+| Accelerator authority | residual sidecar only; never replaces the geometry receipt |
 
 Bounds hold by construction and are verified again after integration.
 
@@ -148,21 +141,81 @@ residual sidecar.
 
 No `wasm-bindgen`, `wasm-pack`, npm, bundler, CDN, or runtime server is required.
 
-## WebGPU residual policy
+## Native C ABI and C++17 adapter
 
-The browser publishes:
+The public C header is `include/rsh_ffi.h`. ABI v1 provides:
 
 ```text
-max(max |kappa_gpu - kappa_wasm|,
-    max |tau_gpu   - tau_wasm|) <= 1e-4
+rsh_ffi_abi_version()          -> uint32
+rsh_ffi_config_size()          -> size_t
+rsh_ffi_summary_size()         -> size_t
+rsh_ffi_schedule_point_size()  -> size_t
+rsh_ffi_verify(config, summary, optional_json) -> status
+rsh_ffi_schedule(config, schedule)             -> status
+rsh_ffi_free_bytes(buffer)
+rsh_ffi_free_schedule(schedule)
+rsh_ffi_last_error()           -> thread-local UTF-8 message
 ```
 
-A passing field may export `RSH-WEBGPU-RESIDUAL-SIDECAR-V1` with adapter, device,
-precision, workgroup, grid, and residual metadata. The chart remains tagged
-`data-verified="false"`. A failing or unavailable GPU switches to CPU/WASM
-fallback without affecting the geometry report.
+Build the Rust ABI and C++ consumer:
 
-See [the complete Phase 4 specification](docs/PHASE4_WGSL.md).
+```bash
+cmake -S native/cpp -B build/native -DCMAKE_BUILD_TYPE=Release
+cmake --build build/native
+ctest --test-dir build/native --output-on-failure
+```
+
+Run it:
+
+```bash
+build/native/rsh-cpp info
+build/native/rsh-cpp verify --samples 129 --json rsh_cpp_report.json
+build/native/rsh-cpp schedule --samples 4096 --csv rsh_schedule.csv
+build/native/rsh-cpp cuda-reference --samples 4096 --threshold 1e-4
+```
+
+The `cuda-reference` command is a portable CPU f32 arithmetic check for the CUDA
+formula. Its output explicitly says `actual_cuda_execution: false`.
+
+Run the sealed adapter harness:
+
+```bash
+python3 scripts/test_cpp_ffi.py \
+  build/native/rsh-cpp \
+  conformance/ffi_v1_129.json \
+  conformance/cuda_schedule_v1_4096.json
+```
+
+## Optional CUDA schedule adapter
+
+On a CUDA-capable machine with a supported NVIDIA toolkit and device:
+
+```bash
+cmake -S native/cpp -B build/cuda \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DRSH_ENABLE_CUDA=ON
+cmake --build build/cuda --target rsh-cuda
+build/cuda/rsh-cuda
+```
+
+The CUDA executable evaluates a 4096-point f32 κ/τ field, reads it back, compares
+it with the f64 Rust FFI oracle, and records the device, compute capability,
+block size, and residuals. It does not integrate the path or create a geometry
+receipt.
+
+See [the complete Phase 5 specification](docs/PHASE5_NATIVE.md).
+
+## Accelerator residual policy
+
+Both browser WGSL and optional CUDA use the published schedule-field condition:
+
+```text
+max(max |kappa_accelerator - kappa_rust_f64|,
+    max |tau_accelerator   - tau_rust_f64|) <= 1e-4
+```
+
+A passing accelerator may emit a residual sidecar. A failing or unavailable
+accelerator does not affect verified Rust/WASM geometry.
 
 ## Exact bounded logical sampling
 
@@ -178,23 +231,28 @@ mapping. Any future GPU logical-index kernel must reproduce the same indices.
 ## Repository map
 
 ```text
-rsh_runner.py                    Direct Python source-checkout runner
-src/rsh/                         Python geometry, verification, exports, and CLI
-crates/rsh-core/                 Native Rust geometry and evidence library
-crates/rsh-cli/                  Native `rsh-rust` command-line runner
-crates/rsh-wasm/                 Raw WASM ABI over `rsh-core`
-conformance/wasm_v2_129.json     Sealed geometry/WASM profile
-conformance/wgsl_v1_4096.json    Phase 4 schedule-field profile
-scripts/test_wasm.mjs            Executable WASM and f32 reference harness
-web/app.js                       Verified browser geometry controller
-web/gpu.js                       WebGPU execution and residual readback
-web/wgsl/                        WGSL compute kernels
-web/                             Static Pages laboratory and offline cache
-tests/                           Python geometry, evidence, export, and CLI tests
-docs/PHASE3_WASM.md              WebAssembly architecture and acceptance contract
-docs/PHASE4_WGSL.md              WebGPU architecture and residual boundary
-docs/SCIENTIFIC_BOUNDARY.md      Claims the evidence does and does not support
-docs/ROADMAP.md                  Python → Rust → WASM → WGSL plan
+rsh_runner.py                       Direct Python source-checkout runner
+src/rsh/                            Python geometry, verification, exports, and CLI
+crates/rsh-core/                    Native Rust geometry and evidence library
+crates/rsh-cli/                     Native `rsh-rust` command-line runner
+crates/rsh-wasm/                    Raw WASM ABI over `rsh-core`
+crates/rsh-ffi/                     Versioned C ABI over `rsh-core`
+include/rsh_ffi.h                   Public ABI-v1 C/C++ header
+native/cpp/                         Dependency-free C++17 consumer and CMake build
+native/cuda/                        Optional CUDA schedule residual executable
+conformance/wasm_v2_129.json        Sealed geometry/WASM profile
+conformance/wgsl_v1_4096.json       Phase 4 WebGPU schedule-field profile
+conformance/ffi_v1_129.json         Phase 5 native ABI profile
+conformance/cuda_schedule_v1_4096.json  Optional CUDA schedule profile
+scripts/test_wasm.mjs               Executable WASM and f32 reference harness
+scripts/test_cpp_ffi.py             Executable C++ ABI and CUDA-reference harness
+web/                                Static Pages laboratory and offline cache
+tests/                              Python geometry, evidence, export, and CLI tests
+docs/PHASE3_WASM.md                 WebAssembly architecture and acceptance contract
+docs/PHASE4_WGSL.md                 WebGPU architecture and residual boundary
+docs/PHASE5_NATIVE.md               C ABI, C++, and optional CUDA boundary
+docs/SCIENTIFIC_BOUNDARY.md         Claims the evidence does and does not support
+docs/ROADMAP.md                     Python → Rust → WASM → WGSL → native adapters
 ```
 
 ## Scientific precision
@@ -204,8 +262,8 @@ there as an explicit coordinate convention. That check confirms implementation
 correctness; it is not an empirical discovery.
 
 Receipts prove identity of a canonical report under a declared runtime and
-encoding contract. GPU residuals prove numerical agreement of a sampled f32
-field within a published threshold. Neither establishes a physical theory.
+encoding contract. Accelerator residuals prove numerical agreement of sampled
+f32 fields within a published threshold. Neither establishes a physical theory.
 
 ## Planned sequence
 
@@ -213,11 +271,10 @@ field within a published threshold. Neither establishes a physical theory.
 2. **Rust core and CLI** — implemented in v2.1.0.
 3. **WASM bridge and browser laboratory** — implemented in v2.2.0.
 4. **WGSL schedule field and residual conformance** — implemented in v2.3.0.
-5. **Optional C++/CUDA adapter** — only where interoperability requires it.
+5. **Native C ABI, C++17 consumer, and optional CUDA schedule adapter** — implemented in v2.4.0.
+6. **Full GPU Frenet–Serret integration research** — not scheduled; requires a separately versioned numerical contract and path-level evidence.
 
-A full GPU Frenet–Serret integrator is not silently implied by Phase 4. It would
-require its own numerical contract, path-level vectors, and adapter-specific
-frame and coordinate residual evidence.
+Performance never promotes an adapter to scientific authority.
 
 ## Licence and citation
 
