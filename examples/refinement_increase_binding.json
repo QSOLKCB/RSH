@@ -1,0 +1,10 @@
+{
+  "schema": "RSH-REFINEMENT-PROPOSAL-V1",
+  "id": "increase-binding-diffusion",
+  "changes": {
+    "binding_diffusion": 0.2
+  },
+  "rationale": "Dry-run whether a modest increase in graph-local diffusion improves functional cohesion without changing the geometry or evidence contract.",
+  "escalates_contract": false,
+  "human_ack": false
+}

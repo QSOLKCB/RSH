@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rsh-geometry"
-version = "2.4.1"
-description = "Bounded Frenet-Serret geometry and deterministic evidence for the Robitaille-Slade Helix"
+version = "2.5.0"
+description = "Bounded Frenet-Serret geometry, deterministic evidence, and constitutional tissue simulation for the Robitaille-Slade Helix"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MPL-2.0"}
@@ -13,7 +13,7 @@ authors = [
   {name = "J. Robitaille"},
   {name = "Trent Slade", email = "qsolimc@users.noreply.github.com"},
 ]
-keywords = ["geometry", "frenet-serret", "deterministic", "verification", "helix", "webassembly", "webgpu", "wgsl", "ffi", "cpp", "cuda", "hardware-validation"]
+keywords = ["geometry", "frenet-serret", "deterministic", "verification", "helix", "tissue-simulation", "functional-cohesion", "constitutional-governance", "webassembly", "webgpu", "wgsl", "ffi", "cpp", "cuda", "npu", "hardware-validation"]
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",

@@ -1,0 +1,40 @@
+{
+  "schema": "RSH-NPU-TIER2-PROFILE-V1",
+  "authority": "residual-sidecar-only",
+  "oracle": "rsh f64 CPU or WASM schedule",
+  "supported_precision_profiles": {
+    "int8": {
+      "maximum_absolute_residual": 0.001
+    },
+    "bf16": {
+      "maximum_absolute_residual": 0.0001
+    },
+    "fp16": {
+      "maximum_absolute_residual": 0.0001
+    }
+  },
+  "required_metadata": [
+    "schema",
+    "backend",
+    "device_name",
+    "driver",
+    "precision",
+    "grid_samples",
+    "maximum_residual",
+    "gate",
+    "status",
+    "fallback_used",
+    "geometry_receipt_authority"
+  ],
+  "requirements": {
+    "geometry_receipt_authority": false,
+    "fallback_backend": "f64 CPU or WASM",
+    "missing_driver_is_not_geometry_failure": true,
+    "hardware_execution_claim_requires_device_readback": true
+  },
+  "notes": [
+    "This profile defines evidence requirements; it does not provide a vendor driver binding.",
+    "An NPU result may assist large kappa/tau schedule sweeps only after full-grid comparison with the f64 oracle.",
+    "No NPU tensor or quantized field creates an RSH geometry receipt."
+  ]
+}
