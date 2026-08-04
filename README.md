@@ -1,21 +1,22 @@
 # RSH — Robitaille–Slade Helix
 
-**Bounded Frenet–Serret geometry, deterministic evidence, cross-runtime conformance, and constitutional tissue simulation.**
+**Bounded Frenet–Serret geometry, deterministic evidence, cross-runtime conformance, constitutional tissue simulation, and separately versioned full-path numerical research.**
 
 RSH constructs a three-dimensional path by prescribing curvature and torsion
 inside explicit Robitaille bounds, integrating the Frenet–Serret frame, and
 translating the exact discrete midpoint to the coordinate origin.
 
 **Authors:** J. Robitaille (DeltaKingZero) and Trent Slade / QSOL-IMC  
-**Release:** 2.5.0  
+**Release:** 2.6.0  
 **Geometry model contract:** 2.0.0  
 **Tissue contract:** 1.0.0  
-**Implementations:** Python geometry oracle and tissue reference + Rust core/CLI + WASM bridge + WGSL field + versioned C ABI/C++ adapter + optional CUDA schedule kernel + Tier 2 NPU evidence profile
+**Frenet numerical research contract:** 1.0.0  
+**Implementations:** Python geometry oracle and tissue reference + Rust core/CLI + canonical WASM bridge + WGSL schedule field + versioned C ABI/C++ adapter + optional CUDA schedule kernel + Tier 2 NPU evidence profile + separate Rust/WASM/WGSL full-path research stack
 
-## Browser laboratory
+## Browser laboratories
 
-The project site runs the verified Rust core directly in WebAssembly and adds an
-optional WebGPU acceleration layer:
+The main project site runs the verified Rust core directly in WebAssembly and
+adds an optional WebGPU schedule-field layer:
 
 **https://qsolkcb.github.io/RSH/**
 
@@ -25,11 +26,15 @@ and download JSON and CSV evidence. A second panel evaluates a 4096-point f32
 κ/τ field with WGSL, reads the GPU buffer back, and compares every point against
 an f64 schedule supplied by `rsh-core` through WASM.
 
-The rotating path is a projection of verified WASM samples. The WebGPU field
-chart is display-only. Neither visual creates a physical interpretation.
+The v2.6.0 research laboratory executes the complete path recurrence on WebGPU
+and compares it with a separately versioned f64 Rust/WASM numerical path:
 
-After the first successful load, a service worker caches the page, WASM module,
-WGSL shader, and browser modules for offline reuse.
+**https://qsolkcb.github.io/RSH/frenet.html**
+
+The rotating paths are projections of returned numerical samples. The visuals do
+not create a physical interpretation. After the first successful load, a service
+worker caches both laboratories, both WASM modules, and both WGSL shaders for
+offline reuse.
 
 ## Implementation authority
 
@@ -45,17 +50,23 @@ The Rust implementation reproduces the geometry and verification contract as a
 native core and command-line runner. It is accepted through the checked-in
 cross-runtime conformance record.
 
-The WASM bridge calls `rsh-core`; it is not a third geometry implementation. Its
-raw ABI supplies geometry reports, centreline samples, and f64 schedule grids to
-the browser.
+The canonical WASM bridge calls `rsh-core`; it is not a third geometry
+implementation. Its raw ABI supplies geometry reports, centreline samples, and
+f64 schedule grids to the browser.
 
 The native `rsh-ffi` crate is another adapter over `rsh-core`. Its C ABI exposes a
 fixed-layout summary, optional JSON report, and schedule arrays. C++ does not
 reproduce the Frenet–Serret equations.
 
-WebGPU, CUDA, and future NPU bindings are not promoted to oracle. They evaluate
-κ/τ schedule fields and may report residual sidecars only after comparison with
-an f64 CPU/WASM oracle. The geometry receipt remains an oracle artifact.
+The separate `rsh-numerics` stack defines `RSH-FRENET-NUMERICS-V1`: a f64
+midpoint SO(3) frame transport policy, midpoint tangent position quadrature,
+per-step frame projection, and path-level evidence. It exists for numerical and
+accelerator research. It does not replace the canonical geometry algorithm or
+receipt.
+
+WebGPU, CUDA, and future NPU bindings are not promoted to oracle. They may report
+residual sidecars only after comparison with an accepted f64 reference. The
+canonical geometry receipt remains an oracle artifact.
 
 ## Invariants
 
@@ -72,11 +83,12 @@ an f64 CPU/WASM oracle. The geometry receipt remains an oracle artifact.
 | Q_f | functional cohesion metric only; no biological, awareness, or qualia claim |
 | Rust acceptance | contract checks plus golden-coordinate conformance |
 | WASM acceptance | actual compiled module executed against `wasm_v2_129.json` |
-| WGSL acceptance | 4096-point f32 field residual ≤ `1e-4` against WASM f64 schedule |
+| WGSL schedule acceptance | 4096-point f32 field residual ≤ `1e-4` against WASM f64 schedule |
 | Native ABI acceptance | layout, ownership, JSON receipt, and coordinates checked against `ffi_v1_129.json` |
 | CUDA acceptance | optional f32 schedule residual ≤ `1e-4` against Rust FFI f64 schedule |
 | CUDA diagnostic band | residual ≤ `1e-6` is reported as nominal, without tightening the hard gate |
 | NPU Tier 2 | quantized residual sidecar under a precision-specific gate; never geometry authority |
+| Full-path numerical research | named f64 Lie-midpoint policy plus component-level f32 readback gates |
 | Accelerator authority | residual sidecar only; never replaces the geometry receipt |
 
 Bounds hold by construction and are verified again after integration or tissue
@@ -173,7 +185,7 @@ cargo clippy --locked --workspace --all-targets -- -D warnings
 cargo test --locked --workspace
 ```
 
-Run the native CLI:
+Run the canonical native CLI:
 
 ```bash
 cargo run --locked -p rsh-cli -- info
@@ -183,22 +195,58 @@ cargo run --locked -p rsh-cli -- trace -n 129 -o rsh_trace_rust.csv
 cargo run --locked -p rsh-cli -- sample 16777216 12
 ```
 
-The Rust CLI currently implements the geometry contract. Tissue conformance is a
+The canonical Rust CLI implements the geometry contract. Tissue conformance is a
 future separately tested Rust/WASM phase.
+
+## Full-path Frenet numerical research
+
+Run the separately versioned f64 path:
+
+```bash
+cargo run --locked -p rsh-numerics-cli -- \
+  run -n 1025 \
+  --json rsh_frenet_path.json \
+  --csv rsh_frenet_path.csv
+```
+
+Run an observational benchmark without a timing acceptance gate:
+
+```bash
+cargo run --release --locked -p rsh-numerics-cli -- \
+  benchmark -n 16385 --loops 20
+```
+
+The research policy uses midpoint evaluation of κ and τ, SO(3) exponential-map
+frame transport, midpoint tangent position quadrature, modified Gram–Schmidt
+after every full step, and exact-grid midpoint centering.
+
+`conformance/frenet_path_v1_1025.json` seals entry, centre, exit, midpoint T/N/B,
+and f32 accelerator gates. `scripts/test_frenet_path.mjs` executes the actual
+research WASM module and checks a stepwise f32 arithmetic reference. Its result
+explicitly reports `actual_gpu_execution: false` because routine CI does not
+provide a browser adapter.
+
+The browser shader executes the full recurrence and reads every position, frame,
+κ, and τ value back. The first kernel uses one invocation because the recurrence
+is sequential. This is a correctness milestone, not a parallel speedup claim.
+
+See [Phase 8 Frenet numerical research](docs/PHASE8_FRENET_NUMERICS.md).
 
 ## WebAssembly and WGSL conformance
 
-Build the browser module:
+Build both browser modules:
 
 ```bash
 rustup target add wasm32-unknown-unknown
-cargo test --locked -p rsh-wasm
-cargo build --locked --release --target wasm32-unknown-unknown -p rsh-wasm
+cargo test --locked -p rsh-wasm -p rsh-numerics-wasm
+cargo build --locked --release --target wasm32-unknown-unknown \
+  -p rsh-wasm -p rsh-numerics-wasm
 mkdir -p web/pkg
 cp target/wasm32-unknown-unknown/release/rsh_wasm.wasm web/pkg/
+cp target/wasm32-unknown-unknown/release/rsh_numerics_wasm.wasm web/pkg/
 ```
 
-Run the executable WASM and WGSL-source conformance harness:
+Run the executable conformance harnesses:
 
 ```bash
 node scripts/test_wasm.mjs \
@@ -206,13 +254,11 @@ node scripts/test_wasm.mjs \
   conformance/wasm_v2_129.json \
   /tmp/rsh_native_129.json \
   conformance/wgsl_v1_4096.json
-```
 
-The harness executes the actual `.wasm` file, checks the sealed geometry profile,
-requires the additive schedule export, validates the WGSL source contract, and
-runs an explicitly labelled f32 arithmetic reference against the f64 schedule.
-Actual adapter-specific WGSL execution occurs in the browser and produces a
-residual sidecar.
+node scripts/test_frenet_path.mjs \
+  target/wasm32-unknown-unknown/release/rsh_numerics_wasm.wasm \
+  conformance/frenet_path_v1_1025.json
+```
 
 No `wasm-bindgen`, `wasm-pack`, npm, bundler, CDN, or runtime server is required.
 
@@ -354,37 +400,55 @@ fallback, and authority metadata. It does not contain a vendor driver binding or
 claim actual NPU execution. Missing NPU support leaves the f64 CPU/WASM path
 intact.
 
+## Fuzz testing
+
+The deterministic stress corpus runs with ordinary Rust tests. The isolated
+`fuzz/` workspace provides a `cargo-fuzz` target for valid bounded path
+configurations. The `Frenet Fuzz` workflow runs manually and weekly, never on
+public pull requests.
+
+```bash
+cargo install cargo-fuzz --locked
+cargo fuzz run frenet_path -- -max_total_time=120 -timeout=10
+```
+
+Fuzz discoveries must be reduced to deterministic regression cases before they
+can modify a numerical contract.
+
 ## Validation matrix
 
 | Backend | Executed in routine CI | Result / boundary |
 |---|---:|---|
 | Python geometry 3.10 / 3.12 / 3.14 | yes | reference tests and evidence smoke suite |
 | Python tissue 3.10 / 3.12 / 3.14 | yes | constitution, default receipt chain, Q_f vectors, fallback, dry-run policy |
-| Rust native | yes | formatting, Clippy, tests, conformance, canonical Rust receipt |
-| WASM | yes | actual compiled module executed against sealed geometry vectors |
-| WGSL/WebGPU | browser-specific | f32 residual sidecar with CPU/WASM fallback |
+| Rust canonical geometry | yes | formatting, Clippy, tests, conformance, canonical Rust receipt |
+| Canonical WASM | yes | actual compiled module executed against sealed geometry vectors |
+| WGSL schedule field | browser-specific | f32 residual sidecar with CPU/WASM fallback |
+| Rust f64 Frenet numerical path | yes | named policy, sealed path vectors, deterministic stress corpus |
+| Numerical WASM | yes | actual compiled module executed against the 1,025-point profile |
+| WGSL full path | browser-specific | complete path readback and five path-level residual gates; no speedup claim |
 | C++ ABI | yes | compiled consumer, ABI layout, ownership, coordinates, receipt |
 | CUDA CPU reference | yes | portable f32 arithmetic; `actual_cuda_execution: false` |
 | CUDA RTX 5060 Ti / sm_120 | externally observed | actual kernel pass, residual `4.0915928645191e-08` |
 | CUDA memcheck / racecheck | externally observed | zero reported errors and hazards |
 | NPU Tier 2 | profile only | hardware binding and device readback not yet implemented |
 
-The dispatch-only `.github/workflows/cuda-hardware.yml` can repeat actual device
-validation on a deliberately labelled self-hosted runner. It is never triggered
-by public pull requests.
+The dispatch-only `.github/workflows/cuda-hardware.yml` can repeat actual CUDA
+device validation on a deliberately labelled self-hosted runner. It is never
+triggered by public pull requests.
 
 ## Accelerator residual policy
 
-Browser WGSL, optional CUDA, and future NPU bindings use published schedule-field
-conditions against an f64 oracle:
+Schedule accelerators use:
 
 ```text
 max(max |kappa_accelerator - kappa_oracle_f64|,
     max |tau_accelerator   - tau_oracle_f64|) <= declared gate
 ```
 
-A passing accelerator may emit a residual sidecar. A failing or unavailable
-accelerator does not affect verified CPU/WASM geometry.
+Full-path accelerators additionally compare every position and frame component,
+plus frame norm and orthogonality. A passing accelerator may emit a residual
+sidecar. A failing or unavailable accelerator does not affect verified f64 paths.
 
 ## Exact bounded logical sampling
 
@@ -407,33 +471,40 @@ src/rsh/constitution.py             Machine-checkable tissue constitution
 src/rsh/tissue.py                   Deterministic geometric tissue reference
 src/rsh/refinement.py               Sealed bounded proposal dry-run policy
 src/rsh/cli.py                      Geometry, tissue, and governance CLI
-crates/rsh-core/                    Native Rust geometry and evidence library
-crates/rsh-cli/                     Native `rsh-rust` command-line runner
-crates/rsh-wasm/                    Raw WASM ABI over `rsh-core`
+crates/rsh-core/                    Canonical Rust geometry and evidence library
+crates/rsh-cli/                     Canonical native command-line runner
+crates/rsh-wasm/                    Canonical raw WASM ABI over `rsh-core`
 crates/rsh-ffi/                     Versioned C ABI over `rsh-core`
+crates/rsh-numerics/                Separately versioned f64 Frenet path research
+crates/rsh-numerics-cli/            Numerical path runner and benchmark
+crates/rsh-numerics-wasm/           Separate numerical path WASM ABI
 include/rsh_ffi.h                   Public ABI-v1 C/C++ header
 native/cpp/                         Dependency-free C++17 consumer and CMake build
 native/cuda/                        Optional CUDA schedule residual executable
 conformance/wasm_v2_129.json        Sealed geometry/WASM profile
-conformance/wgsl_v1_4096.json       Phase 4 WebGPU schedule-field profile
-conformance/ffi_v1_129.json         Phase 5 native ABI profile
-conformance/cuda_schedule_v1_4096.json  Optional CUDA schedule profile
-conformance/tissue_v1_8x20.json     Phase 6 Python tissue profile
+conformance/wgsl_v1_4096.json       WebGPU schedule-field profile
+conformance/frenet_path_v1_1025.json Full-path numerical and accelerator profile
+conformance/ffi_v1_129.json         Native ABI profile
+conformance/cuda_schedule_v1_4096.json Optional CUDA schedule profile
+conformance/tissue_v1_8x20.json     Python tissue profile
 conformance/npu_tier2_v1.json       Tier 2 NPU evidence profile
 conformance/observed/               Noncanonical hardware observations
-scripts/test_wasm.mjs               Executable WASM and f32 reference harness
-scripts/test_cpp_ffi.py             Executable C++ ABI and CUDA-reference harness
+scripts/test_wasm.mjs               Canonical WASM and f32 schedule harness
+scripts/test_frenet_path.mjs        Numerical WASM and f32 full-path harness
+scripts/test_cpp_ffi.py             C++ ABI and CUDA-reference harness
 scripts/test_cuda.py                Actual CUDA sidecar/repeatability/sanitizer harness
 scripts/cuda_preflight.sh           Non-mutating CUDA host readiness report
 scripts/package_evidence.py         Deterministic evidence archive generator
-web/                                Static Pages laboratory and offline cache
+fuzz/                               Isolated bounded numerical fuzz target
+web/                                Static Pages laboratories and offline cache
 tests/                              Geometry, tissue, governance, CLI, and tooling tests
-docs/PHASE3_WASM.md                 WebAssembly architecture and acceptance contract
-docs/PHASE4_WGSL.md                 WebGPU architecture and residual boundary
+docs/PHASE3_WASM.md                 Canonical WebAssembly contract
+docs/PHASE4_WGSL.md                 WebGPU schedule residual boundary
 docs/PHASE5_NATIVE.md               C ABI, C++, and optional CUDA boundary
-docs/PHASE6_TISSUE.md               Constitutional tissue architecture and contract
+docs/PHASE6_TISSUE.md               Constitutional tissue contract
+docs/PHASE8_FRENET_NUMERICS.md      Full-path numerical research contract
 docs/OPERATIONAL_AWARENESS.md       Instrumentation and no-qualia boundary
-docs/CUDA_VALIDATION.md             Hardware execution, evidence, and toolchain guidance
+docs/CUDA_VALIDATION.md             Hardware evidence and toolchain guidance
 docs/SCIENTIFIC_BOUNDARY.md         Claims the evidence does and does not support
 docs/ROADMAP.md                     Implementation and conformance sequence
 ```
@@ -446,10 +517,10 @@ separately declared shared-centroid convention. These checks confirm
 implementation behaviour; they are not empirical discoveries.
 
 Receipts prove identity of canonical reports under declared runtime and encoding
-contracts. Accelerator residuals prove numerical agreement of sampled fields
-within published gates. Q_f compares functional factors inside one simulation.
-None of these establishes a physical theory, biological organism, consciousness,
-or subjective experience.
+contracts. Accelerator residuals prove numerical agreement within published
+gates. Q_f compares functional factors inside one simulation. None of these
+establishes a physical theory, biological organism, consciousness, or subjective
+experience.
 
 ## Planned sequence
 
@@ -460,7 +531,7 @@ or subjective experience.
 5. **Native C ABI, C++17 consumer, and optional CUDA schedule adapter** — implemented in v2.4.0 and hardware-validation hardened in v2.4.1.
 6. **Constitutional geometric tissue Python reference** — implemented in v2.5.0.
 7. **Rust/WASM tissue conformance** — planned from the sealed Python vectors.
-8. **Full GPU Frenet–Serret integration research** — not scheduled; requires a separately versioned numerical contract and path-level evidence.
+8. **Full-path Frenet numerical research** — implemented in v2.6.0 as a separate f64/WASM/WGSL correctness surface; parallel acceleration remains future research.
 
 Performance, compositional complexity, or anthropomorphic language never promotes
 an adapter or simulation to scientific authority.
