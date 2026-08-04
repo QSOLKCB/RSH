@@ -1,14 +1,11 @@
 # Robitaille–Slade Helix Evidence Runner (RSH) v1.0
-
-**To:** Trent Slade  
-**From:** DeltaKingZero (John Robitaille)  
-**Date:** 2026-08-03  
-**Subject:** Bound-safe centre-transfer geometry — what was added, what changed, how to run it
+By DeltaKingZero (John Robitaille) and
+Trent Slade / QSOL-IMC  
 
 ---
 
 ## Purpose
-
+Bound-safe centre-transfer geometry — what was added, what changed, how to run it >>>
 This package is a **parallel evidence runner** built so we can stand **our** geometric laws next to centre-transfer / verify-style contracts (same *discipline* as tools like NEXUS: verify CSV, receipts, parity, visual) **without** rewriting or rebranding upstream VORTEX-N / NEXUS source trees.
 
 **Design law**
