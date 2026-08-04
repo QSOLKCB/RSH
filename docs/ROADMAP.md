@@ -29,64 +29,52 @@ Status: **implemented in v2.1.0**
 - formatting, Clippy, tests, and native evidence commands run in CI;
 - receipt identity is reported separately from coordinate conformance.
 
-The native implementation agrees with the Python golden entry and exit
-coordinates inside the declared `1e-12` tolerance. Its runtime receipt may
-differ because the full report includes transcendental values whose final
-floating-point details are runtime-sensitive. That distinction is recorded
-rather than concealed.
-
 ## Phase 3 — WASM bridge
 
 Status: **implemented in v2.2.0**
 
 - `rsh-wasm` compiles the verified Rust core to `wasm32-unknown-unknown`;
-- a dependency-free raw ABI accepts numeric configuration inputs and exposes a
-  UTF-8 JSON output buffer through WebAssembly linear memory;
-- browser calculations remain inside `rsh-core`; JavaScript handles interface,
-  projection, animation, downloads, and service-worker caching only;
-- the Pages laboratory reports pass/fail, bounds, frame error, centre error,
-  path length, and the runtime receipt;
-- JSON reports and CSV traces can be downloaded directly from the browser;
-- host ABI tests and a release-target WASM build run in CI;
-- Pages builds the module itself and refuses deployment when source or binary
-  validation fails;
-- the site becomes available offline after its first successful load.
+- the raw ABI supplies verified geometry reports and sample coordinates;
+- the actual compiled module is executed against a sealed 129-point profile;
+- the browser contains no second geometry integrator;
+- Pages builds, validates, and deploys the WASM artifact;
+- the laboratory remains available offline after its first successful load.
 
-The bridge does not use `wasm-bindgen`, npm, Node.js, or a bundler. This keeps the
-browser boundary small, auditable, and independent of a second package-runtime
-stack.
+## Phase 4 — WGSL compute and residual conformance
 
-## Phase 4 — WGSL compute and visual kernels
+Status: **implemented in v2.3.0**
 
-Status: **next**
+- `rsh_schedule` supplies even-sized f64 κ/τ grids from `rsh-core` through WASM;
+- `kappa_tau_field.wgsl` evaluates the same controls on a 4096-point f32 grid;
+- every GPU point is read back and compared with the CPU/WASM oracle;
+- adapter, device, precision, workgroup, grid, and residual metadata are reported;
+- a `1e-4` maximum residual gate controls sidecar acceptance;
+- the GPU visual remains explicitly display-only;
+- WebGPU absence, compilation failure, or device loss activates CPU/WASM fallback;
+- shader, GPU module, and WASM runtime remain static Pages assets with offline caching.
 
-- batch path evaluation and large logical-field sampling on WebGPU;
-- validate selected GPU results against Python, native Rust, and WASM vectors;
-- separate visual interpolation from verified model samples;
-- report adapter, device, precision, and workgroup parameters in evidence;
-- retain the CPU/WASM path where WebGPU is unavailable;
-- never allow a GPU visual approximation to silently replace verified samples.
-
-The first WGSL milestone should be a conformance harness, not a visual effect:
-selected logical indices, curvature/torsion schedules, and projected positions
-must be compared against checked-in vectors before the GPU path is treated as an
-accepted backend.
+The GPU remains an accelerated field evaluator, not a scientific oracle. No GPU
+result replaces the geometry report or its domain-separated receipt.
 
 ## Phase 5 — optional C++/CUDA adapter
+
+Status: **optional on demand**
 
 C++ is not a second canonical implementation. Add it only when required for an
 existing native integration, CUDA-specific benchmark, or stable C ABI consumer.
 Any such adapter must consume the same conformance vectors and publish its own
 runtime and compiler provenance.
 
+A full WGSL or CUDA Frenet–Serret integrator would require a separately versioned
+numerical contract, path-level golden vectors, frame-error limits, and explicit
+adapter/compiler residual evidence. It is not assumed by the schedule-field work.
+
 ## GitHub Pages
 
 The `web/` source is assembled by `.github/workflows/pages.yml`. The workflow
-builds `rsh_wasm.wasm`, places it under `web/pkg/`, validates the complete
-artifact, and only then uploads it for deployment.
-
-The rotating display is a browser projection of samples returned by `rsh-core`.
-It remains labelled as a visual projection and is not promoted to evidence.
+builds `rsh_wasm.wasm`, executes the WASM/WGSL source conformance harness, places
+the module under `web/pkg/`, validates the shader and browser assets, and only
+then uploads the artifact for deployment.
 
 ## Governance rule
 

@@ -7,28 +7,28 @@ inside explicit Robitaille bounds, integrating the Frenet–Serret frame, and
 translating the exact discrete midpoint to the coordinate origin.
 
 **Authors:** J. Robitaille (DeltaKingZero) and Trent Slade / QSOL-IMC  
-**Release:** 2.2.0  
+**Release:** 2.3.0  
 **Model contract:** 2.0.0  
-**Implementations:** Python reference + native Rust core/CLI + Rust/WebAssembly browser bridge
+**Implementations:** Python reference + native Rust core/CLI + Rust/WebAssembly bridge + residual-gated WGSL/WebGPU field
 
 ## Browser laboratory
 
-The project site now runs the verified Rust core directly in WebAssembly:
+The project site runs the verified Rust core directly in WebAssembly and adds an
+optional WebGPU acceleration layer:
 
 **https://qsolkcb.github.io/RSH/**
 
-The browser laboratory can change the sample count, curvature fraction, torsion
-floor, and torsion amplitude; run the contract; inspect the resulting evidence
-report; and download JSON and CSV outputs. JavaScript does not reproduce the
-geometry equations. It passes scalar inputs through a small raw WASM ABI, reads
-the UTF-8 JSON result from linear memory, and handles only interface, projection,
-animation, downloads, and offline caching.
+The laboratory can change the sample count, curvature fraction, torsion floor,
+and torsion amplitude; run the geometry contract; inspect the resulting report;
+and download JSON and CSV evidence. A second panel evaluates a 4096-point f32
+κ/τ field with WGSL, reads the GPU buffer back, and compares every point against
+an f64 schedule supplied by `rsh-core` through WASM.
 
-The rotating canvas is a projection of verified samples. It is not additional
-evidence and does not create a physical interpretation.
+The rotating path is a projection of verified WASM samples. The WebGPU field
+chart is display-only. Neither visual creates a physical interpretation.
 
-After the first successful load, a service worker caches the page and WASM
-module for offline reuse.
+After the first successful load, a service worker caches the page, WASM module,
+WGSL shader, and browser modules for offline reuse.
 
 ## Implementation authority
 
@@ -38,25 +38,27 @@ and reference receipt.
 
 The Rust implementation reproduces the same geometry and verification contract
 as a native core and command-line runner. It is accepted through the checked-in
-cross-runtime conformance record. Runtime receipt identity is reported
-separately rather than assumed.
+cross-runtime conformance record.
 
 The WASM bridge calls `rsh-core`; it is not a third geometry implementation. Its
-ABI accepts numeric configuration values and exposes one JSON result buffer:
+raw ABI is additive:
 
 ```text
 rsh_abi_version() -> u32
 rsh_run(samples, s0, s1, kappa_fraction, tau_floor, tau_amplitude) -> i32
+rsh_schedule(samples, s0, s1, kappa_fraction, tau_floor, tau_amplitude) -> i32
 rsh_output_ptr() -> pointer
 rsh_output_len() -> length
 ```
 
-Return code `0` means all report contracts passed, `1` means a report was
-produced with at least one failed contract, and `2` means the configuration or
-run was rejected.
+`rsh_run` produces the verified geometry report and centreline samples.
+`rsh_schedule` produces an f64 κ/τ grid for WebGPU residual comparison and
+accepts even grid sizes such as 4096. JavaScript does not reproduce the model
+equations.
 
-See [the complete Phase 3 specification](docs/PHASE3_WASM.md) for the ABI,
-conformance profile, browser boundary, and acceptance criteria.
+WebGPU is not promoted to oracle. It may export a residual sidecar only after its
+f32 field has been compared point-by-point with the WASM f64 grid. The geometry
+receipt remains a CPU/WASM artifact.
 
 ## Invariants
 
@@ -69,8 +71,10 @@ conformance profile, browser boundary, and acceptance criteria.
 | Frame | tangent, normal, and binormal remain orthonormal within tolerance |
 | Python evidence | canonical domain-separated SHA-256 receipt |
 | Rust acceptance | contract checks plus golden-coordinate conformance |
-| Browser authority | report and samples supplied by `rsh-core` through WASM |
 | WASM acceptance | actual compiled module executed against `wasm_v2_129.json` |
+| WGSL acceptance | 4096-point f32 field residual ≤ `1e-4` against WASM f64 schedule |
+| GPU authority | residual sidecar only; never replaces the geometry receipt |
+| Fallback | CPU/WASM remains fully functional without WebGPU |
 
 Bounds hold by construction and are verified again after integration.
 
@@ -114,16 +118,9 @@ cargo run --locked -p rsh-cli -- trace -n 129 -o rsh_trace_rust.csv
 cargo run --locked -p rsh-cli -- sample 16777216 12
 ```
 
-The 129-sample Rust conformance run reproduces the Python golden entry and exit
-coordinates within the declared `1e-12` tolerance. The Rust receipt is displayed
-alongside the Python reference receipt; any runtime-sensitive floating-point
-hash difference remains visible.
+## WebAssembly and WGSL conformance
 
-## WebAssembly build and conformance
-
-The deployed bridge uses only the standard Rust WASM target and existing
-workspace dependencies. It does not require `wasm-bindgen`, `wasm-pack`, npm, a
-bundler, CDN, or runtime server process.
+Build the browser module:
 
 ```bash
 rustup target add wasm32-unknown-unknown
@@ -133,21 +130,39 @@ mkdir -p web/pkg
 cp target/wasm32-unknown-unknown/release/rsh_wasm.wasm web/pkg/
 ```
 
-CI additionally uses the runner's built-in Node WebAssembly runtime—without npm
-packages—to execute the actual compiled module against the sealed profile:
+Run the executable WASM and WGSL-source conformance harness:
 
 ```bash
 node scripts/test_wasm.mjs \
   target/wasm32-unknown-unknown/release/rsh_wasm.wasm \
-  conformance/wasm_v2_129.json
+  conformance/wasm_v2_129.json \
+  /tmp/rsh_native_129.json \
+  conformance/wgsl_v1_4096.json
 ```
 
-The probe checks the ABI, midpoint, entry and exit residuals, report contracts,
-sample count, finite output, and receipt encoding. Native-versus-WASM receipt
-identity is reported separately rather than assumed.
+The harness executes the actual `.wasm` file, checks the sealed geometry profile,
+requires the additive schedule export, validates the WGSL source contract, and
+runs an explicitly labelled f32 arithmetic reference against the f64 schedule.
+Actual adapter-specific WGSL execution occurs in the browser and produces a
+residual sidecar.
 
-GitHub Pages performs the build and executable conformance test itself before
-deployment and refuses to publish when either fails.
+No `wasm-bindgen`, `wasm-pack`, npm, bundler, CDN, or runtime server is required.
+
+## WebGPU residual policy
+
+The browser publishes:
+
+```text
+max(max |kappa_gpu - kappa_wasm|,
+    max |tau_gpu   - tau_wasm|) <= 1e-4
+```
+
+A passing field may export `RSH-WEBGPU-RESIDUAL-SIDECAR-V1` with adapter, device,
+precision, workgroup, grid, and residual metadata. The chart remains tagged
+`data-verified="false"`. A failing or unavailable GPU switches to CPU/WASM
+fallback without affecting the geometry report.
+
+See [the complete Phase 4 specification](docs/PHASE4_WGSL.md).
 
 ## Exact bounded logical sampling
 
@@ -158,25 +173,28 @@ logical_index(i) = floor(i × logical_count / rendered_count)
 ```
 
 The Python and Rust implementations use exact integer arithmetic for this
-mapping. The future WGSL backend must reproduce the same selected indices.
+mapping. Any future GPU logical-index kernel must reproduce the same indices.
 
 ## Repository map
 
 ```text
-rsh_runner.py                 Direct Python source-checkout runner
-src/rsh/                      Python geometry, verification, exports, and CLI
-crates/rsh-core/              Native Rust geometry and evidence library
-crates/rsh-cli/               Native `rsh-rust` command-line runner
-crates/rsh-wasm/              Raw WebAssembly ABI over `rsh-core`
-conformance/                  Python, Rust, and WASM acceptance profiles
-scripts/test_wasm.mjs         Executes the compiled module against golden data
-web/                          Interactive Pages laboratory and offline cache
-tests/                        Python geometry, evidence, export, and CLI tests
-docs/MODEL.md                 Equations and numerical construction
-docs/PHASE3_WASM.md           WebAssembly architecture and acceptance contract
-docs/PROVENANCE.md            Attribution and implementation boundary
-docs/SCIENTIFIC_BOUNDARY.md   Claims the evidence does and does not support
-docs/ROADMAP.md               Python → Rust → WASM → WGSL plan
+rsh_runner.py                    Direct Python source-checkout runner
+src/rsh/                         Python geometry, verification, exports, and CLI
+crates/rsh-core/                 Native Rust geometry and evidence library
+crates/rsh-cli/                  Native `rsh-rust` command-line runner
+crates/rsh-wasm/                 Raw WASM ABI over `rsh-core`
+conformance/wasm_v2_129.json     Sealed geometry/WASM profile
+conformance/wgsl_v1_4096.json    Phase 4 schedule-field profile
+scripts/test_wasm.mjs            Executable WASM and f32 reference harness
+web/app.js                       Verified browser geometry controller
+web/gpu.js                       WebGPU execution and residual readback
+web/wgsl/                        WGSL compute kernels
+web/                             Static Pages laboratory and offline cache
+tests/                           Python geometry, evidence, export, and CLI tests
+docs/PHASE3_WASM.md              WebAssembly architecture and acceptance contract
+docs/PHASE4_WGSL.md              WebGPU architecture and residual boundary
+docs/SCIENTIFIC_BOUNDARY.md      Claims the evidence does and does not support
+docs/ROADMAP.md                  Python → Rust → WASM → WGSL plan
 ```
 
 ## Scientific precision
@@ -186,23 +204,20 @@ there as an explicit coordinate convention. That check confirms implementation
 correctness; it is not an empirical discovery.
 
 Receipts prove identity of a canonical report under a declared runtime and
-encoding contract. They do not, by themselves, prove a physical interpretation.
-Cross-runtime conformance proves agreement within specified observables and
-numerical tolerances; it does not claim every intermediate floating-point bit is
-identical.
-
-See [the scientific boundary](docs/SCIENTIFIC_BOUNDARY.md) for the full statement.
+encoding contract. GPU residuals prove numerical agreement of a sampled f32
+field within a published threshold. Neither establishes a physical theory.
 
 ## Planned sequence
 
 1. **Python reference** — complete.
 2. **Rust core and CLI** — implemented in v2.1.0.
 3. **WASM bridge and browser laboratory** — implemented in v2.2.0.
-4. **WGSL compute and visual kernels** — next: GPU acceleration checked against shared vectors.
+4. **WGSL schedule field and residual conformance** — implemented in v2.3.0.
 5. **Optional C++/CUDA adapter** — only where interoperability requires it.
 
-Performance never promotes an implementation to scientific authority. Every
-backend must reproduce the declared contracts and state its numerical boundary.
+A full GPU Frenet–Serret integrator is not silently implied by Phase 4. It would
+require its own numerical contract, path-level vectors, and adapter-specific
+frame and coordinate residual evidence.
 
 ## Licence and citation
 

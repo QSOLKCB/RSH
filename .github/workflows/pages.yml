@@ -37,7 +37,7 @@ jobs:
         run: cargo test --locked -p rsh-wasm
       - name: Build verified browser module
         run: cargo build --locked --release --target wasm32-unknown-unknown -p rsh-wasm
-      - name: Execute WebAssembly conformance profile
+      - name: Execute WASM and Phase 4 conformance profiles
         run: |
           wasm=target/wasm32-unknown-unknown/release/rsh_wasm.wasm
           node scripts/test_wasm.mjs "$wasm" conformance/wasm_v2_129.json
@@ -49,15 +49,24 @@ jobs:
         run: |
           test -s web/index.html
           test -s web/style.css
+          test -s web/gpu.css
           test -s web/app.js
+          test -s web/gpu.js
           test -s web/sw.js
+          test -s web/wgsl/kappa_tau_field.wgsl
           test -s web/pkg/rsh_wasm.wasm
           test -s conformance/wasm_v2_129.json
+          test -s conformance/wgsl_v1_4096.json
           test -s scripts/test_wasm.mjs
           test -f web/.nojekyll
+          node --check web/app.js
+          node --check web/gpu.js
+          node --check web/sw.js
           grep -q '<title>RSH' web/index.html
           grep -q 'VERIFIED RUST/WASM SAMPLES' web/index.html
+          grep -q 'PHASE 4 · WEBGPU RESIDUAL HARNESS' web/index.html
           grep -q 'pkg/rsh_wasm.wasm' web/app.js
+          grep -q 'wgsl/kappa_tau_field.wgsl' web/sw.js
           test "$(od -An -t x1 -N4 web/pkg/rsh_wasm.wasm | tr -d ' \n')" = "0061736d"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

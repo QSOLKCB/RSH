@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use RSH, please cite this software."
 title: "RSH: Robitaille–Slade Helix Geometry and Evidence Runner"
-version: 2.2.0
+version: 2.3.0
 type: software
 authors:
   - family-names: Robitaille
@@ -18,5 +18,8 @@ keywords:
   - deterministic evidence
   - Rust
   - WebAssembly
+  - WebGPU
+  - WGSL
+  - residual conformance
   - offline browser laboratory
   - cross-runtime conformance

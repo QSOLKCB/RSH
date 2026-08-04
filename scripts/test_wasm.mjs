@@ -5,13 +5,17 @@ import { readFile } from "node:fs/promises";
 
 const wasmPath = process.argv[2] ?? "target/wasm32-unknown-unknown/release/rsh_wasm.wasm";
 const profilePath = process.argv[3] ?? "conformance/wasm_v2_129.json";
-const nativeReportPath = process.argv[4] ?? null;
+const nativeReportPath = process.argv[4] || null;
+const wgslProfilePath = process.argv[5] ?? "conformance/wgsl_v1_4096.json";
 
-const [wasmBytes, profileText] = await Promise.all([
+const [wasmBytes, profileText, wgslProfileText] = await Promise.all([
   readFile(wasmPath),
   readFile(profilePath, "utf8"),
+  readFile(wgslProfilePath, "utf8"),
 ]);
 const profile = JSON.parse(profileText);
+const wgslProfile = JSON.parse(wgslProfileText);
+const shaderSource = await readFile(wgslProfile.shader, "utf8");
 
 assert.equal(
   Buffer.from(wasmBytes.subarray(0, 4)).toString("hex"),
@@ -25,6 +29,7 @@ for (const name of [
   "memory",
   "rsh_abi_version",
   "rsh_run",
+  "rsh_schedule",
   "rsh_output_ptr",
   "rsh_output_len",
 ]) {
@@ -32,6 +37,19 @@ for (const name of [
 }
 
 assert.equal(Number(exports.rsh_abi_version()), profile.abi_version);
+assert.match(shaderSource, /@compute\s+@workgroup_size\(64\)/u);
+assert.match(shaderSource, /fn\s+kappa_schedule/u);
+assert.match(shaderSource, /fn\s+tau_schedule/u);
+assert.match(shaderSource, /output_field\[index\]/u);
+
+function readPayload() {
+  const pointer = Number(exports.rsh_output_ptr());
+  const length = Number(exports.rsh_output_len());
+  assert.ok(Number.isInteger(pointer) && pointer >= 0, "invalid output pointer");
+  assert.ok(Number.isInteger(length) && length > 0, "invalid output length");
+  const bytes = new Uint8Array(exports.memory.buffer, pointer, length);
+  return JSON.parse(new TextDecoder("utf-8").decode(bytes));
+}
 
 const config = profile.configuration;
 const status = Number(exports.rsh_run(
@@ -42,14 +60,7 @@ const status = Number(exports.rsh_run(
   config.tau_floor,
   config.tau_amplitude,
 ));
-
-const pointer = Number(exports.rsh_output_ptr());
-const length = Number(exports.rsh_output_len());
-assert.ok(Number.isInteger(pointer) && pointer >= 0, "invalid output pointer");
-assert.ok(Number.isInteger(length) && length > 0, "invalid output length");
-
-const bytes = new Uint8Array(exports.memory.buffer, pointer, length);
-const payload = JSON.parse(new TextDecoder("utf-8").decode(bytes));
+const payload = readPayload();
 
 assert.equal(status, 0, payload.message ?? "WebAssembly verification failed");
 assert.equal(payload.schema, "RSH-BROWSER-RUN-V1");
@@ -114,8 +125,64 @@ if (nativeReportPath) {
   }
 }
 
+const gpuConfig = wgslProfile.configuration;
+const scheduleStatus = Number(exports.rsh_schedule(
+  gpuConfig.samples,
+  gpuConfig.s0,
+  gpuConfig.s1,
+  gpuConfig.kappa_fraction,
+  gpuConfig.tau_floor,
+  gpuConfig.tau_amplitude,
+));
+const schedule = readPayload();
+assert.equal(scheduleStatus, 0, schedule.message ?? "WASM schedule oracle failed");
+assert.equal(schedule.schema, wgslProfile.wasm_schedule_schema);
+assert.equal(schedule.model, wgslProfile.model);
+assert.equal(schedule.model_version, wgslProfile.model_version);
+assert.equal(schedule.samples, gpuConfig.samples);
+assert.equal(schedule.points.length, gpuConfig.samples);
+
+const f = Math.fround;
+const add = (left, right) => f(f(left) + f(right));
+const subtract = (left, right) => f(f(left) - f(right));
+const multiply = (left, right) => f(f(left) * f(right));
+const divide = (left, right) => f(f(left) / f(right));
+
+function emulateWgslPoint(index) {
+  const p = divide(index, gpuConfig.samples - 1);
+  const s = add(gpuConfig.s0, multiply(p, subtract(gpuConfig.s1, gpuConfig.s0)));
+  const kappaBase = multiply(gpuConfig.kappa_fraction, schedule.kappa_bound);
+  const kappaAngle = multiply(multiply(0.35, s), schedule.psi);
+  const kappaWave = add(0.92, multiply(0.08, f(Math.cos(kappaAngle))));
+  const kappa = multiply(kappaBase, kappaWave);
+  const tauAngle = multiply(multiply(0.25, s), schedule.psi);
+  const tauWave = add(1.0, f(Math.sin(tauAngle)));
+  const tau = add(gpuConfig.tau_floor, multiply(gpuConfig.tau_amplitude, tauWave));
+  return { kappa, tau };
+}
+
+let maxKappaF32Residual = 0;
+let maxTauF32Residual = 0;
+for (let index = 0; index < schedule.points.length; index += 1) {
+  const reference = schedule.points[index];
+  const approximate = emulateWgslPoint(index);
+  maxKappaF32Residual = Math.max(
+    maxKappaF32Residual,
+    Math.abs(approximate.kappa - Number(reference.kappa)),
+  );
+  maxTauF32Residual = Math.max(
+    maxTauF32Residual,
+    Math.abs(approximate.tau - Number(reference.tau)),
+  );
+}
+const maxF32ReferenceResidual = Math.max(maxKappaF32Residual, maxTauF32Residual);
+assert.ok(
+  maxF32ReferenceResidual <= wgslProfile.residual_threshold,
+  `f32 schedule reference residual ${maxF32ReferenceResidual} exceeds ${wgslProfile.residual_threshold}`,
+);
+
 console.log(JSON.stringify({
-  schema: "RSH-WASM-CONFORMANCE-RESULT-V1",
+  schema: "RSH-WASM-WGSL-CONFORMANCE-RESULT-V1",
   status: "PASS",
   wasm_path: wasmPath,
   samples: payload.points.length,
@@ -127,4 +194,11 @@ console.log(JSON.stringify({
   wasm_receipt: payload.report.receipt,
   native_receipt: nativeReceipt,
   receipt_identical_to_native: receiptIdenticalToNative,
+  wgsl_grid_samples: schedule.points.length,
+  wgsl_workgroup_size: wgslProfile.workgroup_size,
+  f32_reference_max_abs_kappa: maxKappaF32Residual,
+  f32_reference_max_abs_tau: maxTauF32Residual,
+  f32_reference_max_abs_error: maxF32ReferenceResidual,
+  wgsl_residual_threshold: wgslProfile.residual_threshold,
+  actual_gpu_execution: "browser runtime; adapter-specific sidecar",
 }, null, 2));
