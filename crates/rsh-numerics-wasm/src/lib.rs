@@ -6,8 +6,7 @@
 
 use rsh_core::{ModelConfig, Sample, MODEL_NAME, MODEL_VERSION};
 use rsh_numerics::{
-    build_lie_path, FrenetPathReport, INTEGRATOR, MAX_PATH_SAMPLES, NUMERICAL_CONTRACT,
-    PATH_SCHEMA,
+    build_lie_path, FrenetPathReport, INTEGRATOR, MAX_PATH_SAMPLES, NUMERICAL_CONTRACT, PATH_SCHEMA,
 };
 use serde::Serialize;
 use std::cell::RefCell;
@@ -60,8 +59,7 @@ fn encode_error(message: &str) -> Vec<u8> {
         message,
     })
     .unwrap_or_else(|_| {
-        b"{\"schema\":\"RSH-FRENET-PATH-ERROR-V1\",\"message\":\"serialization failure\"}"
-            .to_vec()
+        b"{\"schema\":\"RSH-FRENET-PATH-ERROR-V1\",\"message\":\"serialization failure\"}".to_vec()
     })
 }
 
