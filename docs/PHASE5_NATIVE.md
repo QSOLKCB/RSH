@@ -73,9 +73,10 @@ RshSummaryV1        = 232 bytes
 RshSchedulePointV1  = 32 bytes
 ```
 
-The header contains matching C++ `static_assert` checks, while the Rust crate
-exports runtime size probes. Structures include `struct_size` and `abi_version`
-so later additive revisions can reject incompatible callers cleanly.
+The header contains matching 64-bit C++ `static_assert` checks, while the Rust
+crate exports runtime size probes. Structures include `struct_size` and
+`abi_version` so later additive revisions can reject incompatible callers
+cleanly.
 
 ## C++17 consumer
 
@@ -107,18 +108,51 @@ A machine with a CUDA toolkit and supported NVIDIA device may build the adapter:
 ```bash
 cmake -S native/cpp -B build/cuda \
   -DCMAKE_BUILD_TYPE=Release \
-  -DRSH_ENABLE_CUDA=ON
+  -DRSH_ENABLE_CUDA=ON \
+  -DRSH_CUDA_ARCHITECTURES=native
 cmake --build build/cuda --target rsh-cuda
 build/cuda/rsh-cuda
 ```
 
-The executable records the CUDA device name, compute capability, sample count,
-block size, f32 residuals, and published threshold. Its output schema is
-`RSH-CUDA-RESIDUAL-SIDECAR-V1`.
+`RSH_CUDA_ARCHITECTURES` is optional. An empty value preserves the CUDA compiler
+default, while values such as `native`, `89`, or `120` make the intended target
+explicit. The `native` value requires CMake 3.24 or newer; older supported CMake
+versions must use an explicit numeric architecture. CMake prints the effective
+setting and passes a human-readable form to the sidecar.
 
-Actual CUDA execution is claimed only by that binary after a successful kernel
-launch and device-to-host readback. The portable C++ arithmetic reference uses
-`actual_cuda_execution: false`.
+The executable accepts:
+
+```text
+--samples N
+--block-size N
+--threshold X
+--device N
+--repeat-run N
+```
+
+The sealed defaults remain 4096 samples, 128 threads per block, device zero, and
+a `1e-4` hard residual gate.
+
+Actual CUDA execution is claimed only after device selection, allocation, kernel
+launch, launch-status checking, synchronization, device-to-host readback, finite
+residual validation, and a passing gate. The portable C++ arithmetic reference
+uses `actual_cuda_execution: false`.
+
+## CUDA sidecar provenance
+
+`RSH-CUDA-RESIDUAL-SIDECAR-V1` records:
+
+- selected device index, name, and UUID;
+- compute capability and compiled architecture label;
+- CUDA driver API, runtime, and compile versions;
+- host pointer width;
+- repeat identifier, sample count, block size, and grid block count;
+- maximum κ, τ, and combined residuals;
+- the diagnostic band and hard threshold;
+- `geometry_receipt_authority: false`.
+
+A device UUID may be useful inside a private evidence bundle, but checked-in
+public observations omit it to avoid publishing a stable host identifier.
 
 ## Residual boundary
 
@@ -131,12 +165,69 @@ precision          = f32
 residual threshold = 1e-4
 ```
 
+v2.4.1 adds a diagnostic observation band of `1e-6`. Results at or below that
+band are labelled `NOMINAL`. Results above it but within `1e-4` remain accepted
+as `PASS_WITH_WARNING`. The diagnostic band does not redefine conformance.
+
 A passing CUDA schedule residual does not create or replace a geometry receipt.
 It validates only the sampled κ/τ field against the f64 Rust FFI oracle.
 
-## CI acceptance
+## Hardware validation tooling
 
-GitHub Actions:
+Run a non-mutating environment report:
+
+```bash
+sh scripts/cuda_preflight.sh
+```
+
+Run repeated execution, strict sidecar validation, CPU-reference comparison, and
+optional Compute Sanitizer checks:
+
+```bash
+python3 scripts/test_cuda.py \
+  --executable build/cuda/rsh-cuda \
+  --cpu-reference build/cuda/rsh-cpp \
+  --profile conformance/cuda_schedule_v1_4096.json \
+  --runs 3 \
+  --sanitizers auto \
+  --output artifacts/cuda-hardware
+```
+
+Package the evidence deterministically:
+
+```bash
+python3 scripts/package_evidence.py \
+  artifacts/cuda-hardware \
+  artifacts/RSH-cuda-hardware.zip
+```
+
+The evidence manifest hashes all input evidence files but excludes itself. The
+archive receives a separate external SHA-256 receipt, avoiding recursive
+self-referential hashes.
+
+## Observed hardware result
+
+`conformance/observed/cuda_sm120_rtx5060ti_cuda13_1.json` preserves a real
+execution of the Phase 5 adapter at commit
+`6ab304c0ac7c541c15ba7ada935bc0c4ae8da950`:
+
+```text
+GPU                       NVIDIA GeForce RTX 5060 Ti
+Compute capability        12.0 / sm_120
+CUDA toolkit              13.1.115
+CUDA maximum residual     4.0915928645191e-08
+Published hard gate       1.0e-04
+Repeated runs             3 matching selected outputs
+Memcheck                   0 errors
+Racecheck                  0 hazards
+```
+
+This is an observed, noncanonical implementation result. It does not become a
+universal golden residual or alter the accepted model contract.
+
+## CI and trusted-runner acceptance
+
+Ordinary GitHub Actions:
 
 1. formats, lints, and tests `rsh-ffi` as part of the Rust workspace;
 2. builds the Rust ABI and C++17 consumer through CMake;
@@ -146,7 +237,24 @@ GitHub Actions:
 5. requires the C++ JSON report to retain the canonical native Rust receipt;
 6. checks entry, exit, and centre residuals against the existing golden vectors;
 7. validates the optional CUDA source without pretending that hosted CI executed
-   an NVIDIA device kernel.
+   an NVIDIA device kernel;
+8. tests the sidecar validator and deterministic evidence packer without needing
+   CUDA hardware.
+
+`.github/workflows/cuda-hardware.yml` is manual and dispatch-only. It targets a
+trusted self-hosted runner labelled `nvidia` and `cuda`, performs actual device
+execution, runs sanitizers according to policy, packages evidence, and uploads an
+artifact. It must never gain a public `pull_request` trigger.
+
+## Known observed toolchain limitation
+
+The independent Ubuntu 26.04/glibc 2.43 audit used a user-local CUDA 13.1 toolkit
+and required a temporary compatibility adjustment to vendor header exception
+declarations. No RSH source or system driver was modified. RSH records this as
+environment provenance and does not automate vendor-header patching.
+
+See `docs/CUDA_VALIDATION.md` for complete build, audit, security, and toolchain
+guidance.
 
 ## Deferred work
 

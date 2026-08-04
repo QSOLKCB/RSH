@@ -58,7 +58,7 @@ result replaces the geometry report or its domain-separated receipt.
 
 ## Phase 5 — native C ABI, C++17 consumer, and optional CUDA schedule adapter
 
-Status: **implemented in v2.4.0**
+Status: **implemented in v2.4.0; validation hardened in v2.4.1**
 
 - `rsh-ffi` exports a versioned C ABI over `rsh-core`;
 - fixed-layout configuration, summary, byte-buffer, and schedule structures are
@@ -75,6 +75,22 @@ Status: **implemented in v2.4.0**
 - `rsh-cuda` may be built on CUDA-capable systems and records actual adapter,
   compute capability, kernel block size, and readback residuals;
 - actual CUDA execution is never inferred from the portable arithmetic reference.
+
+### v2.4.1 hardware-validation hardening
+
+- CUDA architecture selection is configurable and recorded;
+- the CUDA executable accepts explicit grid, block, threshold, device, and repeat
+  controls while retaining the sealed defaults;
+- sidecars include device UUID, CUDA API/compile versions, grid blocks, compiled
+  architectures, and host pointer width;
+- a `1e-6` diagnostic band supplements but does not replace the `1e-4` hard gate;
+- a non-mutating preflight script reports host readiness;
+- a Python harness validates strict JSON, repeated device execution, CPU-reference
+  comparison, and optional Compute Sanitizer memcheck/racecheck;
+- deterministic evidence packaging avoids recursive manifest hashes;
+- a dispatch-only workflow targets trusted labelled self-hosted GPU runners;
+- an independent RTX 5060 Ti / sm_120 result is preserved as a noncanonical
+  hardware observation tied to its exact commit and toolchain.
 
 The C++ and CUDA layers are adapters. Geometry, frame integration, centre
 normalisation, reports, and receipts remain authoritative in `rsh-core`.
@@ -105,7 +121,9 @@ the module under `web/pkg/`, validates the shader and browser assets, and only
 then uploads the artifact for deployment.
 
 Native C++, FFI, and CUDA artifacts are intentionally not shipped through Pages.
-They are built and tested through the repository's native CI path.
+They are built and tested through the repository's native CI path. Actual CUDA
+hardware validation is available only through the manual trusted-runner workflow
+or an independently captured evidence bundle.
 
 ## Governance rule
 

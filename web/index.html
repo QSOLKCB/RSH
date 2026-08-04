@@ -200,7 +200,7 @@
           <strong>IMPLEMENTED · v2.3</strong>
         </article>
       </div>
-      <p class="boundary-note"><strong>C++ ABI · CUDA OPTIONAL</strong> — v2.4 adds a fixed-layout native C boundary, dependency-free C++17 consumer, and optional CUDA schedule kernel. All three call or compare against <code>rsh-core</code>; none becomes a second geometry oracle.</p>
+      <p class="boundary-note"><strong>C++ ABI · CUDA OPTIONAL</strong> — v2.4 adds a fixed-layout native C boundary and optional CUDA schedule kernel. v2.4.1 adds repeatable hardware validation, richer sidecar provenance, sanitizer evidence, and a checked-in noncanonical RTX 5060 Ti observation. None becomes a second geometry oracle.</p>
     </section>
 
     <section class="terminal panel">
@@ -223,14 +223,14 @@ RSH residual sidecar [PASS | FALLBACK]
 <span>$</span> build/native/rsh-cpp verify --samples 129
 RSH C++ FFI verify [PASS]
 
-<span>$</span> build/cuda/rsh-cuda
-RSH CUDA sidecar [OPTIONAL]</code></pre>
+<span>$</span> python3 scripts/test_cuda.py --executable build/cuda/rsh-cuda …
+RSH CUDA hardware evidence [OPTIONAL]</code></pre>
     </section>
   </main>
 
   <footer>
     <p>J. Robitaille / DeltaKingZero · Trent Slade / QSOL-IMC</p>
-    <p>RSH v2.4.0 · MPL-2.0 · offline after first load</p>
+    <p>RSH v2.4.1 · MPL-2.0 · offline after first load</p>
   </footer>
 
   <noscript><p class="noscript">The RSH browser laboratory requires JavaScript to load the verified WebAssembly core.</p></noscript>

@@ -106,9 +106,11 @@ RSH_FFI_API void rsh_ffi_free_schedule(RshOwnedScheduleV1 *value);
 #ifdef __cplusplus
 }
 
+#if UINTPTR_MAX == UINT64_MAX
 static_assert(sizeof(RshConfigV1) == 56, "RSH ABI v1 config layout changed");
 static_assert(sizeof(RshSummaryV1) == 232, "RSH ABI v1 summary layout changed");
 static_assert(sizeof(RshSchedulePointV1) == 32, "RSH ABI v1 schedule layout changed");
+#endif
 #endif
 
 #endif

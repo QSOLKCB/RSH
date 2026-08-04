@@ -23,7 +23,7 @@ jobs:
       - name: Install local package
         run: python -m pip install --disable-pip-version-check -e .
       - name: Compile package
-        run: python -m compileall -q src tests rsh_runner.py
+        run: python -m compileall -q src tests scripts rsh_runner.py
       - name: Unit and CLI tests
         run: python -m unittest discover -s tests -v
       - name: Evidence smoke suite
@@ -85,6 +85,9 @@ jobs:
           grep -q '__global__ void evaluate_schedule' native/cuda/rsh_schedule_cuda.cu
           grep -q 'actual_cuda_execution' native/cuda/rsh_schedule_cuda.cu
           grep -q 'geometry_receipt_authority' native/cuda/rsh_schedule_cuda.cu
+          grep -q 'diagnostic_observation_band' native/cuda/rsh_schedule_cuda.cu
+          grep -q 'cudaDriverGetVersion' native/cuda/rsh_schedule_cuda.cu
+          grep -q 'RSH_CUDA_ARCHITECTURES' native/cpp/CMakeLists.txt
 
   wasm-browser:
     runs-on: ubuntu-latest
@@ -114,7 +117,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Check browser laboratory source
+      - name: Check browser laboratory and validation source
         run: |
           test -s web/index.html
           test -s web/style.css
@@ -126,17 +129,26 @@ jobs:
           test -s docs/PHASE3_WASM.md
           test -s docs/PHASE4_WGSL.md
           test -s docs/PHASE5_NATIVE.md
+          test -s docs/CUDA_VALIDATION.md
+          test -s docs/RELEASE_NOTES_v2.4.1.md
           test -s conformance/wasm_v2_129.json
           test -s conformance/wgsl_v1_4096.json
           test -s conformance/ffi_v1_129.json
           test -s conformance/cuda_schedule_v1_4096.json
+          test -s conformance/observed/cuda_sm120_rtx5060ti_cuda13_1.json
           test -s scripts/test_wasm.mjs
           test -s scripts/test_cpp_ffi.py
+          test -s scripts/test_cuda.py
+          test -s scripts/package_evidence.py
+          test -s scripts/cuda_preflight.sh
+          test -s .github/workflows/cuda-hardware.yml
           test -f web/.nojekyll
           node --check web/app.js
           node --check web/gpu.js
           node --check web/sw.js
-          python3 -m py_compile scripts/test_cpp_ffi.py
+          python3 -m py_compile scripts/test_cpp_ffi.py scripts/test_cuda.py scripts/package_evidence.py
+          python3 -m json.tool conformance/observed/cuda_sm120_rtx5060ti_cuda13_1.json >/dev/null
+          sh -n scripts/cuda_preflight.sh
           grep -q '<title>RSH' web/index.html
           grep -q 'VERIFIED RUST/WASM SAMPLES' web/index.html
           grep -q 'PHASE 4 · WEBGPU RESIDUAL HARNESS' web/index.html
@@ -147,6 +159,11 @@ jobs:
           grep -q '@workgroup_size(64)' web/wgsl/kappa_tau_field.wgsl
           grep -q 'pkg/rsh_wasm.wasm' web/app.js
           grep -q 'wgsl/kappa_tau_field.wgsl' web/sw.js
+          grep -q '^  workflow_dispatch:' .github/workflows/cuda-hardware.yml
+          if grep -q '^  pull_request:' .github/workflows/cuda-hardware.yml; then
+            echo 'CUDA hardware workflow must not run on pull requests.' >&2
+            exit 1
+          fi
 
   provenance-boundary:
     runs-on: ubuntu-latest

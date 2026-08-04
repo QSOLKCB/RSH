@@ -1,0 +1,129 @@
+name: CUDA hardware validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      cuda_architectures:
+        description: "CMake CUDA architectures (native, 86, 89, 120, ...)"
+        required: true
+        default: "native"
+        type: string
+      runs:
+        description: "Repeat executions (1-20)"
+        required: true
+        default: "3"
+        type: string
+      sanitizers:
+        description: "Compute Sanitizer policy"
+        required: true
+        default: "required"
+        type: choice
+        options:
+          - required
+          - auto
+          - off
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rsh-cuda-hardware-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  cuda-hardware:
+    # This workflow is intentionally manual and main-only. Never add a
+    # pull_request trigger for a public repository using a private runner.
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, linux, x64, nvidia, cuda]
+    timeout-minutes: 60
+    env:
+      RSH_CUDA_ARCHITECTURES_INPUT: ${{ inputs.cuda_architectures }}
+      RSH_CUDA_RUNS_INPUT: ${{ inputs.runs }}
+      RSH_CUDA_SANITIZERS_INPUT: ${{ inputs.sanitizers }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Validate dispatch inputs
+        shell: bash
+        run: |
+          case "$RSH_CUDA_ARCHITECTURES_INPUT" in
+            ''|*[!A-Za-z0-9_.\;-]*)
+              echo "Invalid CUDA architecture input." >&2
+              exit 2
+              ;;
+          esac
+          case "$RSH_CUDA_RUNS_INPUT" in
+            1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16|17|18|19|20)
+              ;;
+            *)
+              echo "Repeat count must be one of the integers 1 through 20." >&2
+              exit 2
+              ;;
+          esac
+
+      - name: CUDA preflight
+        shell: bash
+        run: |
+          set -o pipefail
+          sh scripts/cuda_preflight.sh | tee cuda-preflight.txt
+
+      - name: Install stable Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+
+      - name: Configure CUDA and native adapters
+        run: |
+          cmake -S native/cpp -B build/cuda \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DRSH_ENABLE_CUDA=ON \
+            -DRSH_CUDA_ARCHITECTURES="$RSH_CUDA_ARCHITECTURES_INPUT"
+
+      - name: Build adapters
+        run: cmake --build build/cuda --target rsh-cpp rsh-cuda --parallel
+
+      - name: Execute hardware harness
+        id: cuda_test
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p artifacts/cuda-hardware
+          set +e
+          python3 scripts/test_cuda.py \
+            --executable build/cuda/rsh-cuda \
+            --cpu-reference build/cuda/rsh-cpp \
+            --profile conformance/cuda_schedule_v1_4096.json \
+            --runs "$RSH_CUDA_RUNS_INPUT" \
+            --sanitizers "$RSH_CUDA_SANITIZERS_INPUT" \
+            --output artifacts/cuda-hardware
+          status=$?
+          set -e
+          printf '%s\n' "$status" > artifacts/cuda-hardware/harness-exit-code.txt
+          printf 'status=%s\n' "$status" >> "$GITHUB_OUTPUT"
+          exit "$status"
+
+      - name: Package evidence
+        if: always()
+        run: |
+          mkdir -p artifacts/cuda-hardware
+          cp cuda-preflight.txt artifacts/cuda-hardware/ 2>/dev/null || true
+          python3 scripts/package_evidence.py \
+            artifacts/cuda-hardware \
+            artifacts/RSH-cuda-hardware-${{ github.sha }}.zip
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: RSH-cuda-hardware-${{ github.sha }}
+          path: |
+            artifacts/cuda-hardware/
+            artifacts/RSH-cuda-hardware-${{ github.sha }}.zip
+            artifacts/RSH-cuda-hardware-${{ github.sha }}.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce hardware result
+        if: always()
+        run: test '${{ steps.cuda_test.outputs.status }}' = '0'
