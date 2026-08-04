@@ -43,7 +43,7 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          scripts/cuda_preflight.sh | tee cuda-preflight.txt
+          sh scripts/cuda_preflight.sh | tee cuda-preflight.txt
 
       - name: Install stable Rust
         run: |
