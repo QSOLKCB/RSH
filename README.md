@@ -1,6 +1,6 @@
 # RSH — Robitaille–Slade Helix
 
-**Bounded Frenet–Serret geometry, deterministic evidence, and an offline visual laboratory.**
+**Bounded Frenet–Serret geometry and deterministic evidence.**
 
 RSH constructs a three-dimensional path by prescribing curvature and torsion
 inside explicit Robitaille bounds, integrating the Frenet–Serret frame, and
@@ -8,7 +8,14 @@ translating the exact discrete midpoint to the coordinate origin.
 
 **Authors:** J. Robitaille (DeltaKingZero) and Trent Slade / QSOL-IMC  
 **Version:** 2.0.0  
-**Runtime:** Python 3.9+ standard library; optional offline browser lab
+**Current implementation:** Python 3.10+ standard library
+
+## Current phase: Python reference implementation
+
+The Python implementation is the readable scientific oracle for later native
+and GPU versions. It defines the equations, validation rules, canonical report
+schema, golden behaviour, and command-line evidence workflow before any Rust,
+WASM, C++, or WGSL optimisation is introduced.
 
 ## Invariants
 
@@ -25,6 +32,8 @@ Bounds hold by construction and are verified again after integration.
 
 ## Quick start
 
+Run directly from a checkout with no installation or third-party packages:
+
 ```bash
 python3 rsh_runner.py info
 python3 rsh_runner.py verify
@@ -35,25 +44,19 @@ python3 rsh_runner.py visual -o rsh_visual.svg
 ```
 
 A passing run reports the central parameter, centre error, curvature/torsion
-ranges, frame drift, and receipt. Commands return `0` on success and non-zero on
-invalid input or a failed contract.
+ranges, frame drift, and canonical receipt. Commands return `0` on success,
+`1` for a failed contract, and `2` for invalid input or an I/O error.
 
-## Offline browser laboratory
+The package can also be installed locally:
 
-Open `web/index.html` directly, or publish the `web/` directory with GitHub
-Pages. The lab provides:
-
-- draggable three-dimensional projection;
-- curvature and torsion controls constrained to valid ranges;
-- entry, centre, and exit landmarks;
-- live verification metrics;
-- animation along the generated path;
-- CSV, JSON, and SVG exports;
-- no server, Node.js, CDN, telemetry, or network access.
+```bash
+python3 -m pip install -e .
+rsh verify
+```
 
 ## Exact bounded logical sampling
 
-Large logical fields can be represented without allocating the field:
+Large logical fields can be represented without allocating the full field:
 
 ```bash
 python3 rsh_runner.py sample 16777216 12
@@ -68,12 +71,13 @@ logical_index(i) = floor(i * logical_count / rendered_count)
 ## Repository map
 
 ```text
-rsh_runner.py            Standard-library geometry, evidence, CLI, and SVG output
-tests/                   Unit and CLI tests
-web/                     Offline interactive laboratory
-docs/MODEL.md            Equations and numerical construction
-docs/PROVENANCE.md       Attribution and independent implementation boundary
-docs/SCIENTIFIC_BOUNDARY.md  Claims the evidence does and does not support
+rsh_runner.py                 Direct source-checkout runner
+src/rsh/                      Geometry, verification, exports, and CLI package
+tests/                        Geometry, evidence, export, and CLI tests
+docs/MODEL.md                 Equations and numerical construction
+docs/PROVENANCE.md            Attribution and implementation boundary
+docs/SCIENTIFIC_BOUNDARY.md   Claims the evidence does and does not support
+docs/ROADMAP.md               Python → Rust → WASM/WGSL implementation plan
 ```
 
 ## Scientific precision
@@ -91,11 +95,23 @@ See [the scientific boundary](docs/SCIENTIFIC_BOUNDARY.md) for the full statemen
 ## Test
 
 ```bash
+python3 -m pip install -e .
 python3 -m unittest discover -s tests -v
 python3 rsh_runner.py verify -n 129 -o /tmp/rsh_verify.csv
 python3 rsh_runner.py receipt -n 129
 python3 rsh_runner.py parity -n 129 --workers 3
 ```
+
+## Planned implementation sequence
+
+1. **Python reference** — equations, evidence schema, tests, golden receipts.
+2. **Rust core and CLI** — native deterministic implementation validated against Python.
+3. **WASM bridge** — browser access to the Rust core without a server.
+4. **WGSL compute and visual kernels** — GPU acceleration checked against shared vectors.
+5. **Optional C++/CUDA adapter** — only where interoperability or NVIDIA-specific work requires it.
+
+No later implementation becomes authoritative merely because it is faster. It
+must reproduce the reference contracts and declared numerical tolerances.
 
 ## Licence and citation
 
