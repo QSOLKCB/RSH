@@ -59,18 +59,41 @@ jobs:
           cargo run --locked -p rsh-cli -- trace -n 65 -o /tmp/rsh_rust_trace.csv
           cargo run --locked -p rsh-cli -- sample 16777216 12
 
+  wasm-browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install Rust WASM target
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add wasm32-unknown-unknown
+      - name: Test raw ABI on the host
+        run: cargo test --locked -p rsh-wasm
+      - name: Build browser module
+        run: cargo build --locked --release --target wasm32-unknown-unknown -p rsh-wasm
+      - name: Validate WebAssembly binary
+        run: |
+          wasm=target/wasm32-unknown-unknown/release/rsh_wasm.wasm
+          test -s "$wasm"
+          test "$(od -An -t x1 -N4 "$wasm" | tr -d ' \n')" = "0061736d"
+
   pages-source:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Check static site
+      - name: Check browser laboratory source
         run: |
           test -s web/index.html
           test -s web/style.css
           test -s web/app.js
+          test -s web/sw.js
           test -f web/.nojekyll
           grep -q '<title>RSH' web/index.html
-          grep -q 'SCHEMATIC PROJECTION' web/index.html
+          grep -q 'VERIFIED RUST/WASM SAMPLES' web/index.html
+          grep -q 'WebAssembly.instantiate' web/app.js
+          grep -q 'pkg/rsh_wasm.wasm' web/app.js
+          grep -q 'pkg/rsh_wasm.wasm' web/sw.js
 
   provenance-boundary:
     runs-on: ubuntu-latest
