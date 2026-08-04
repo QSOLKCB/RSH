@@ -1,0 +1,43 @@
+{
+  "schema": "RSH-TISSUE-CONFORMANCE-V1",
+  "software_version": "2.5.0",
+  "tissue_contract": "1.0.0",
+  "geometry_model": "Robitaille-Slade-Helix",
+  "geometry_model_contract": "2.0.0",
+  "configuration": {
+    "cells": 8,
+    "ticks": 20,
+    "geometry_samples": 129,
+    "ds": 0.05,
+    "phase_coupling": 0.25,
+    "binding_diffusion": 0.15,
+    "sidecar_backend": "none",
+    "sidecar_residual": 0.0,
+    "residual_gate": 0.0001,
+    "qf_floor": 0.0
+  },
+  "expected": {
+    "constitution_hash": "090416435f8ae2adc7555dab356eafef7aadfeabdb99c68e7c381ddf3bf9e544",
+    "seed_geometry_receipt": "f33042335100b7a2bca8c5c97724782ecb820cd8f6704f8e7eb074c1ed9e9a00",
+    "first_tick_receipt": "ce7a5d2d00503529072748f5c2083d99efad661735056ec4ddecb564cdba54cb",
+    "last_tick_receipt": "380ceec9663918889811a41c36eb615c9422de9950ecdc9dbc363830e705a320",
+    "report_receipt": "732fc6ccc5af543881528da7f9ec7717817af97c07e7f7973512685ab67e2622",
+    "first_q_f": 0.2623914043443579,
+    "final_q_f": 0.37926532158281384,
+    "minimum_q_f": 0.2623914043443579,
+    "maximum_q_f": 0.37926532158281384,
+    "final_dissociation": 0.00005863114611954213,
+    "maximum_centre_error": 1e-12
+  },
+  "requirements": {
+    "pass_constitution": true,
+    "pass_bounds": true,
+    "pass_centre": true,
+    "audit_chain_valid": true,
+    "sidecar_accepted": false,
+    "fallback_used": false,
+    "q_f_is_functional_metric_only": true,
+    "subjective_awareness_claim": false,
+    "autonomous_source_modification": false
+  }
+}
