@@ -70,6 +70,23 @@ class ConstitutionTests(unittest.TestCase):
             validate_constitution(altered),
         )
 
+    def test_terminology_boundary_is_required_and_canonical(self) -> None:
+        missing = constitution_report()["constitution"]
+        del missing["terminology"]
+        self.assertIn(
+            "terminology boundary mismatch",
+            validate_constitution(missing),
+        )
+
+        altered = constitution_report()["constitution"]
+        altered["terminology"]["operational_awareness"] = (
+            "subjective awareness is inferred"
+        )
+        self.assertIn(
+            "terminology boundary mismatch",
+            validate_constitution(altered),
+        )
+
 
 class TissueRuntimeTests(unittest.TestCase):
     def test_default_profile_matches_sealed_conformance(self) -> None:
@@ -88,6 +105,8 @@ class TissueRuntimeTests(unittest.TestCase):
             validate_audit_chain(
                 report.ticks,
                 report.seed_geometry_receipt,
+                expected_ticks=report.config.ticks,
+                terminal_receipt=report.ticks[-1].receipt,
             )
         )
         self.assertEqual(
@@ -154,6 +173,31 @@ class TissueRuntimeTests(unittest.TestCase):
         )
         self.assertEqual(asdict(first), asdict(second))
 
+    def test_truncated_audit_chains_are_rejected(self) -> None:
+        report = simulate_tissue(TissueConfig(ticks=3))
+        self.assertFalse(
+            validate_audit_chain(
+                report.ticks[:-1],
+                report.seed_geometry_receipt,
+                expected_ticks=report.config.ticks,
+            )
+        )
+        self.assertFalse(
+            validate_audit_chain(
+                (),
+                report.seed_geometry_receipt,
+                expected_ticks=report.config.ticks,
+            )
+        )
+        self.assertFalse(
+            validate_audit_chain(
+                report.ticks,
+                report.seed_geometry_receipt,
+                expected_ticks=report.config.ticks,
+                terminal_receipt="0" * 64,
+            )
+        )
+
     def test_sidecar_acceptance_and_fallback_are_explicit(self) -> None:
         accepted = simulate_tissue(
             TissueConfig(
@@ -184,11 +228,23 @@ class TissueRuntimeTests(unittest.TestCase):
             TissueConfig(geometry_samples=128),
             TissueConfig(sidecar_backend="none", sidecar_residual=1.0e-8),
             TissueConfig(qf_floor=1.1),
+            TissueConfig(cells=3.0),
+            TissueConfig(ticks=1.5),
+            TissueConfig(geometry_samples=True),
         )
         for config in invalid:
             with self.subTest(config=config):
                 with self.assertRaises(ValueError):
                     config.validate()
+
+    def test_every_qf_factor_is_clamped_to_the_published_interval(self) -> None:
+        report = simulate_tissue(
+            TissueConfig(cells=10, ticks=2, phase_coupling=1.0)
+        )
+        for tick in report.ticks:
+            for value in asdict(tick.metrics).values():
+                self.assertGreaterEqual(value, 0.0)
+                self.assertLessEqual(value, 1.0)
 
     def test_json_and_csv_exports_are_complete(self) -> None:
         report = simulate_tissue(TissueConfig(ticks=3))
@@ -217,6 +273,7 @@ class RefinementPolicyTests(unittest.TestCase):
         self.assertTrue(decision.dry_run_only)
         self.assertFalse(decision.human_ack_required)
         self.assertIsNotNone(decision.candidate_receipt)
+        self.assertEqual(decision.baseline_objectives.resource_cost, 160)
         self.assertEqual(
             decision.receipt,
             evaluate_refinement(proposal).receipt,
@@ -271,6 +328,15 @@ class RefinementPolicyTests(unittest.TestCase):
                     "changes": {"source_code": "rewrite"},
                 }
             )
+        for value in (1.5, True, "20"):
+            with self.subTest(value=value):
+                with self.assertRaises(ValueError):
+                    proposal_from_dict(
+                        {
+                            "id": "invalid-count",
+                            "changes": {"ticks": value},
+                        }
+                    )
 
 
 class TissueCliTests(unittest.TestCase):
@@ -295,6 +361,7 @@ class TissueCliTests(unittest.TestCase):
 
             output = io.StringIO()
             with redirect_stdout(output):
+                self.assertEqual(main(["info"]), 0)
                 self.assertEqual(
                     main(["constitution", "--json", str(constitution_path)]),
                     0,
@@ -329,9 +396,11 @@ class TissueCliTests(unittest.TestCase):
             self.assertTrue(tissue_path.is_file())
             self.assertTrue(trace_path.is_file())
             self.assertTrue(decision_path.is_file())
+            self.assertIn('"tissue_contract": "1.0.0"', output.getvalue())
             self.assertIn("RSH tissue [PASS]", output.getvalue())
             decision = json.loads(decision_path.read_text(encoding="utf-8"))
             self.assertEqual(decision["disposition"], "KEEP_CANDIDATE")
+            self.assertEqual(decision["baseline_objectives"]["resource_cost"], 160)
             self.assertTrue(decision["dry_run_only"])
 
 
