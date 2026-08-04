@@ -1,0 +1,16 @@
+[package]
+name = "rsh-numerics-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "rsh-frenet"
+path = "src/main.rs"
+
+[dependencies]
+rsh-core = { path = "../rsh-core" }
+rsh-numerics = { path = "../rsh-numerics" }
+serde_json.workspace = true

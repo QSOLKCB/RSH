@@ -1,0 +1,74 @@
+{
+  "schema": "RSH-FRENET-PATH-CONFORMANCE-V1",
+  "numerical_contract": "RSH-FRENET-NUMERICS-V1",
+  "integrator": "lie-midpoint-so3-projected-v1",
+  "model": "Robitaille-Slade-Helix",
+  "model_version": "2.0.0",
+  "wasm_schema": "RSH-FRENET-PATH-RUN-V1",
+  "shader": "web/wgsl/frenet_path.wgsl",
+  "configuration": {
+    "samples": 1025,
+    "s0": 0.0,
+    "s1": 4.0,
+    "kappa_fraction": 0.85,
+    "tau_floor": 0.22,
+    "tau_amplitude": 0.13
+  },
+  "integration_policy": {
+    "frame_update": "midpoint exponential map on SO(3)",
+    "position_update": "midpoint tangent quadrature",
+    "projection": "modified Gram-Schmidt after every full frame step",
+    "centering": "exact discrete midpoint translated to the origin"
+  },
+  "f64_reference": {
+    "coordinate_absolute_tolerance": 5e-12,
+    "frame_absolute_tolerance": 5e-12,
+    "centre_absolute_tolerance": 1e-15,
+    "entry": [
+      -1.8484923969357088,
+      -0.6353472456353664,
+      -0.16597476619143556
+    ],
+    "centre": [0.0, 0.0, 0.0],
+    "exit": [
+      1.2097324539026191,
+      1.2168604543524748,
+      0.9663401678690707
+    ],
+    "centre_tangent": [
+      0.7859968445631568,
+      0.5687006018327158,
+      0.24246357625809756
+    ],
+    "centre_normal": [
+      -0.5561418511614346,
+      0.47911404386175843,
+      0.6790846592002837
+    ],
+    "centre_binormal": [
+      0.27002814987236667,
+      -0.6686025414620703,
+      0.6928603321211057
+    ]
+  },
+  "f32_accelerator_gates": {
+    "max_position_component_vs_wasm_f64": 0.0002,
+    "max_frame_component_vs_wasm_f64": 0.0002,
+    "max_schedule_component_vs_wasm_f64": 0.0001,
+    "max_frame_norm_error": 0.000002,
+    "max_frame_orthogonality_error": 0.000002
+  },
+  "gpu_execution": {
+    "workgroup_size": 1,
+    "dispatch_workgroups": 1,
+    "execution_model": "single-invocation sequential path recurrence",
+    "full_path_computation": true,
+    "parallel_speedup_claim": false
+  },
+  "authority": {
+    "canonical_geometry_receipt_authority": false,
+    "accelerator_receipt_authority": false,
+    "accepted_fallback": "separately versioned Rust/WASM f64 numerical path",
+    "canonical_geometry_fallback": "rsh-core geometry contract 2.0.0"
+  }
+}

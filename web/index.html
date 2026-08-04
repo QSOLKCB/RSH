@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="RSH — verified bounded Frenet–Serret geometry with Python, Rust, WebAssembly, residual-gated WebGPU, native C++/CUDA adapters, and a constitutional tissue reference.">
+  <meta name="description" content="RSH — verified bounded Frenet–Serret geometry with Python, Rust, WebAssembly, residual-gated WebGPU, native C++/CUDA adapters, constitutional tissue, and full-path numerical research.">
   <meta name="theme-color" content="#081014">
   <title>RSH — Robitaille–Slade Helix</title>
   <link rel="stylesheet" href="style.css">
@@ -12,10 +12,11 @@
 <body>
   <header class="hero">
     <nav>
-      <a class="brand" href="./" aria-label="RSH home">RSH<span>⁶</span></a>
+      <a class="brand" href="./" aria-label="RSH home">RSH<span>⁸</span></a>
       <div class="nav-links">
         <a href="#laboratory">Laboratory</a>
         <a href="#webgpu">WebGPU</a>
+        <a href="frenet.html">Full path</a>
         <a href="#contracts">Contracts</a>
         <a href="#implementations">Stack</a>
         <a href="https://github.com/QSOLKCB/RSH">Source</a>
@@ -26,7 +27,7 @@
       <section class="intro">
         <p class="eyebrow">ROBITAILLE–SLADE HELIX · WASM + WEBGPU + NATIVE ABI</p>
         <h1>Verified geometry.<br><em>Residual-gated acceleration.</em></h1>
-        <p class="lede">Rust/WASM produces the geometry report and receipt. WGSL evaluates a 4,096-sample f32 schedule field, while the versioned C ABI lets C++ and optional CUDA consumers use the same Rust authority without cloning the model. The v2.5 Python CLI adds a separately receipted constitutional tissue reference.</p>
+        <p class="lede">Rust/WASM produces the canonical geometry report and receipt. WGSL evaluates a 4,096-sample f32 schedule field, while the versioned C ABI lets C++ and optional CUDA consumers use the same Rust authority without cloning the model. v2.6 adds a separate Lie-midpoint f64/WASM path and a full-path WGSL research laboratory.</p>
         <div class="runtime-line" aria-live="polite">
           <span id="runtime-light" class="runtime-light loading"></span>
           <strong id="runtime-status">Loading Rust/WASM core…</strong>
@@ -34,6 +35,7 @@
         <div class="actions">
           <a class="primary" href="#laboratory">Open laboratory</a>
           <a class="secondary" href="#webgpu">Inspect GPU residuals</a>
+          <a class="secondary" href="frenet.html">Run full path research</a>
         </div>
       </section>
 
@@ -207,13 +209,19 @@
           <p>Python-only constitutional graph simulation with Q_f factors, chained ticks, sidecar fallback, and dry-run refinement.</p>
           <strong>REFERENCE · v2.5</strong>
         </article>
+        <article class="card active">
+          <span class="number">08</span>
+          <h3>Full Frenet path</h3>
+          <p>Separate f64 Lie-midpoint path, numerical WASM ABI, fuzz target, and complete f32 WGSL path readback.</p>
+          <strong>RESEARCH · v2.6</strong>
+        </article>
       </div>
-      <p class="boundary-note"><strong>C++ ABI · CUDA OPTIONAL · NPU PROFILE</strong> — v2.4 adds native interoperability and optional CUDA schedule execution; v2.4.1 hardens hardware validation; v2.5 adds a Tier 2 NPU evidence profile and the separately receipted Python tissue reference. None becomes a second geometry oracle.</p>
+      <p class="boundary-note"><strong>C++ ABI · CUDA OPTIONAL · NPU PROFILE</strong> — native and accelerator adapters remain residual evidence surfaces. The v2.6 full-path stack is separately versioned and does not become a second canonical geometry oracle.</p>
     </section>
 
     <section class="terminal panel">
       <div>
-        <p class="eyebrow">SIX RUNTIME SURFACES</p>
+        <p class="eyebrow">SEVEN RUNTIME SURFACES</p>
         <h2>No server process. No telemetry. No adapter promotion ceremony.</h2>
       </div>
       <pre><code><span>$</span> python3 rsh_runner.py verify -n 129
@@ -231,6 +239,12 @@ RSH browser report [PASS]
 <span>&gt;</span> navigator.gpu → kappa_tau_field.wgsl
 RSH residual sidecar [PASS | FALLBACK]
 
+<span>$</span> cargo run --locked -p rsh-numerics-cli -- run -n 1025
+RSH Frenet numerical path [PASS]
+
+<span>&gt;</span> navigator.gpu → frenet_path.wgsl
+RSH full-path sidecar [PASS | FALLBACK]
+
 <span>$</span> build/native/rsh-cpp verify --samples 129
 RSH C++ FFI verify [PASS]
 
@@ -241,7 +255,7 @@ RSH CUDA hardware evidence [OPTIONAL]</code></pre>
 
   <footer>
     <p>J. Robitaille / DeltaKingZero · Trent Slade / QSOL-IMC</p>
-    <p>RSH v2.5.0 · MPL-2.0 · offline after first load</p>
+    <p>RSH v2.6.0 · MPL-2.0 · offline after first load</p>
   </footer>
 
   <noscript><p class="noscript">The RSH browser laboratory requires JavaScript to load the verified WebAssembly core.</p></noscript>

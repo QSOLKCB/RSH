@@ -1,4 +1,4 @@
-const CACHE_NAME = "rsh-browser-lab-v2.5.0";
+const CACHE_NAME = "rsh-browser-lab-v2.6.0";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -6,8 +6,14 @@ const CORE_ASSETS = [
   "./gpu.css",
   "./app.js",
   "./gpu.js",
+  "./frenet.html",
+  "./frenet.css",
+  "./frenet.js",
+  "./path-gpu.js",
   "./wgsl/kappa_tau_field.wgsl",
+  "./wgsl/frenet_path.wgsl",
   "./pkg/rsh_wasm.wasm",
+  "./pkg/rsh_numerics_wasm.wasm",
 ];
 
 self.addEventListener("install", (event) => {

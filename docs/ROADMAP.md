@@ -145,30 +145,41 @@ reproduce:
 Receipt byte identity must not be promised across runtimes unless serialization,
 float formatting, and domain contracts are deliberately unified.
 
-## Phase 8 — separately versioned GPU path integration research
+## Phase 8 — separately versioned full-path Frenet numerical research
 
-Status: **not scheduled**
+Status: **research implementation in v2.6.0**
 
-A full WGSL or CUDA Frenet–Serret integrator is not an automatic continuation of
-the schedule kernels. Before implementation, it requires:
+- `RSH-FRENET-NUMERICS-V1` names a new numerical contract without modifying the
+  canonical geometry contract;
+- `rsh-numerics` implements f64 midpoint SO(3) frame transport, midpoint tangent
+  position quadrature, per-step modified Gram–Schmidt projection, and exact-grid
+  midpoint centering;
+- `rsh-numerics-cli` supplies JSON/CSV output and observational benchmarking with
+  no timing acceptance gate;
+- `rsh-numerics-wasm` exposes a separate browser ABI over the numerical path;
+- `frenet_path_v1_1025.json` seals path, centre-frame, and accelerator vectors;
+- a deterministic bounded configuration corpus runs in ordinary workspace tests;
+- a scheduled/manual `cargo-fuzz` target mutates valid path configurations;
+- `frenet_path.wgsl` evaluates κ, τ, position, T, N, B, frame projection, and
+  midpoint centering on the adapter;
+- every f32 path component is read back and compared with the f64 Rust/WASM path;
+- position, frame, schedule, norm, and orthogonality gates control sidecar export;
+- WebGPU failure preserves the f64 research path, and neither research backend
+  replaces the canonical `rsh-core` report or receipt.
 
-- a separately named and versioned numerical integration contract;
-- an explicit midpoint/frame update and re-orthonormalisation policy;
-- path-level golden vectors at multiple sample counts;
-- coordinate, tangent, normal, binormal, centre, and frame-error thresholds;
-- compiler flags, shader/compiler versions, adapter, driver, and precision
-  provenance;
-- clear separation between reproducible evidence and display interpolation;
-- a fallback that never suppresses the accepted Rust/WASM path.
+The first WGSL path kernel uses a single invocation because the state recurrence
+is sequential. It establishes actual full-path adapter execution and conformance,
+not a parallel speedup. Future segmented scans or interval-transfer composition
+must be introduced under another explicit numerical policy and evidence profile.
 
-That work should begin with a conformance document and vectors, not a renderer.
+See [Phase 8 numerical research](PHASE8_FRENET_NUMERICS.md).
 
 ## GitHub Pages
 
 The `web/` source is assembled by `.github/workflows/pages.yml`. The workflow
-builds `rsh_wasm.wasm`, executes the WASM/WGSL source conformance harness, places
-the module under `web/pkg/`, validates the shader and browser assets, and only
-then uploads the artifact for deployment.
+builds the canonical and numerical WASM modules, executes both conformance
+harnesses, places the modules under `web/pkg/`, validates the shaders and browser
+assets, and only then uploads the artifact for deployment.
 
 Native C++, FFI, CUDA, and the Python tissue runtime are intentionally not
 executed by Pages. Native adapters are built through CI, CUDA hardware validation
