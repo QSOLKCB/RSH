@@ -68,6 +68,13 @@ jobs:
           cargo run --locked -p rsh-cli -- conformance --json /tmp/rsh_rust_conformance.json
           cargo run --locked -p rsh-cli -- trace -n 65 -o /tmp/rsh_rust_trace.csv
           cargo run --locked -p rsh-cli -- sample 16777216 12
+          cargo run --locked -p rsh-numerics-cli -- info
+          cargo run --locked -p rsh-numerics-cli -- \
+            run -n 1025 \
+            --json /tmp/rsh_frenet_path.json \
+            --csv /tmp/rsh_frenet_path.csv
+          cargo run --release --locked -p rsh-numerics-cli -- \
+            benchmark -n 1025 --loops 3
 
   cpp-ffi:
     runs-on: ubuntu-latest
@@ -108,13 +115,15 @@ jobs:
           rustup toolchain install stable --profile minimal
           rustup default stable
           rustup target add wasm32-unknown-unknown
-      - name: Test raw ABI on the host
-        run: cargo test --locked -p rsh-wasm
-      - name: Build browser module
-        run: cargo build --locked --release --target wasm32-unknown-unknown -p rsh-wasm
+      - name: Test raw ABIs on the host
+        run: cargo test --locked -p rsh-wasm -p rsh-numerics-wasm
+      - name: Build browser modules
+        run: |
+          cargo build --locked --release --target wasm32-unknown-unknown \
+            -p rsh-wasm -p rsh-numerics-wasm
       - name: Produce native comparison report
         run: cargo run --locked -p rsh-cli -- verify -n 129 --json /tmp/rsh_native_129.json
-      - name: Execute WASM and Phase 4 conformance profiles
+      - name: Execute WASM schedule and full-path conformance
         run: |
           wasm=target/wasm32-unknown-unknown/release/rsh_wasm.wasm
           node scripts/test_wasm.mjs \
@@ -122,6 +131,10 @@ jobs:
             conformance/wasm_v2_129.json \
             /tmp/rsh_native_129.json \
             conformance/wgsl_v1_4096.json
+          numerical_wasm=target/wasm32-unknown-unknown/release/rsh_numerics_wasm.wasm
+          node scripts/test_frenet_path.mjs \
+            "$numerical_wasm" \
+            conformance/frenet_path_v1_1025.json
 
   pages-source:
     runs-on: ubuntu-latest
@@ -134,51 +147,79 @@ jobs:
           test -s web/gpu.css
           test -s web/app.js
           test -s web/gpu.js
+          test -s web/frenet.html
+          test -s web/frenet.css
+          test -s web/frenet.js
+          test -s web/path-gpu.js
           test -s web/sw.js
           test -s web/wgsl/kappa_tau_field.wgsl
+          test -s web/wgsl/frenet_path.wgsl
           test -s docs/PHASE3_WASM.md
           test -s docs/PHASE4_WGSL.md
           test -s docs/PHASE5_NATIVE.md
           test -s docs/PHASE6_TISSUE.md
+          test -s docs/PHASE8_FRENET_NUMERICS.md
           test -s docs/OPERATIONAL_AWARENESS.md
           test -s docs/CUDA_VALIDATION.md
           test -s docs/RELEASE_NOTES_v2.4.1.md
           test -s docs/RELEASE_NOTES_v2.5.0.md
+          test -s docs/RELEASE_NOTES_v2.6.0.md
           test -s conformance/wasm_v2_129.json
           test -s conformance/wgsl_v1_4096.json
+          test -s conformance/frenet_path_v1_1025.json
           test -s conformance/ffi_v1_129.json
           test -s conformance/cuda_schedule_v1_4096.json
           test -s conformance/tissue_v1_8x20.json
           test -s conformance/npu_tier2_v1.json
           test -s conformance/observed/cuda_sm120_rtx5060ti_cuda13_1.json
           test -s scripts/test_wasm.mjs
+          test -s scripts/test_frenet_path.mjs
           test -s scripts/test_cpp_ffi.py
           test -s scripts/test_cuda.py
           test -s scripts/package_evidence.py
           test -s scripts/cuda_preflight.sh
+          test -s fuzz/Cargo.toml
+          test -s fuzz/fuzz_targets/frenet_path.rs
+          test -s .github/workflows/fuzz.yml
           test -s .github/workflows/cuda-hardware.yml
           test -f web/.nojekyll
           node --check web/app.js
           node --check web/gpu.js
+          node --check web/frenet.js
+          node --check web/path-gpu.js
           node --check web/sw.js
+          node --check scripts/test_frenet_path.mjs
           python3 -m py_compile scripts/test_cpp_ffi.py scripts/test_cuda.py scripts/package_evidence.py
+          python3 -m json.tool conformance/frenet_path_v1_1025.json >/dev/null
           python3 -m json.tool conformance/tissue_v1_8x20.json >/dev/null
           python3 -m json.tool conformance/npu_tier2_v1.json >/dev/null
           python3 -m json.tool conformance/observed/cuda_sm120_rtx5060ti_cuda13_1.json >/dev/null
           sh -n scripts/cuda_preflight.sh
           grep -q '<title>RSH' web/index.html
+          grep -q '<title>RSH Full Frenet Path Research</title>' web/frenet.html
           grep -q 'VERIFIED RUST/WASM SAMPLES' web/index.html
           grep -q 'PHASE 4 · WEBGPU RESIDUAL HARNESS' web/index.html
           grep -q 'C++ ABI · CUDA OPTIONAL' web/index.html
           grep -q 'WebAssembly.instantiate' web/app.js
+          grep -q 'WebAssembly.instantiate' web/frenet.js
           grep -q 'navigator.gpu' web/gpu.js
+          grep -q 'navigator.gpu' web/path-gpu.js
           grep -q 'rsh_schedule' web/app.js
+          grep -q 'rsh_frenet_run' web/frenet.js
           grep -q '@workgroup_size(64)' web/wgsl/kappa_tau_field.wgsl
+          grep -q '@workgroup_size(1)' web/wgsl/frenet_path.wgsl
           grep -q 'pkg/rsh_wasm.wasm' web/app.js
+          grep -q 'pkg/rsh_numerics_wasm.wasm' web/frenet.js
           grep -q 'wgsl/kappa_tau_field.wgsl' web/sw.js
+          grep -q 'wgsl/frenet_path.wgsl' web/sw.js
           grep -q '^  workflow_dispatch:' .github/workflows/cuda-hardware.yml
+          grep -q '^  workflow_dispatch:' .github/workflows/fuzz.yml
           if grep -q '^  pull_request:' .github/workflows/cuda-hardware.yml; then
             echo 'CUDA hardware workflow must not run on pull requests.' >&2
+            exit 1
+          fi
+          if grep -q '^  pull_request:' .github/workflows/fuzz.yml; then
+            echo 'Scheduled fuzzing must not run on public pull requests.' >&2
             exit 1
           fi
 
