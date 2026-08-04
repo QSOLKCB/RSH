@@ -102,19 +102,28 @@ function setGpuMessage(message, kind = "") {
   gpuMessage.dataset.kind = kind;
 }
 
-function resetGpuEvidence(status = "NOT RUN", kind = "") {
-  state.gpuGeneration += 1;
+function clearGpuEvidenceState() {
   state.gpuField = [];
   state.gpuSidecar = null;
   state.gpuKappaBound = 1;
-  gpuStatus.textContent = status;
-  gpuStatus.dataset.kind = kind;
-  gpuBadge.textContent = "WGSL —";
   for (const metric of Object.values(gpuMetrics)) {
     metric.textContent = "—";
   }
   downloadGpu.disabled = true;
+}
+
+function resetGpuEvidence(status = "NOT RUN", kind = "", badge = "WGSL —") {
+  state.gpuGeneration += 1;
+  clearGpuEvidenceState();
+  gpuStatus.textContent = status;
+  gpuStatus.dataset.kind = kind;
+  gpuBadge.textContent = badge;
   renderGpuField();
+}
+
+function setGpuFallback(message, badge = "NO WEBGPU") {
+  resetGpuEvidence("CPU/WASM FALLBACK", "fallback", badge);
+  setGpuMessage(message, "fallback");
 }
 
 function resetEvidence(status = "NOT RUN", kind = "") {
@@ -225,6 +234,8 @@ function runVerifiedGeometry() {
 
   const config = configuration();
   runButton.disabled = true;
+  resetGpuEvidence("WAITING", "", "WGSL —");
+  setGpuMessage("Waiting for the verified CPU/WASM geometry report before GPU evaluation.");
   setRunMessage("Running the verified Rust geometry core…");
 
   try {
@@ -259,7 +270,16 @@ function runVerifiedGeometry() {
         : "FAIL · the report contains a contract violation",
       state.pass ? "pass" : "fail",
     );
-    void runGpuConformance(config);
+
+    if (state.pass) {
+      void runGpuConformance(config);
+    } else {
+      resetGpuEvidence("BLOCKED", "fail", "WASM FAIL");
+      setGpuMessage(
+        "WebGPU conformance was not run because the prerequisite Rust/WASM geometry report did not pass.",
+        "fail",
+      );
+    }
   } catch (error) {
     resetEvidence("REJECTED", "fail");
     setRunMessage(error instanceof Error ? error.message : String(error), "fail");
@@ -269,16 +289,27 @@ function runVerifiedGeometry() {
 }
 
 async function runGpuConformance(config) {
+  if (!state.pass) {
+    resetGpuEvidence("BLOCKED", "fail", "WASM FAIL");
+    setGpuMessage(
+      "WebGPU conformance requires a passing Rust/WASM geometry report.",
+      "fail",
+    );
+    return;
+  }
+
   const generation = state.gpuGeneration + 1;
   state.gpuGeneration = generation;
-  state.gpuField = [];
-  state.gpuSidecar = null;
-  downloadGpu.disabled = true;
+  clearGpuEvidenceState();
   gpuStatus.textContent = "RUNNING";
   gpuStatus.dataset.kind = "";
+  gpuBadge.textContent = "WGSL · f32";
+  renderGpuField();
   setGpuMessage("Evaluating 4,096 f32 schedule samples and comparing them with the rsh-core f64 oracle…");
 
   if (!state.gpu?.available) {
+    if (generation !== state.gpuGeneration) return;
+    clearGpuEvidenceState();
     gpuStatus.textContent = "CPU/WASM FALLBACK";
     gpuStatus.dataset.kind = "fallback";
     gpuBadge.textContent = "NO WEBGPU";
@@ -286,6 +317,7 @@ async function runGpuConformance(config) {
       state.gpu?.reason || "WebGPU is unavailable; verified geometry remains on the Rust/WASM path.",
       "fallback",
     );
+    renderGpuField();
     return;
   }
 
@@ -297,7 +329,7 @@ async function runGpuConformance(config) {
     const gatePassed = result.maximum <= GPU_RESIDUAL_THRESHOLD;
     state.gpuField = result.rows;
     state.gpuKappaBound = Number(oracle.kappa_bound);
-    state.gpuSidecar = {
+    state.gpuSidecar = gatePassed ? {
       schema: "RSH-WEBGPU-RESIDUAL-SIDECAR-V1",
       model: oracle.model,
       model_version: oracle.model_version,
@@ -318,11 +350,11 @@ async function runGpuConformance(config) {
         residual_max_vs_cpu: result.maximum,
         threshold: GPU_RESIDUAL_THRESHOLD,
       },
-      residual_gate_passed: gatePassed,
-      verified_subset: gatePassed,
+      residual_gate_passed: true,
+      verified_subset: true,
       visual_verified: false,
       evidence_note: "The CPU/WASM report remains authoritative. This sidecar records an f32 WebGPU residual comparison and never replaces the geometry receipt.",
-    };
+    } : null;
 
     gpuStatus.textContent = gatePassed ? "RESIDUAL PASS" : "DISPLAY ONLY";
     gpuStatus.dataset.kind = gatePassed ? "pass" : "fail";
@@ -337,22 +369,20 @@ async function runGpuConformance(config) {
     gpuMetrics.gate.textContent = gatePassed
       ? `≤ ${GPU_RESIDUAL_THRESHOLD.toExponential(1)}`
       : `> ${GPU_RESIDUAL_THRESHOLD.toExponential(1)}`;
-    downloadGpu.disabled = false;
+    downloadGpu.disabled = !gatePassed;
     setGpuMessage(
       gatePassed
         ? "The 4,096-sample f32 field passed the published residual gate. The visual remains display-only."
-        : "The field exceeded the published residual gate and has been restricted to display-only mode.",
+        : "The field exceeded the published residual gate. No residual sidecar may be exported; the field is display-only.",
       gatePassed ? "pass" : "fail",
     );
     renderGpuField();
   } catch (error) {
     if (generation !== state.gpuGeneration) return;
-    state.gpuField = [];
-    state.gpuSidecar = null;
+    clearGpuEvidenceState();
     gpuStatus.textContent = "CPU/WASM FALLBACK";
     gpuStatus.dataset.kind = "fallback";
     gpuBadge.textContent = "GPU ERROR";
-    downloadGpu.disabled = true;
     setGpuMessage(
       `${error instanceof Error ? error.message : String(error)} Verified geometry remains on the Rust/WASM path.`,
       "fallback",
@@ -462,7 +492,10 @@ function renderGpuField() {
   const height = gpuCanvas.clientHeight;
   if (width < 1 || height < 1) return;
 
-  gpuContext.clearRect(0, 0, width, height);
+  gpuContext.save();
+  gpuContext.setTransform(1, 0, 0, 1, 0, 0);
+  gpuContext.clearRect(0, 0, gpuCanvas.width, gpuCanvas.height);
+  gpuContext.restore();
   drawGrid(gpuContext, width, height, 42);
 
   if (state.gpuField.length === 0) {
@@ -657,8 +690,7 @@ async function start() {
           available: false,
           reason: `WebGPU device lost: ${lost.message || lost.reason || "unknown reason"}`,
         };
-        resetGpuEvidence("CPU/WASM FALLBACK", "fallback");
-        setGpuMessage(state.gpu.reason, "fallback");
+        setGpuFallback(state.gpu.reason, "GPU LOST");
       });
     } catch (error) {
       state.gpu = {
@@ -668,15 +700,10 @@ async function start() {
     }
 
     if (state.gpu.available) {
-      gpuStatus.textContent = "READY";
-      gpuStatus.dataset.kind = "pass";
-      gpuBadge.textContent = "WGSL · f32";
+      resetGpuEvidence("READY", "pass", "WGSL · f32");
       setGpuMessage("WebGPU adapter ready. The next verified run will produce a residual sidecar.", "pass");
     } else {
-      gpuStatus.textContent = "CPU/WASM FALLBACK";
-      gpuStatus.dataset.kind = "fallback";
-      gpuBadge.textContent = "NO WEBGPU";
-      setGpuMessage(state.gpu.reason, "fallback");
+      setGpuFallback(state.gpu.reason, "NO WEBGPU");
     }
 
     setRunMessage("Ready. Running the default verified configuration…", "pass");
