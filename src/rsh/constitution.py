@@ -5,6 +5,7 @@ is not a statement that the runtime is conscious, alive, or self-aware.
 """
 from __future__ import annotations
 
+from copy import deepcopy
 import hashlib
 import json
 import math
@@ -22,7 +23,7 @@ CONSTITUTION_SCHEMA = "RSH-CONSTITUTION-V1"
 CONSTITUTION_VERSION = "1.0.0"
 CONSTITUTION_DOMAIN = b"RSH-CONSTITUTION-V1\0"
 
-DEFAULT_CONSTITUTION: dict[str, Any] = {
+_CONSTITUTION_TEMPLATE: dict[str, Any] = {
     "schema": CONSTITUTION_SCHEMA,
     "version": CONSTITUTION_VERSION,
     "geometry_model": MODEL_NAME,
@@ -71,6 +72,11 @@ DEFAULT_CONSTITUTION: dict[str, Any] = {
 }
 
 
+def default_constitution() -> dict[str, Any]:
+    """Return an independent mutable copy of the canonical constitution."""
+    return deepcopy(_CONSTITUTION_TEMPLATE)
+
+
 def _canonical(value: Any) -> Any:
     if isinstance(value, float):
         if not math.isfinite(value):
@@ -86,7 +92,9 @@ def _canonical(value: Any) -> Any:
 def canonical_constitution_bytes(
     payload: dict[str, Any] | None = None,
 ) -> bytes:
-    payload = DEFAULT_CONSTITUTION if payload is None else payload
+    payload = default_constitution() if payload is None else payload
+    if not isinstance(payload, dict):
+        raise ValueError("constitution must be a JSON object")
     return json.dumps(
         _canonical(payload),
         ensure_ascii=True,
@@ -104,11 +112,15 @@ def constitution_hash(payload: dict[str, Any] | None = None) -> str:
 def validate_constitution(
     payload: dict[str, Any] | None = None,
 ) -> tuple[str, ...]:
-    payload = DEFAULT_CONSTITUTION if payload is None else payload
+    payload = default_constitution() if payload is None else payload
+    if not isinstance(payload, dict):
+        return ("constitution must be a JSON object",)
     errors: list[str] = []
 
     if payload.get("schema") != CONSTITUTION_SCHEMA:
         errors.append("schema mismatch")
+    if payload.get("version") != CONSTITUTION_VERSION:
+        errors.append("constitution version mismatch")
     if payload.get("geometry_model") != MODEL_NAME:
         errors.append("geometry model mismatch")
     if payload.get("geometry_model_contract") != VERSION:
@@ -166,12 +178,37 @@ def validate_constitution(
             ):
                 errors.append("tau interval mismatch")
 
+    if invariants.get("geometry_centring") != "discrete-midpoint-to-origin":
+        errors.append("geometry centring mismatch")
+    if invariants.get("tissue_centring") != "shared-centroid-to-origin":
+        errors.append("tissue centring mismatch")
+    if invariants.get("geometry_receipt_domain") != "RSH-GEOMETRY-EVIDENCE-V2":
+        errors.append("geometry receipt domain mismatch")
     if invariants.get("accelerator_authority") != "residual-sidecar-only":
         errors.append("accelerator authority mismatch")
-
-    oracle_authority = invariants.get("oracle_authority")
-    if oracle_authority != ["f64-cpu", "f64-wasm"]:
+    if invariants.get("oracle_authority") != ["f64-cpu", "f64-wasm"]:
         errors.append("oracle authority mismatch")
+
+    objectives = payload.get("ordered_objectives")
+    if objectives != [
+        "invariant_integrity",
+        "oracle_fidelity",
+        "tissue_cohesion_qf",
+        "resource_cost",
+        "role_coverage",
+    ]:
+        errors.append("ordered objectives mismatch")
+
+    governance = payload.get("governance")
+    if not isinstance(governance, dict):
+        errors.append("governance missing")
+    else:
+        if governance.get("non_escalating_refinement") != "dry-run-and-seal":
+            errors.append("refinement governance mismatch")
+        if governance.get("contract_escalation") != "explicit-human-ack-required":
+            errors.append("contract escalation mismatch")
+        if governance.get("human_veto") != "authoritative":
+            errors.append("human veto mismatch")
 
     refusals = payload.get("refusals")
     if not isinstance(refusals, list):
@@ -190,11 +227,12 @@ def validate_constitution(
 
 
 def constitution_report() -> dict[str, Any]:
-    errors = validate_constitution()
+    constitution = default_constitution()
+    errors = validate_constitution(constitution)
     return {
         "schema": "RSH-CONSTITUTION-REPORT-V1",
-        "constitution": DEFAULT_CONSTITUTION,
-        "hash": constitution_hash(),
+        "constitution": constitution,
+        "hash": constitution_hash(constitution),
         "pass_all": not errors,
         "errors": list(errors),
     }
