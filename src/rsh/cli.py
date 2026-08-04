@@ -31,6 +31,7 @@ from .refinement import (
     write_decision_json,
 )
 from .tissue import (
+    TISSUE_CONTRACT_VERSION,
     TissueConfig,
     simulate_tissue,
     write_tissue_report_json,
@@ -226,7 +227,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                             "midpoint coordinate normalisation"
                         ),
                         "receipt_domain_hex": RECEIPT_DOMAIN.hex(),
-                        "tissue_contract": "1.0.0",
+                        "tissue_contract": TISSUE_CONTRACT_VERSION,
                         "tissue_semantics": (
                             "functional systems simulation; no subjective "
                             "awareness or qualia claim"
@@ -258,6 +259,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(f"RSH tissue [{status}]")
             print(f"  cells / ticks        = {report.config.cells} / {report.config.ticks}")
             print(f"  seed_geometry        = {report.seed_geometry_receipt}")
+            print(f"  tissue_contract      = {TISSUE_CONTRACT_VERSION}")
             print(f"  final_Q_f            = {report.final_q_f:.12f}")
             print(f"  Q_f range            = [{report.min_q_f:.12f}, {report.max_q_f:.12f}]")
             print(f"  audit_chain_valid    = {str(report.audit_chain_valid).lower()}")
