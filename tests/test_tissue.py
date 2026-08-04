@@ -64,9 +64,7 @@ class ConstitutionTests(unittest.TestCase):
         )
         report = constitution_report()
         altered = report["constitution"]
-        altered["ordered_objectives"] = list(
-            reversed(altered["ordered_objectives"])
-        )
+        altered["ordered_objectives"] = altered["ordered_objectives"][::-1]
         self.assertIn(
             "ordered objectives mismatch",
             validate_constitution(altered),
