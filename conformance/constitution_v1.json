@@ -1,0 +1,48 @@
+{
+  "schema": "RSH-CONSTITUTION-V1",
+  "version": "1.0.0",
+  "geometry_model": "Robitaille-Slade-Helix",
+  "geometry_model_contract": "2.0.0",
+  "invariants": {
+    "psi": 2.0581710272714924,
+    "kappa_interval": [
+      0.0,
+      0.41421356237309515
+    ],
+    "tau_interval": {
+      "lower": 0.0,
+      "upper": 1.0,
+      "open": true
+    },
+    "geometry_centring": "discrete-midpoint-to-origin",
+    "tissue_centring": "shared-centroid-to-origin",
+    "oracle_authority": [
+      "f64-cpu",
+      "f64-wasm"
+    ],
+    "accelerator_authority": "residual-sidecar-only",
+    "geometry_receipt_domain": "RSH-GEOMETRY-EVIDENCE-V2"
+  },
+  "ordered_objectives": [
+    "invariant_integrity",
+    "oracle_fidelity",
+    "tissue_cohesion_qf",
+    "resource_cost",
+    "role_coverage"
+  ],
+  "governance": {
+    "non_escalating_refinement": "dry-run-and-seal",
+    "contract_escalation": "explicit-human-ack-required",
+    "human_veto": "authoritative"
+  },
+  "refusals": [
+    "silent-bound-violation",
+    "accelerator-as-oracle",
+    "audit-chain-deletion",
+    "subjective-awareness-or-qualia-claim"
+  ],
+  "terminology": {
+    "operational_awareness": "state observation, prediction, audit and reporting only",
+    "bound_safe_asymptotic_refinement": "iterated accepted proposals under a fixed constitution; not unbounded autonomous takeoff"
+  }
+}
