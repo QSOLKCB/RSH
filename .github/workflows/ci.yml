@@ -72,11 +72,12 @@ jobs:
         run: cargo test --locked -p rsh-wasm
       - name: Build browser module
         run: cargo build --locked --release --target wasm32-unknown-unknown -p rsh-wasm
-      - name: Validate WebAssembly binary
+      - name: Produce native comparison report
+        run: cargo run --locked -p rsh-cli -- verify -n 129 --json /tmp/rsh_native_129.json
+      - name: Execute WebAssembly conformance profile
         run: |
           wasm=target/wasm32-unknown-unknown/release/rsh_wasm.wasm
-          test -s "$wasm"
-          test "$(od -An -t x1 -N4 "$wasm" | tr -d ' \n')" = "0061736d"
+          node scripts/test_wasm.mjs "$wasm" conformance/wasm_v2_129.json /tmp/rsh_native_129.json
 
   pages-source:
     runs-on: ubuntu-latest
@@ -88,6 +89,9 @@ jobs:
           test -s web/style.css
           test -s web/app.js
           test -s web/sw.js
+          test -s docs/PHASE3_WASM.md
+          test -s conformance/wasm_v2_129.json
+          test -s scripts/test_wasm.mjs
           test -f web/.nojekyll
           grep -q '<title>RSH' web/index.html
           grep -q 'VERIFIED RUST/WASM SAMPLES' web/index.html
