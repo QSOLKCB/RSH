@@ -1,9 +1,12 @@
-const CACHE_NAME = "rsh-browser-lab-v2.2.0";
+const CACHE_NAME = "rsh-browser-lab-v2.3.0";
 const CORE_ASSETS = [
   "./",
   "./index.html",
   "./style.css",
+  "./gpu.css",
   "./app.js",
+  "./gpu.js",
+  "./wgsl/kappa_tau_field.wgsl",
   "./pkg/rsh_wasm.wasm",
 ];
 
@@ -41,7 +44,5 @@ self.addEventListener("fetch", (event) => {
   });
 
   event.waitUntil(revalidation.then(() => undefined).catch(() => undefined));
-  event.respondWith(
-    caches.match(event.request).then((cached) => cached || revalidation),
-  );
+  event.respondWith(caches.match(event.request).then((cached) => cached || revalidation));
 });
