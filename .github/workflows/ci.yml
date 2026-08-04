@@ -156,7 +156,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          grep -RinE --exclude-dir=.git --exclude-dir=target --exclude-dir=build --exclude='*.svg' --exclude='ci.yml' '(verschoor|dave mode|knot|everse|anus)' .
+          grep -RinE --exclude-dir=.git --exclude-dir=target --exclude='*.svg' --exclude='ci.yml' '(verschoor|dave mode|knot|everse|anus)' .
           status=$?
           set -e
 
