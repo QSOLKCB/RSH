@@ -22,7 +22,7 @@ Only the third case may report `actual_cuda_execution: true`.
 Run the non-mutating host check first:
 
 ```bash
-scripts/cuda_preflight.sh
+sh scripts/cuda_preflight.sh
 ```
 
 It reports the detected operating system, glibc, CMake, C++ and Rust toolchains,
@@ -43,14 +43,16 @@ cmake -S native/cpp -B build/cuda \
 cmake --build build/cuda --target rsh-cuda --parallel
 ```
 
-A reproducibility run may pin the architecture explicitly:
+The `native` architecture value requires CMake 3.24 or newer. Older supported
+CMake releases must use an explicit numeric architecture instead:
 
 ```bash
 -DRSH_CUDA_ARCHITECTURES=120
 ```
 
-The CMake configure log prints the effective architecture and the CUDA sidecar
-records the compiled architecture string.
+An explicit value is also preferable for a pinned reproducibility run. The CMake
+configure log prints the effective architecture and the CUDA sidecar records the
+compiled architecture string.
 
 ## Runtime controls
 
