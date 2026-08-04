@@ -1,4 +1,4 @@
-const CACHE_NAME = "rsh-browser-lab-v2.3.0";
+const CACHE_NAME = "rsh-browser-lab-v2.4.0";
 const CORE_ASSETS = [
   "./",
   "./index.html",
