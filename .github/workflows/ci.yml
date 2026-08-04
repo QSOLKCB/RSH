@@ -59,6 +59,33 @@ jobs:
           cargo run --locked -p rsh-cli -- trace -n 65 -o /tmp/rsh_rust_trace.csv
           cargo run --locked -p rsh-cli -- sample 16777216 12
 
+  cpp-ffi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install stable Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+      - name: Configure C++ adapter
+        run: cmake -S native/cpp -B build/native -DCMAKE_BUILD_TYPE=Release
+      - name: Build C++ adapter and Rust ABI
+        run: cmake --build build/native --parallel 2
+      - name: Run CTest adapter suite
+        run: ctest --test-dir build/native --output-on-failure
+      - name: Execute sealed FFI and CUDA-reference profiles
+        run: |
+          python3 scripts/test_cpp_ffi.py \
+            build/native/rsh-cpp \
+            conformance/ffi_v1_129.json \
+            conformance/cuda_schedule_v1_4096.json
+      - name: Validate optional CUDA source boundary
+        run: |
+          test -s native/cuda/rsh_schedule_cuda.cu
+          grep -q '__global__ void evaluate_schedule' native/cuda/rsh_schedule_cuda.cu
+          grep -q 'actual_cuda_execution' native/cuda/rsh_schedule_cuda.cu
+          grep -q 'geometry_receipt_authority' native/cuda/rsh_schedule_cuda.cu
+
   wasm-browser:
     runs-on: ubuntu-latest
     steps:
@@ -98,16 +125,22 @@ jobs:
           test -s web/wgsl/kappa_tau_field.wgsl
           test -s docs/PHASE3_WASM.md
           test -s docs/PHASE4_WGSL.md
+          test -s docs/PHASE5_NATIVE.md
           test -s conformance/wasm_v2_129.json
           test -s conformance/wgsl_v1_4096.json
+          test -s conformance/ffi_v1_129.json
+          test -s conformance/cuda_schedule_v1_4096.json
           test -s scripts/test_wasm.mjs
+          test -s scripts/test_cpp_ffi.py
           test -f web/.nojekyll
           node --check web/app.js
           node --check web/gpu.js
           node --check web/sw.js
+          python3 -m py_compile scripts/test_cpp_ffi.py
           grep -q '<title>RSH' web/index.html
           grep -q 'VERIFIED RUST/WASM SAMPLES' web/index.html
           grep -q 'PHASE 4 · WEBGPU RESIDUAL HARNESS' web/index.html
+          grep -q 'C++ ABI · CUDA OPTIONAL' web/index.html
           grep -q 'WebAssembly.instantiate' web/app.js
           grep -q 'navigator.gpu' web/gpu.js
           grep -q 'rsh_schedule' web/app.js
@@ -123,7 +156,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          grep -RinE --exclude-dir=.git --exclude-dir=target --exclude='*.svg' --exclude='ci.yml' '(verschoor|dave mode|knot|everse|anus)' .
+          grep -RinE --exclude-dir=.git --exclude-dir=target --exclude-dir=build --exclude='*.svg' --exclude='ci.yml' '(verschoor|dave mode|knot|everse|anus)' .
           status=$?
           set -e
 
