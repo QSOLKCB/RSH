@@ -16,6 +16,8 @@ geometry core to the browser through a compact raw WebAssembly ABI.
 - adds a sealed `conformance/wasm_v2_129.json` acceptance profile;
 - executes the actual compiled WebAssembly module against Python golden
   coordinates in CI and before Pages deployment;
+- enforces exact receipt identity between the sealed WebAssembly module and the
+  native Rust report for the same canonical configuration;
 - documents the complete Phase 3 architecture and scientific boundary in
   `docs/PHASE3_WASM.md`.
 
@@ -47,10 +49,10 @@ The Python implementation remains the scientific oracle. Native Rust remains a
 conforming implementation. WASM is an execution bridge over that same Rust core,
 not a third independent mathematical implementation.
 
-Receipt encoding and domain separation remain supplied by `rsh-core`.
-Native-versus-WASM receipt identity is reported separately rather than forced:
-transcendental floating-point paths may differ in their final bits between
-execution targets, while coordinate and contract conformance remain mandatory.
+Receipt encoding and domain separation remain supplied by `rsh-core`. The
+sealed 129-sample WebAssembly profile must reproduce the native Rust receipt
+exactly. Python receipt identity remains reported separately because Python and
+Rust follow different runtime paths.
 
 ## Validation
 
@@ -63,9 +65,18 @@ The release pipeline checks:
 - a release build for `wasm32-unknown-unknown`;
 - execution of the actual `.wasm` file under Node's built-in WebAssembly runtime;
 - ABI version, sample count, midpoint tolerance, entry and exit residuals,
-  finite output, report status, and receipt format;
+  finite output, report status, sealed receipt, and native receipt identity;
 - browser source, service-worker, module-path, and Pages artifact integrity;
 - the existing provenance boundary gate.
+
+The sealed run produced:
+
+```text
+entry max abs error = 1.1102230246251565e-16
+exit max abs error  = 8.881784197001252e-16
+centre error        = 0
+WASM/native receipt = 9cccdea9db0e0cb4c30accab275a672efb9c69fed022f5087f273a87aa28f253
+```
 
 Node is used only as a zero-package CI execution harness. It is not required by
 the deployed laboratory or its users.
