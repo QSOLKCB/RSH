@@ -1,4 +1,4 @@
-const PARAM_BYTES = 48;
+const PARAM_BYTES = 64;
 const FLOATS_PER_POINT = 16;
 
 function adapterDescription(info) {
@@ -23,13 +23,13 @@ function makeParams(config, oracle) {
   const bytes = new ArrayBuffer(PARAM_BYTES);
   const view = new DataView(bytes);
   view.setUint32(0, oracle.points.length, true);
-  view.setFloat32(16, config.s0, true);
-  view.setFloat32(20, config.s1, true);
-  view.setFloat32(24, config.kappaFraction, true);
-  view.setFloat32(28, config.tauFloor, true);
-  view.setFloat32(32, config.tauAmplitude, true);
-  view.setFloat32(36, Math.sqrt(2 + Math.sqrt(5)), true);
-  view.setFloat32(40, Math.sqrt(2) - 1, true);
+  view.setFloat32(28, config.s0, true);
+  view.setFloat32(32, config.s1, true);
+  view.setFloat32(36, config.kappaFraction, true);
+  view.setFloat32(40, config.tauFloor, true);
+  view.setFloat32(44, config.tauAmplitude, true);
+  view.setFloat32(48, Math.sqrt(2 + Math.sqrt(5)), true);
+  view.setFloat32(52, Math.sqrt(2) - 1, true);
   return bytes;
 }
 
@@ -195,6 +195,11 @@ export async function createFrenetGpuRunner(shaderUrl, onDeviceLost = () => {}) 
       const samples = oracle.points?.length;
       if (!Number.isInteger(samples) || samples < 3 || samples % 2 === 0) {
         throw new Error("The f64 path oracle returned an invalid sample count");
+      }
+      if (!Number.isInteger(config.samples) || config.samples !== samples) {
+        throw new Error(
+          `WebGPU configuration samples (${config.samples}) do not match the f64 oracle (${samples})`,
+        );
       }
 
       const outputBytes = samples * FLOATS_PER_POINT * Float32Array.BYTES_PER_ELEMENT;
