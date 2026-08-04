@@ -29,30 +29,48 @@ Status: **implemented in v2.1.0**
 - formatting, Clippy, tests, and native evidence commands run in CI;
 - receipt identity is reported separately from coordinate conformance.
 
-The native implementation currently agrees with the Python golden entry and
-exit coordinates to below `5e-16`, against a declared `1e-12` tolerance. Its
-runtime receipt differs because the full report includes transcendental values
-whose final floating-point details are runtime-sensitive. That distinction is
-recorded rather than concealed.
+The native implementation agrees with the Python golden entry and exit
+coordinates inside the declared `1e-12` tolerance. Its runtime receipt may
+differ because the full report includes transcendental values whose final
+floating-point details are runtime-sensitive. That distinction is recorded
+rather than concealed.
 
 ## Phase 3 — WASM bridge
 
-Status: **next**
+Status: **implemented in v2.2.0**
 
-- compile `rsh-core` to WebAssembly;
-- provide an offline browser interface without a required server;
-- keep scientific calculations in the verified Rust core;
-- treat JavaScript as interface, animation, and file-export glue;
-- compare WASM output against the same Python conformance record;
-- publish the browser laboratory through the existing Pages workflow.
+- `rsh-wasm` compiles the verified Rust core to `wasm32-unknown-unknown`;
+- a dependency-free raw ABI accepts numeric configuration inputs and exposes a
+  UTF-8 JSON output buffer through WebAssembly linear memory;
+- browser calculations remain inside `rsh-core`; JavaScript handles interface,
+  projection, animation, downloads, and service-worker caching only;
+- the Pages laboratory reports pass/fail, bounds, frame error, centre error,
+  path length, and the runtime receipt;
+- JSON reports and CSV traces can be downloaded directly from the browser;
+- host ABI tests and a release-target WASM build run in CI;
+- Pages builds the module itself and refuses deployment when source or binary
+  validation fails;
+- the site becomes available offline after its first successful load.
+
+The bridge does not use `wasm-bindgen`, npm, Node.js, or a bundler. This keeps the
+browser boundary small, auditable, and independent of a second package-runtime
+stack.
 
 ## Phase 4 — WGSL compute and visual kernels
+
+Status: **next**
 
 - batch path evaluation and large logical-field sampling on WebGPU;
 - validate selected GPU results against Python, native Rust, and WASM vectors;
 - separate visual interpolation from verified model samples;
 - report adapter, device, precision, and workgroup parameters in evidence;
-- retain a CPU/WASM fallback where WebGPU is unavailable.
+- retain the CPU/WASM path where WebGPU is unavailable;
+- never allow a GPU visual approximation to silently replace verified samples.
+
+The first WGSL milestone should be a conformance harness, not a visual effect:
+selected logical indices, curvature/torsion schedules, and projected positions
+must be compared against checked-in vectors before the GPU path is treated as an
+accepted backend.
 
 ## Phase 5 — optional C++/CUDA adapter
 
@@ -63,10 +81,12 @@ runtime and compiler provenance.
 
 ## GitHub Pages
 
-The `web/` directory is deployed by `.github/workflows/pages.yml`. The current
-site is a project and implementation-status surface. Its animated projection is
-labelled schematic and is not evidence. Phase 3 will replace the status-only
-interaction with calculations supplied by the verified WASM core.
+The `web/` source is assembled by `.github/workflows/pages.yml`. The workflow
+builds `rsh_wasm.wasm`, places it under `web/pkg/`, validates the complete
+artifact, and only then uploads it for deployment.
+
+The rotating display is a browser projection of samples returned by `rsh-core`.
+It remains labelled as a visual projection and is not promoted to evidence.
 
 ## Governance rule
 
