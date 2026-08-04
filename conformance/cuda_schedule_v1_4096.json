@@ -1,0 +1,29 @@
+{
+  "schema": "RSH-CUDA-SCHEDULE-CONFORMANCE-V1",
+  "model": "Robitaille-Slade-Helix",
+  "model_version": "2.0.0",
+  "ffi_profile": "ffi_v1_129.json",
+  "configuration": {
+    "samples": 4096,
+    "s0": 0.0,
+    "s1": 4.0,
+    "kappa_fraction": 0.85,
+    "tau_floor": 0.22,
+    "tau_amplitude": 0.13
+  },
+  "precision": "f32",
+  "block_size": 128,
+  "residual_threshold": 0.0001,
+  "requirements": {
+    "rust_ffi_f64_oracle": true,
+    "actual_cuda_execution_claim_requires_nvcc_and_device": true,
+    "cpu_f32_reference_is_not_cuda_execution": true,
+    "geometry_receipt_authority": false,
+    "full_frenet_serret_integrator": false
+  },
+  "notes": [
+    "CI builds and executes the C++ adapter and its explicitly labelled f32 arithmetic reference.",
+    "The optional rsh-cuda executable performs actual adapter-specific CUDA execution when configured with RSH_ENABLE_CUDA=ON.",
+    "Neither CUDA output nor the f32 reference replaces the rsh-core geometry report or receipt."
+  ]
+}
