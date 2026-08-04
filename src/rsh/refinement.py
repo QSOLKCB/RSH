@@ -34,6 +34,7 @@ ALLOWED_CHANGES = frozenset(
         "qf_floor",
     }
 )
+COUNT_FIELDS = frozenset({"cells", "ticks", "geometry_samples"})
 ESCALATING_FIELDS = frozenset(
     {
         "geometry_samples",
@@ -88,6 +89,10 @@ class RefinementProposal:
             raise ValueError(
                 f"unsupported proposal fields: {', '.join(unknown)}"
             )
+        for field in sorted(set(self.changes) & COUNT_FIELDS):
+            value = self.changes[field]
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise ValueError(f"{field} must be a non-boolean integer")
         return self
 
 
@@ -96,15 +101,21 @@ class ObjectiveVector:
     invariant_integrity: int
     oracle_fidelity: float
     tissue_cohesion_qf: float
-    resource_efficiency: float
+    resource_cost: int
     role_coverage: float
 
-    def as_tuple(self) -> tuple[float, ...]:
+    def comparison_tuple(self) -> tuple[float, ...]:
+        """Return the constitution ordering with cost converted to utility.
+
+        The constitution names the fourth objective ``resource_cost``. Lower
+        cost is better, while every other objective is maximized, so the
+        lexicographic comparison uses the negated work count at that position.
+        """
         return (
             float(self.invariant_integrity),
             self.oracle_fidelity,
             self.tissue_cohesion_qf,
-            self.resource_efficiency,
+            -float(self.resource_cost),
             self.role_coverage,
         )
 
@@ -193,9 +204,7 @@ def _objective_vector(report: TissueReport) -> ObjectiveVector:
         ),
         oracle_fidelity=fidelity,
         tissue_cohesion_qf=report.final_q_f,
-        resource_efficiency=(
-            1.0 / (1.0 + config.cells * config.ticks)
-        ),
+        resource_cost=config.cells * config.ticks,
         role_coverage=report.ticks[-1].metrics.role_coverage,
     )
 
@@ -206,8 +215,8 @@ def _strict_lexicographic_improvement(
     tolerance: float = 1.0e-12,
 ) -> bool:
     for before, after in zip(
-        baseline.as_tuple(),
-        candidate.as_tuple(),
+        baseline.comparison_tuple(),
+        candidate.comparison_tuple(),
     ):
         if after > before + tolerance:
             return True
