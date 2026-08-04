@@ -7,18 +7,28 @@ inside explicit Robitaille bounds, integrating the Frenet–Serret frame, and
 translating the exact discrete midpoint to the coordinate origin.
 
 **Authors:** J. Robitaille (DeltaKingZero) and Trent Slade / QSOL-IMC  
-**Release:** 2.1.0  
+**Release:** 2.2.0  
 **Model contract:** 2.0.0  
-**Implementations:** Python reference + native Rust core/CLI
+**Implementations:** Python reference + native Rust core/CLI + Rust/WebAssembly browser bridge
 
-## Project site
+## Browser laboratory
 
-The static project site is deployed from `web/` through GitHub Actions:
+The project site now runs the verified Rust core directly in WebAssembly:
 
 **https://qsolkcb.github.io/RSH/**
 
-The animated page graphic is explicitly schematic. It is not part of the
-verification evidence and does not replace the numerical implementations.
+The browser laboratory can change the sample count, curvature fraction, torsion
+floor, and torsion amplitude; run the contract; inspect the resulting evidence
+report; and download JSON and CSV outputs. JavaScript does not reproduce the
+geometry equations. It passes scalar inputs through a small raw WASM ABI, reads
+the UTF-8 JSON result from linear memory, and handles only interface, projection,
+animation, downloads, and offline caching.
+
+The rotating canvas is a projection of verified samples. It is not additional
+evidence and does not create a physical interpretation.
+
+After the first successful load, a service worker caches the page and WASM
+module for offline reuse.
 
 ## Implementation authority
 
@@ -31,6 +41,20 @@ as a native core and command-line runner. It is accepted through the checked-in
 cross-runtime conformance record. Runtime receipt identity is reported
 separately rather than assumed.
 
+The WASM bridge calls `rsh-core`; it is not a third geometry implementation. Its
+ABI accepts numeric configuration values and exposes one JSON result buffer:
+
+```text
+rsh_abi_version() -> u32
+rsh_run(samples, s0, s1, kappa_fraction, tau_floor, tau_amplitude) -> i32
+rsh_output_ptr() -> pointer
+rsh_output_len() -> length
+```
+
+Return code `0` means all report contracts passed, `1` means a report was
+produced with at least one failed contract, and `2` means the configuration or
+run was rejected.
+
 ## Invariants
 
 | Quantity | Contract |
@@ -42,6 +66,7 @@ separately rather than assumed.
 | Frame | tangent, normal, and binormal remain orthonormal within tolerance |
 | Python evidence | canonical domain-separated SHA-256 receipt |
 | Rust acceptance | contract checks plus golden-coordinate conformance |
+| Browser authority | report and samples supplied by `rsh-core` through WASM |
 
 Bounds hold by construction and are verified again after integration.
 
@@ -85,13 +110,27 @@ cargo run --locked -p rsh-cli -- trace -n 129 -o rsh_trace_rust.csv
 cargo run --locked -p rsh-cli -- sample 16777216 12
 ```
 
-The 129-sample Rust conformance run currently reproduces the Python golden entry
-and exit coordinates with maximum absolute errors below `5e-16`, comfortably
-inside the declared `1e-12` tolerance.
+The 129-sample Rust conformance run reproduces the Python golden entry and exit
+coordinates within the declared `1e-12` tolerance. The Rust receipt is displayed
+alongside the Python reference receipt; any runtime-sensitive floating-point
+hash difference remains visible.
 
-The Rust receipt is intentionally displayed alongside the Python reference
-receipt. Their difference is not hidden: the coordinate path conforms, while
-transcendental floating-point details produce a distinct canonical report hash.
+## WebAssembly build
+
+The bridge uses only the standard Rust WASM target and existing workspace
+dependencies. It does not require `wasm-bindgen`, npm, Node.js, a bundler, or a
+runtime server process.
+
+```bash
+rustup target add wasm32-unknown-unknown
+cargo test --locked -p rsh-wasm
+cargo build --locked --release --target wasm32-unknown-unknown -p rsh-wasm
+mkdir -p web/pkg
+cp target/wasm32-unknown-unknown/release/rsh_wasm.wasm web/pkg/
+```
+
+GitHub Pages performs that build itself before deployment and refuses to publish
+when the WASM module or browser source validation fails.
 
 ## Exact bounded logical sampling
 
@@ -101,7 +140,8 @@ Large logical fields can be represented without allocating the full field:
 logical_index(i) = floor(i × logical_count / rendered_count)
 ```
 
-Both implementations use exact integer arithmetic for this mapping.
+The Python and Rust implementations use exact integer arithmetic for this
+mapping. The future WGSL backend must reproduce the same selected indices.
 
 ## Repository map
 
@@ -110,13 +150,14 @@ rsh_runner.py                 Direct Python source-checkout runner
 src/rsh/                      Python geometry, verification, exports, and CLI
 crates/rsh-core/              Native Rust geometry and evidence library
 crates/rsh-cli/               Native `rsh-rust` command-line runner
+crates/rsh-wasm/              Raw WebAssembly ABI over `rsh-core`
 conformance/                  Cross-runtime golden records
-web/                          Static GitHub Pages project site
+web/                          Interactive Pages laboratory and offline cache
 tests/                        Python geometry, evidence, export, and CLI tests
 docs/MODEL.md                 Equations and numerical construction
 docs/PROVENANCE.md            Attribution and implementation boundary
 docs/SCIENTIFIC_BOUNDARY.md   Claims the evidence does and does not support
-docs/ROADMAP.md               Python → Rust → WASM/WGSL plan
+docs/ROADMAP.md               Python → Rust → WASM → WGSL plan
 ```
 
 ## Scientific precision
@@ -137,8 +178,8 @@ See [the scientific boundary](docs/SCIENTIFIC_BOUNDARY.md) for the full statemen
 
 1. **Python reference** — complete.
 2. **Rust core and CLI** — implemented in v2.1.0.
-3. **WASM bridge** — next: expose the Rust core to the offline browser site.
-4. **WGSL compute and visual kernels** — GPU acceleration checked against shared vectors.
+3. **WASM bridge and browser laboratory** — implemented in v2.2.0.
+4. **WGSL compute and visual kernels** — next: GPU acceleration checked against shared vectors.
 5. **Optional C++/CUDA adapter** — only where interoperability requires it.
 
 Performance never promotes an implementation to scientific authority. Every
