@@ -87,6 +87,11 @@ assert.ok(
   `centre residual ${centreError} exceeds ${profile.centre_tolerance}`,
 );
 assert.match(payload.report.receipt, /^[0-9a-f]{64}$/u);
+assert.equal(
+  payload.report.receipt,
+  profile.canonical_receipt,
+  "WebAssembly receipt differs from the sealed Phase 3 profile",
+);
 
 for (const point of payload.points) {
   for (const field of ["p", "x", "y", "z", "kappa", "tau"]) {
@@ -100,6 +105,13 @@ if (nativeReportPath) {
   const nativeReport = JSON.parse(await readFile(nativeReportPath, "utf8"));
   nativeReceipt = nativeReport.receipt;
   receiptIdenticalToNative = nativeReceipt === payload.report.receipt;
+  if (profile.receipt_policy.native_identity_required) {
+    assert.equal(
+      payload.report.receipt,
+      nativeReceipt,
+      "WebAssembly receipt differs from the native Rust receipt",
+    );
+  }
 }
 
 console.log(JSON.stringify({
