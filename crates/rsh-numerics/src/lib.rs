@@ -6,8 +6,8 @@
 //! explicit modified Gram–Schmidt projection after each frame step.
 
 use rsh_core::{
-    kappa_max, kappa_schedule, tau_schedule, ModelConfig, Sample, Vec3, MODEL_NAME,
-    MODEL_VERSION, TAU_MAX_EXCLUSIVE, TAU_MIN_EXCLUSIVE,
+    kappa_max, kappa_schedule, tau_schedule, ModelConfig, Sample, Vec3, MODEL_NAME, MODEL_VERSION,
+    TAU_MAX_EXCLUSIVE, TAU_MIN_EXCLUSIVE,
 };
 use serde::Serialize;
 
@@ -108,12 +108,7 @@ fn rotate_body(vector: Vec3, omega: Vec3, step: f64) -> Result<Vec3, String> {
         .plus(axis.scale(axis.dot(vector) * (1.0 - cosine))))
 }
 
-fn world_from_body(
-    tangent: Vec3,
-    normal: Vec3,
-    binormal: Vec3,
-    body: Vec3,
-) -> Vec3 {
+fn world_from_body(tangent: Vec3, normal: Vec3, binormal: Vec3, body: Vec3) -> Vec3 {
     tangent
         .scale(body.x)
         .plus(normal.scale(body.y))
@@ -165,12 +160,8 @@ pub fn integrate_lie_midpoint(config: ModelConfig) -> Result<Vec<Sample>, String
         let body_omega = Vec3::new(tau_mid, 0.0, kappa_mid);
 
         let midpoint_body_tangent = rotate_body(body_tangent, body_omega, 0.5 * ds)?;
-        let midpoint_world_tangent = world_from_body(
-            tangent,
-            normal,
-            binormal,
-            midpoint_body_tangent,
-        );
+        let midpoint_world_tangent =
+            world_from_body(tangent, normal, binormal, midpoint_body_tangent);
         position = position.plus(midpoint_world_tangent.scale(ds));
 
         let next_tangent = world_from_body(
@@ -230,10 +221,7 @@ fn max_frame_errors(rows: &[Sample]) -> Result<(f64, f64), String> {
     Ok((norm_error, orthogonality_error))
 }
 
-pub fn analyse_lie_path(
-    rows: &[Sample],
-    config: ModelConfig,
-) -> Result<FrenetPathReport, String> {
+pub fn analyse_lie_path(rows: &[Sample], config: ModelConfig) -> Result<FrenetPathReport, String> {
     let config = validate_research_config(config)?;
     if rows.len() != config.samples {
         return Err("row count does not match the research configuration".into());
@@ -310,9 +298,7 @@ pub fn analyse_lie_path(
     })
 }
 
-pub fn build_lie_path(
-    config: ModelConfig,
-) -> Result<(Vec<Sample>, FrenetPathReport), String> {
+pub fn build_lie_path(config: ModelConfig) -> Result<(Vec<Sample>, FrenetPathReport), String> {
     let config = validate_research_config(config)?;
     let rows = integrate_lie_midpoint(config)?;
     let report = analyse_lie_path(&rows, config)?;
@@ -327,22 +313,8 @@ pub fn trace_csv(rows: &[Sample]) -> String {
     let mut output = String::from("index,p,s,x,y,z,kappa,tau,tx,ty,tz,nx,ny,nz,bx,by,bz\n");
     for (index, row) in rows.iter().enumerate() {
         let values = [
-            row.p,
-            row.s,
-            row.x,
-            row.y,
-            row.z,
-            row.kappa,
-            row.tau,
-            row.tx,
-            row.ty,
-            row.tz,
-            row.nx,
-            row.ny,
-            row.nz,
-            row.bx,
-            row.by,
-            row.bz,
+            row.p, row.s, row.x, row.y, row.z, row.kappa, row.tau, row.tx, row.ty, row.tz, row.nx,
+            row.ny, row.nz, row.bx, row.by, row.bz,
         ];
         output.push_str(&index.to_string());
         output.push(',');
@@ -379,14 +351,22 @@ mod tests {
         let (rows, report) = build_lie_path(config).expect("Lie midpoint path");
         assert_eq!(rows.len(), 1025);
         assert!(report.pass_all, "{report:?}");
-        assert!(max_abs(
-            report.entry,
-            [-1.8484923969357088, -0.6353472456353664, -0.16597476619143556]
-        ) <= 5.0e-12);
-        assert!(max_abs(
-            report.exit,
-            [1.2097324539026191, 1.2168604543524748, 0.9663401678690707]
-        ) <= 5.0e-12);
+        assert!(
+            max_abs(
+                report.entry,
+                [
+                    -1.8484923969357088,
+                    -0.6353472456353664,
+                    -0.16597476619143556
+                ]
+            ) <= 5.0e-12
+        );
+        assert!(
+            max_abs(
+                report.exit,
+                [1.2097324539026191, 1.2168604543524748, 0.9663401678690707]
+            ) <= 5.0e-12
+        );
         assert!(max_abs(report.centre, [0.0, 0.0, 0.0]) <= 1.0e-15);
     }
 
