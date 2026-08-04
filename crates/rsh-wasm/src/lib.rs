@@ -7,8 +7,7 @@
 
 use rsh_core::{
     build_and_verify, kappa_max, kappa_schedule, psi, tau_schedule, ModelConfig, Sample,
-    VerifyReport, IMPLEMENTATION, MODEL_NAME, MODEL_VERSION, TAU_MAX_EXCLUSIVE,
-    TAU_MIN_EXCLUSIVE,
+    VerifyReport, IMPLEMENTATION, MODEL_NAME, MODEL_VERSION, TAU_MAX_EXCLUSIVE, TAU_MIN_EXCLUSIVE,
 };
 use serde::Serialize;
 use std::cell::RefCell;
@@ -158,14 +157,7 @@ fn encode_schedule(
     tau_floor: f64,
     tau_amplitude: f64,
 ) -> Result<Vec<u8>, String> {
-    let config = schedule_config(
-        samples,
-        s0,
-        s1,
-        kappa_fraction,
-        tau_floor,
-        tau_amplitude,
-    )?;
+    let config = schedule_config(samples, s0, s1, kappa_fraction, tau_floor, tau_amplitude)?;
     let denominator = f64::from(samples - 1);
     let mut points = Vec::with_capacity(samples as usize);
 
@@ -175,7 +167,9 @@ fn encode_schedule(
         let kappa = kappa_schedule(s, config);
         let tau = tau_schedule(s, config);
         if !kappa.is_finite() || !(0.0 <= kappa && kappa <= kappa_max() + 1.0e-12) {
-            return Err(format!("curvature schedule violates its bound at index {index}"));
+            return Err(format!(
+                "curvature schedule violates its bound at index {index}"
+            ));
         }
         if !tau.is_finite() || !(TAU_MIN_EXCLUSIVE < tau && tau < TAU_MAX_EXCLUSIVE) {
             return Err(format!("torsion schedule leaves (0, 1) at index {index}"));
@@ -283,14 +277,7 @@ pub extern "C" fn rsh_schedule(
     tau_floor: f64,
     tau_amplitude: f64,
 ) -> i32 {
-    match encode_schedule(
-        samples,
-        s0,
-        s1,
-        kappa_fraction,
-        tau_floor,
-        tau_amplitude,
-    ) {
+    match encode_schedule(samples, s0, s1, kappa_fraction, tau_floor, tau_amplitude) {
         Ok(bytes) => {
             set_output(bytes);
             0
