@@ -55,6 +55,9 @@ Return code `0` means all report contracts passed, `1` means a report was
 produced with at least one failed contract, and `2` means the configuration or
 run was rejected.
 
+See [the complete Phase 3 specification](docs/PHASE3_WASM.md) for the ABI,
+conformance profile, browser boundary, and acceptance criteria.
+
 ## Invariants
 
 | Quantity | Contract |
@@ -67,6 +70,7 @@ run was rejected.
 | Python evidence | canonical domain-separated SHA-256 receipt |
 | Rust acceptance | contract checks plus golden-coordinate conformance |
 | Browser authority | report and samples supplied by `rsh-core` through WASM |
+| WASM acceptance | actual compiled module executed against `wasm_v2_129.json` |
 
 Bounds hold by construction and are verified again after integration.
 
@@ -115,11 +119,11 @@ coordinates within the declared `1e-12` tolerance. The Rust receipt is displayed
 alongside the Python reference receipt; any runtime-sensitive floating-point
 hash difference remains visible.
 
-## WebAssembly build
+## WebAssembly build and conformance
 
-The bridge uses only the standard Rust WASM target and existing workspace
-dependencies. It does not require `wasm-bindgen`, npm, Node.js, a bundler, or a
-runtime server process.
+The deployed bridge uses only the standard Rust WASM target and existing
+workspace dependencies. It does not require `wasm-bindgen`, `wasm-pack`, npm, a
+bundler, CDN, or runtime server process.
 
 ```bash
 rustup target add wasm32-unknown-unknown
@@ -129,8 +133,21 @@ mkdir -p web/pkg
 cp target/wasm32-unknown-unknown/release/rsh_wasm.wasm web/pkg/
 ```
 
-GitHub Pages performs that build itself before deployment and refuses to publish
-when the WASM module or browser source validation fails.
+CI additionally uses the runner's built-in Node WebAssembly runtime—without npm
+packages—to execute the actual compiled module against the sealed profile:
+
+```bash
+node scripts/test_wasm.mjs \
+  target/wasm32-unknown-unknown/release/rsh_wasm.wasm \
+  conformance/wasm_v2_129.json
+```
+
+The probe checks the ABI, midpoint, entry and exit residuals, report contracts,
+sample count, finite output, and receipt encoding. Native-versus-WASM receipt
+identity is reported separately rather than assumed.
+
+GitHub Pages performs the build and executable conformance test itself before
+deployment and refuses to publish when either fails.
 
 ## Exact bounded logical sampling
 
@@ -151,10 +168,12 @@ src/rsh/                      Python geometry, verification, exports, and CLI
 crates/rsh-core/              Native Rust geometry and evidence library
 crates/rsh-cli/               Native `rsh-rust` command-line runner
 crates/rsh-wasm/              Raw WebAssembly ABI over `rsh-core`
-conformance/                  Cross-runtime golden records
+conformance/                  Python, Rust, and WASM acceptance profiles
+scripts/test_wasm.mjs         Executes the compiled module against golden data
 web/                          Interactive Pages laboratory and offline cache
 tests/                        Python geometry, evidence, export, and CLI tests
 docs/MODEL.md                 Equations and numerical construction
+docs/PHASE3_WASM.md           WebAssembly architecture and acceptance contract
 docs/PROVENANCE.md            Attribution and implementation boundary
 docs/SCIENTIFIC_BOUNDARY.md   Claims the evidence does and does not support
 docs/ROADMAP.md               Python → Rust → WASM → WGSL plan
