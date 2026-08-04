@@ -35,6 +35,43 @@ jobs:
           python rsh_runner.py visual -n 129 -o /tmp/rsh_visual.svg
           rsh verify -n 65 -o /tmp/rsh_installed_verify.csv
 
+  rust-native:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install stable Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt,clippy
+          rustup default stable
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+      - name: Lint
+        run: cargo clippy --locked --workspace --all-targets -- -D warnings
+      - name: Unit and conformance tests
+        run: cargo test --locked --workspace
+      - name: Native evidence smoke suite
+        run: |
+          cargo run --locked -p rsh-cli -- verify --help
+          cargo run --locked -p rsh-cli -- trace --help
+          cargo run --locked -p rsh-cli -- conformance --help
+          cargo run --locked -p rsh-cli -- verify -n 129 --json /tmp/rsh_rust_verify.json
+          cargo run --locked -p rsh-cli -- conformance --json /tmp/rsh_rust_conformance.json
+          cargo run --locked -p rsh-cli -- trace -n 65 -o /tmp/rsh_rust_trace.csv
+          cargo run --locked -p rsh-cli -- sample 16777216 12
+
+  pages-source:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check static site
+        run: |
+          test -s web/index.html
+          test -s web/style.css
+          test -s web/app.js
+          test -f web/.nojekyll
+          grep -q '<title>RSH' web/index.html
+          grep -q 'SCHEMATIC PROJECTION' web/index.html
+
   provenance-boundary:
     runs-on: ubuntu-latest
     steps:
@@ -43,7 +80,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          grep -RinE --exclude-dir=.git --exclude='*.svg' --exclude='ci.yml' '(verschoor|dave mode|knot|everse|anus)' .
+          grep -RinE --exclude-dir=.git --exclude-dir=target --exclude='*.svg' --exclude='ci.yml' '(verschoor|dave mode|knot|everse|anus)' .
           status=$?
           set -e
 

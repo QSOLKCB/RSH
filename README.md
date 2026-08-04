@@ -1,21 +1,35 @@
 # RSH — Robitaille–Slade Helix
 
-**Bounded Frenet–Serret geometry and deterministic evidence.**
+**Bounded Frenet–Serret geometry, deterministic evidence, and cross-runtime conformance.**
 
 RSH constructs a three-dimensional path by prescribing curvature and torsion
 inside explicit Robitaille bounds, integrating the Frenet–Serret frame, and
 translating the exact discrete midpoint to the coordinate origin.
 
 **Authors:** J. Robitaille (DeltaKingZero) and Trent Slade / QSOL-IMC  
-**Version:** 2.0.0  
-**Current implementation:** Python 3.10+ standard library
+**Release:** 2.1.0  
+**Model contract:** 2.0.0  
+**Implementations:** Python reference + native Rust core/CLI
 
-## Current phase: Python reference implementation
+## Project site
 
-The Python implementation is the readable scientific oracle for later native
-and GPU versions. It defines the equations, validation rules, canonical report
-schema, golden behaviour, and command-line evidence workflow before any Rust,
-WASM, C++, or WGSL optimisation is introduced.
+The static project site is deployed from `web/` through GitHub Actions:
+
+**https://qsolkcb.github.io/RSH/**
+
+The animated page graphic is explicitly schematic. It is not part of the
+verification evidence and does not replace the numerical implementations.
+
+## Implementation authority
+
+The Python implementation remains the readable scientific oracle. It defines
+the equations, validation rules, canonical report schema, golden coordinates,
+and reference receipt.
+
+The Rust implementation reproduces the same geometry and verification contract
+as a native core and command-line runner. It is accepted through the checked-in
+cross-runtime conformance record. Runtime receipt identity is reported
+separately rather than assumed.
 
 ## Invariants
 
@@ -26,13 +40,14 @@ WASM, C++, or WGSL optimisation is introduced.
 | Torsion | \(0 < \tau(s) < 1\) |
 | Centre | exact discrete \(p=0.5\) sample translated to `(0, 0, 0)` |
 | Frame | tangent, normal, and binormal remain orthonormal within tolerance |
-| Evidence | canonical domain-separated SHA-256 receipt |
+| Python evidence | canonical domain-separated SHA-256 receipt |
+| Rust acceptance | contract checks plus golden-coordinate conformance |
 
 Bounds hold by construction and are verified again after integration.
 
-## Quick start
+## Python reference
 
-Run directly from a checkout with no installation or third-party packages:
+Run directly from a checkout with no third-party runtime dependencies:
 
 ```bash
 python3 rsh_runner.py info
@@ -43,10 +58,6 @@ python3 rsh_runner.py trace -o rsh_trace.csv
 python3 rsh_runner.py visual -o rsh_visual.svg
 ```
 
-A passing run reports the central parameter, centre error, curvature/torsion
-ranges, frame drift, and canonical receipt. Commands return `0` on success,
-`1` for a failed contract, and `2` for invalid input or an I/O error.
-
 The package can also be installed locally:
 
 ```bash
@@ -54,30 +65,58 @@ python3 -m pip install -e .
 rsh verify
 ```
 
+## Rust native implementation
+
+Build and test the workspace:
+
+```bash
+cargo fmt --all -- --check
+cargo clippy --locked --workspace --all-targets -- -D warnings
+cargo test --locked --workspace
+```
+
+Run the native CLI:
+
+```bash
+cargo run --locked -p rsh-cli -- info
+cargo run --locked -p rsh-cli -- verify -n 129
+cargo run --locked -p rsh-cli -- conformance
+cargo run --locked -p rsh-cli -- trace -n 129 -o rsh_trace_rust.csv
+cargo run --locked -p rsh-cli -- sample 16777216 12
+```
+
+The 129-sample Rust conformance run currently reproduces the Python golden entry
+and exit coordinates with maximum absolute errors below `5e-16`, comfortably
+inside the declared `1e-12` tolerance.
+
+The Rust receipt is intentionally displayed alongside the Python reference
+receipt. Their difference is not hidden: the coordinate path conforms, while
+transcendental floating-point details produce a distinct canonical report hash.
+
 ## Exact bounded logical sampling
 
 Large logical fields can be represented without allocating the full field:
 
-```bash
-python3 rsh_runner.py sample 16777216 12
-```
-
-The mapping uses exact integer arithmetic:
-
 ```text
-logical_index(i) = floor(i * logical_count / rendered_count)
+logical_index(i) = floor(i × logical_count / rendered_count)
 ```
+
+Both implementations use exact integer arithmetic for this mapping.
 
 ## Repository map
 
 ```text
-rsh_runner.py                 Direct source-checkout runner
-src/rsh/                      Geometry, verification, exports, and CLI package
-tests/                        Geometry, evidence, export, and CLI tests
+rsh_runner.py                 Direct Python source-checkout runner
+src/rsh/                      Python geometry, verification, exports, and CLI
+crates/rsh-core/              Native Rust geometry and evidence library
+crates/rsh-cli/               Native `rsh-rust` command-line runner
+conformance/                  Cross-runtime golden records
+web/                          Static GitHub Pages project site
+tests/                        Python geometry, evidence, export, and CLI tests
 docs/MODEL.md                 Equations and numerical construction
 docs/PROVENANCE.md            Attribution and implementation boundary
 docs/SCIENTIFIC_BOUNDARY.md   Claims the evidence does and does not support
-docs/ROADMAP.md               Python → Rust → WASM/WGSL implementation plan
+docs/ROADMAP.md               Python → Rust → WASM/WGSL plan
 ```
 
 ## Scientific precision
@@ -86,32 +125,24 @@ The central sample reaches the origin because the integrated path is translated
 there as an explicit coordinate convention. That check confirms implementation
 correctness; it is not an empirical discovery.
 
-Receipts prove byte-level identity of the canonical report. They do not, by
-themselves, prove a physical interpretation. Concurrent parity means independent
-runs agree; it is not a claim that the integrator is partitioned across threads.
+Receipts prove identity of a canonical report under a declared runtime and
+encoding contract. They do not, by themselves, prove a physical interpretation.
+Cross-runtime conformance proves agreement within specified observables and
+numerical tolerances; it does not claim every intermediate floating-point bit is
+identical.
 
 See [the scientific boundary](docs/SCIENTIFIC_BOUNDARY.md) for the full statement.
 
-## Test
+## Planned sequence
 
-```bash
-python3 -m pip install -e .
-python3 -m unittest discover -s tests -v
-python3 rsh_runner.py verify -n 129 -o /tmp/rsh_verify.csv
-python3 rsh_runner.py receipt -n 129
-python3 rsh_runner.py parity -n 129 --workers 3
-```
-
-## Planned implementation sequence
-
-1. **Python reference** — equations, evidence schema, tests, golden receipts.
-2. **Rust core and CLI** — native deterministic implementation validated against Python.
-3. **WASM bridge** — browser access to the Rust core without a server.
+1. **Python reference** — complete.
+2. **Rust core and CLI** — implemented in v2.1.0.
+3. **WASM bridge** — next: expose the Rust core to the offline browser site.
 4. **WGSL compute and visual kernels** — GPU acceleration checked against shared vectors.
-5. **Optional C++/CUDA adapter** — only where interoperability or NVIDIA-specific work requires it.
+5. **Optional C++/CUDA adapter** — only where interoperability requires it.
 
-No later implementation becomes authoritative merely because it is faster. It
-must reproduce the reference contracts and declared numerical tolerances.
+Performance never promotes an implementation to scientific authority. Every
+backend must reproduce the declared contracts and state its numerical boundary.
 
 ## Licence and citation
 
