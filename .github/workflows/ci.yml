@@ -52,6 +52,8 @@ jobs:
       - name: Native evidence smoke suite
         run: |
           cargo run --locked -p rsh-cli -- verify --help
+          cargo run --locked -p rsh-cli -- trace --help
+          cargo run --locked -p rsh-cli -- conformance --help
           cargo run --locked -p rsh-cli -- verify -n 129 --json /tmp/rsh_rust_verify.json
           cargo run --locked -p rsh-cli -- conformance --json /tmp/rsh_rust_conformance.json
           cargo run --locked -p rsh-cli -- trace -n 65 -o /tmp/rsh_rust_trace.csv
@@ -66,6 +68,7 @@ jobs:
           test -s web/index.html
           test -s web/style.css
           test -s web/app.js
+          test -f web/.nojekyll
           grep -q '<title>RSH' web/index.html
           grep -q 'SCHEMATIC PROJECTION' web/index.html
 
