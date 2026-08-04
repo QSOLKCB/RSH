@@ -8,10 +8,12 @@ import hashlib
 import json
 import math
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
 from typing import Any
+from uuid import UUID
 
 EXIT_ARGUMENT = 2
 EXIT_UNAVAILABLE = 20
@@ -19,6 +21,17 @@ EXIT_MALFORMED = 30
 EXIT_RESIDUAL = 31
 EXIT_REPEATABILITY = 32
 EXIT_SANITIZER = 40
+
+MAX_RUNS = 20
+FLOAT_REL_TOLERANCE = 1.0e-12
+FLOAT_ABS_TOLERANCE = 1.0e-15
+SEALED_CONFIGURATION = {
+    "s0": 0.0,
+    "s1": 4.0,
+    "kappa_fraction": 0.85,
+    "tau_floor": 0.22,
+    "tau_amplitude": 0.13,
+}
 
 REPEATABILITY_FIELDS = (
     "schema",
@@ -31,8 +44,11 @@ REPEATABILITY_FIELDS = (
     "compute_capability",
     "compiled_architectures",
     "cuda_driver_api_version",
+    "cuda_driver_api",
     "cuda_runtime_version",
+    "cuda_runtime",
     "cuda_compile_version",
+    "cuda_compile",
     "host_pointer_width",
     "samples",
     "block_size",
@@ -54,24 +70,55 @@ def load_json(path: Path) -> dict[str, Any]:
     return value
 
 
+def floats_close(left: float, right: float) -> bool:
+    return math.isclose(
+        left,
+        right,
+        rel_tol=FLOAT_REL_TOLERANCE,
+        abs_tol=FLOAT_ABS_TOLERANCE,
+    )
+
+
 def profile_parameters(profile: dict[str, Any]) -> tuple[int, int, float]:
-    if profile.get("schema") not in (None, "RSH-CUDA-SCHEDULE-CONFORMANCE-V1"):
+    if profile.get("schema") != "RSH-CUDA-SCHEDULE-CONFORMANCE-V1":
         raise ValueError("unexpected CUDA profile schema")
+    if profile.get("precision") != "f32":
+        raise ValueError("CUDA profile precision must be f32")
+
     configuration = profile.get("configuration")
     if not isinstance(configuration, dict):
         raise ValueError("profile.configuration must be an object")
-    try:
-        samples = int(configuration["samples"])
-        block_size = int(profile["block_size"])
-        threshold = float(profile["residual_threshold"])
-    except (KeyError, TypeError, ValueError) as error:
-        raise ValueError("profile samples, block size, or threshold is invalid") from error
+
+    samples_value = configuration.get("samples")
+    block_value = profile.get("block_size")
+    threshold_value = profile.get("residual_threshold")
+    if type(samples_value) is not int:
+        raise ValueError("profile samples must be an integer")
+    if type(block_value) is not int:
+        raise ValueError("profile block size must be an integer")
+    if isinstance(threshold_value, bool) or not isinstance(threshold_value, (int, float)):
+        raise ValueError("profile residual threshold must be numeric")
+
+    samples = samples_value
+    block_size = block_value
+    threshold = float(threshold_value)
     if samples < 2:
         raise ValueError("profile samples must be at least 2")
     if block_size < 1 or block_size > 1024:
         raise ValueError("profile block size must be in [1, 1024]")
     if not math.isfinite(threshold) or threshold <= 0.0:
         raise ValueError("profile residual threshold must be finite and positive")
+
+    for field, expected in SEALED_CONFIGURATION.items():
+        value = configuration.get(field)
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"profile configuration field {field} must be numeric")
+        numeric = float(value)
+        if not math.isfinite(numeric) or not floats_close(numeric, expected):
+            raise ValueError(
+                f"profile configuration field {field} must retain the sealed value {expected}"
+            )
+
     return samples, block_size, threshold
 
 
@@ -116,26 +163,40 @@ def unavailable_message(stderr: str) -> bool:
 
 
 def parse_int_field(sidecar: dict[str, Any], field: str, errors: list[str]) -> int | None:
-    try:
-        return int(sidecar[field])
-    except (KeyError, TypeError, ValueError):
+    value = sidecar.get(field)
+    if type(value) is not int:
         errors.append(f"{field} is missing or invalid")
-        return None
-
-
-def parse_float_field(sidecar: dict[str, Any], field: str, errors: list[str]) -> float | None:
-    try:
-        value = float(sidecar[field])
-    except (KeyError, TypeError, ValueError):
-        errors.append(f"{field} is missing or invalid")
-        return None
-    if not math.isfinite(value):
-        errors.append(f"{field} is not finite")
         return None
     return value
 
 
-def validate_sidecar(sidecar: dict[str, Any], profile: dict[str, Any]) -> list[str]:
+def parse_float_field(sidecar: dict[str, Any], field: str, errors: list[str]) -> float | None:
+    value = sidecar.get(field)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        errors.append(f"{field} is missing or invalid")
+        return None
+    numeric = float(value)
+    if not math.isfinite(numeric):
+        errors.append(f"{field} is not finite")
+        return None
+    return numeric
+
+
+def parse_string_field(
+    sidecar: dict[str, Any], field: str, errors: list[str]
+) -> str | None:
+    value = sidecar.get(field)
+    if not isinstance(value, str) or not value.strip():
+        errors.append(f"{field} is missing or invalid")
+        return None
+    return value
+
+
+def validate_sidecar(
+    sidecar: dict[str, Any],
+    profile: dict[str, Any],
+    expected_run: int | None = None,
+) -> list[str]:
     errors: list[str] = []
     try:
         expected_samples, expected_block, expected_threshold = profile_parameters(profile)
@@ -146,32 +207,124 @@ def validate_sidecar(sidecar: dict[str, Any], profile: dict[str, Any]) -> list[s
         if not condition:
             errors.append(message)
 
-    require(sidecar.get("schema") == "RSH-CUDA-RESIDUAL-SIDECAR-V1", "schema mismatch")
+    require(
+        sidecar.get("schema") == "RSH-CUDA-RESIDUAL-SIDECAR-V1",
+        "schema mismatch",
+    )
     require(sidecar.get("status") == "PASS", "CUDA sidecar did not report PASS")
-    require(sidecar.get("actual_cuda_execution") is True, "actual CUDA execution was not recorded")
-    require(sidecar.get("geometry_receipt_authority") is False, "CUDA claimed geometry receipt authority")
+    require(
+        sidecar.get("actual_cuda_execution") is True,
+        "actual CUDA execution was not recorded",
+    )
+    require(
+        sidecar.get("geometry_receipt_authority") is False,
+        "CUDA claimed geometry receipt authority",
+    )
 
+    diagnostic_status = parse_string_field(sidecar, "diagnostic_status", errors)
+    device_index = parse_int_field(sidecar, "device_index", errors)
+    parse_string_field(sidecar, "device", errors)
+    device_uuid = parse_string_field(sidecar, "device_uuid", errors)
+    compute_capability = parse_string_field(sidecar, "compute_capability", errors)
+    compiled_architectures = parse_string_field(
+        sidecar, "compiled_architectures", errors
+    )
+    driver_version = parse_int_field(sidecar, "cuda_driver_api_version", errors)
+    runtime_version = parse_int_field(sidecar, "cuda_runtime_version", errors)
+    compile_version = parse_int_field(sidecar, "cuda_compile_version", errors)
+    parse_string_field(sidecar, "cuda_driver_api", errors)
+    parse_string_field(sidecar, "cuda_runtime", errors)
+    parse_string_field(sidecar, "cuda_compile", errors)
+    pointer_width = parse_int_field(sidecar, "host_pointer_width", errors)
+    repeat_run = parse_int_field(sidecar, "repeat_run", errors)
     samples = parse_int_field(sidecar, "samples", errors)
     block_size = parse_int_field(sidecar, "block_size", errors)
-    threshold = parse_float_field(sidecar, "threshold", errors)
-    maximum = parse_float_field(sidecar, "maximum_residual", errors)
-    parse_float_field(sidecar, "max_abs_kappa_vs_rust_f64", errors)
-    parse_float_field(sidecar, "max_abs_tau_vs_rust_f64", errors)
+    grid_blocks = parse_int_field(sidecar, "grid_blocks", errors)
 
+    kappa = parse_float_field(sidecar, "max_abs_kappa_vs_rust_f64", errors)
+    tau = parse_float_field(sidecar, "max_abs_tau_vs_rust_f64", errors)
+    maximum = parse_float_field(sidecar, "maximum_residual", errors)
+    diagnostic_band = parse_float_field(
+        sidecar, "diagnostic_observation_band", errors
+    )
+    threshold = parse_float_field(sidecar, "threshold", errors)
+
+    if device_index is not None:
+        require(device_index >= 0, "device_index must be non-negative")
+    if device_uuid is not None:
+        try:
+            UUID(device_uuid)
+        except ValueError:
+            errors.append("device_uuid is not a canonical UUID")
+    if compute_capability is not None:
+        require(
+            re.fullmatch(r"\d+\.\d+", compute_capability) is not None,
+            "compute_capability must use major.minor form",
+        )
+    if compiled_architectures is not None:
+        require(
+            compiled_architectures != "unspecified",
+            "compiled_architectures must identify the configured target",
+        )
+    for field, value in (
+        ("cuda_driver_api_version", driver_version),
+        ("cuda_runtime_version", runtime_version),
+        ("cuda_compile_version", compile_version),
+    ):
+        if value is not None:
+            require(value > 0, f"{field} must be positive")
+    if pointer_width is not None:
+        require(pointer_width in (32, 64), "host_pointer_width must be 32 or 64")
+    if repeat_run is not None:
+        require(repeat_run >= 0, "repeat_run must be non-negative")
+        if expected_run is not None:
+            require(repeat_run == expected_run, "repeat_run does not match the requested run")
     if samples is not None:
         require(samples == expected_samples, "sample count mismatch")
     if block_size is not None:
         require(block_size == expected_block, "block size mismatch")
+    if samples is not None and block_size is not None and grid_blocks is not None:
+        expected_grid = (samples + block_size - 1) // block_size
+        require(grid_blocks == expected_grid, "grid block count mismatch")
+    if grid_blocks is not None:
+        require(grid_blocks > 0, "grid_blocks must be positive")
+
     if threshold is not None:
         require(
-            math.isclose(threshold, expected_threshold, rel_tol=0.0, abs_tol=0.0),
+            floats_close(threshold, expected_threshold),
             "threshold mismatch",
         )
-    if maximum is not None:
-        require(maximum <= expected_threshold, "maximum residual exceeds the published gate")
+    if diagnostic_band is not None:
+        require(
+            diagnostic_band > 0.0,
+            "diagnostic observation band must be positive",
+        )
 
-    require(bool(str(sidecar.get("device", "")).strip()), "device name missing")
-    require(bool(str(sidecar.get("compute_capability", "")).strip()), "compute capability missing")
+    for field, residual in (
+        ("max_abs_kappa_vs_rust_f64", kappa),
+        ("max_abs_tau_vs_rust_f64", tau),
+        ("maximum_residual", maximum),
+    ):
+        if residual is not None:
+            require(
+                residual <= expected_threshold,
+                f"{field} exceeds the published gate",
+            )
+
+    if kappa is not None and tau is not None and maximum is not None:
+        require(
+            floats_close(maximum, max(kappa, tau)),
+            "maximum_residual does not equal the maximum component residual",
+        )
+    if maximum is not None and diagnostic_band is not None and diagnostic_status is not None:
+        expected_diagnostic = (
+            "NOMINAL" if maximum <= diagnostic_band else "PASS_WITH_WARNING"
+        )
+        require(
+            diagnostic_status == expected_diagnostic,
+            "diagnostic_status is inconsistent with the residual band",
+        )
+
     return errors
 
 
@@ -258,6 +411,18 @@ def write_manifest(output_dir: Path) -> None:
     )
 
 
+def prepare_output_directory(output_dir: Path) -> None:
+    if output_dir.exists():
+        if not output_dir.is_dir():
+            raise ValueError(f"output path is not a directory: {output_dir}")
+        if any(output_dir.iterdir()):
+            raise ValueError(
+                f"output directory must be empty to avoid mixing evidence: {output_dir}"
+            )
+        return
+    output_dir.mkdir(parents=True)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--executable", type=Path, required=True)
@@ -280,8 +445,8 @@ def write_summary(output_dir: Path, summary: dict[str, Any]) -> None:
 
 def main() -> int:
     args = parse_args()
-    if args.runs < 1:
-        print("--runs must be at least 1", file=sys.stderr)
+    if args.runs < 1 or args.runs > MAX_RUNS:
+        print(f"--runs must be in [1, {MAX_RUNS}]", file=sys.stderr)
         return EXIT_ARGUMENT
     executable = args.executable.resolve()
     if not executable.is_file():
@@ -296,7 +461,12 @@ def main() -> int:
         return EXIT_ARGUMENT
 
     output_dir = args.output.resolve()
-    output_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        prepare_output_directory(output_dir)
+    except (OSError, ValueError) as error:
+        print(f"invalid output directory: {error}", file=sys.stderr)
+        return EXIT_ARGUMENT
+
     summary: dict[str, Any] = {
         "schema": "RSH-CUDA-HARDWARE-TEST-RESULT-V1",
         "status": "RUNNING",
@@ -358,7 +528,7 @@ def main() -> int:
             )
             write_summary(output_dir, summary)
             return EXIT_MALFORMED
-        errors = validate_sidecar(sidecar, profile)
+        errors = validate_sidecar(sidecar, profile, expected_run=run_number)
         if errors:
             summary.update(
                 status="FAIL",
