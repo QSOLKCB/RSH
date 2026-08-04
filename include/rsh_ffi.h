@@ -14,6 +14,9 @@
   #define RSH_FFI_API
 #endif
 
+#define RSH_FFI_MAX_GEOMETRY_SAMPLES UINT64_C(262145)
+#define RSH_FFI_MAX_SCHEDULE_SAMPLES UINT64_C(16777216)
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -80,6 +83,8 @@ RSH_FFI_API uint32_t rsh_ffi_abi_version(void);
 RSH_FFI_API size_t rsh_ffi_config_size(void);
 RSH_FFI_API size_t rsh_ffi_summary_size(void);
 RSH_FFI_API size_t rsh_ffi_schedule_point_size(void);
+RSH_FFI_API uint64_t rsh_ffi_max_geometry_samples(void);
+RSH_FFI_API uint64_t rsh_ffi_max_schedule_samples(void);
 RSH_FFI_API double rsh_ffi_psi(void);
 RSH_FFI_API double rsh_ffi_kappa_bound(void);
 RSH_FFI_API const char *rsh_ffi_last_error(void);
