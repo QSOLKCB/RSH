@@ -24,16 +24,18 @@ The new tissue contract is **1.0.0**.
   or Q_f acceptance floors;
 - `rsh constitution`, `rsh tissue`, and `rsh refine-dry-run` commands;
 - JSON report and CSV trace exports for tissue runs;
-- `conformance/tissue_v1_8x20.json`, the sealed default tissue profile;
+- `conformance/tissue_v1_8x20.json`, the default tissue profile with CPython 3.12
+  reference receipts and cross-Python observable tolerances;
 - `conformance/npu_tier2_v1.json`, defining initial INT8, BF16, and FP16 NPU
   residual evidence gates;
 - operational-awareness and Phase 6 architecture documentation;
 - unit and CLI tests for deterministic replay, audit-chain integrity, sidecar
   fallback, proposal governance, conformance vectors, and terminology boundaries.
 
-## Default tissue result
+## Default reference result
 
 ```text
+reference runtime        CPython 3.12
 cells                    8
 ticks                    20
 geometry samples         129
@@ -41,11 +43,18 @@ constitution hash        090416435f8ae2adc7555dab356eafef7aadfeabdb99c68e7c381dd
 seed geometry receipt    f33042335100b7a2bca8c5c97724782ecb820cd8f6704f8e7eb074c1ed9e9a00
 first Q_f                0.2623914043443579
 final Q_f                0.37926532158281384
-tissue report receipt    732fc6ccc5af543881528da7f9ec7717817af97c07e7f7973512685ab67e2622
+reference tissue receipt 732fc6ccc5af543881528da7f9ec7717817af97c07e7f7973512685ab67e2622
 ```
 
-The receipt proves identity of the declared tissue report. Q_f is a functional
-simulation metric and not an empirical or consciousness claim.
+The reference tissue receipt proves identity of the declared CPython 3.12 report.
+The receipt chain remains replay-identical within each supported runtime, while
+CPython 3.10, 3.12, and 3.14 are compared through published observables within an
+absolute tolerance of `1e-12`. Byte-identical tissue receipts are not claimed
+across Python minor versions.
+
+Q_f is a functional simulation metric and not an empirical or consciousness
+claim. The seed geometry receipt remains governed by the existing geometry
+contract.
 
 ## Governed refinement
 
