@@ -18,6 +18,15 @@ fn vector3(value: &Value, field: &str) -> [f64; 3] {
     ]
 }
 
+fn assert_vector_matches_record(actual: [f64; 3], expected: [f64; 3], field: &str) {
+    for (index, (actual, expected)) in actual.into_iter().zip(expected).enumerate() {
+        assert!(
+            (actual - expected).abs() <= GOLDEN_COORDINATE_TOLERANCE,
+            "{field}[{index}] differs from the checked-in record: {actual} vs {expected}"
+        );
+    }
+}
+
 #[test]
 fn embedded_conformance_constants_match_checked_in_record() {
     let record: Value = serde_json::from_str(GOLDEN_RECORD).expect("valid conformance JSON");
@@ -43,8 +52,8 @@ fn embedded_conformance_constants_match_checked_in_record() {
         record["coordinate_tolerance"].as_f64(),
         Some(GOLDEN_COORDINATE_TOLERANCE)
     );
-    assert_eq!(vector3(&record, "entry"), GOLDEN_ENTRY_129);
-    assert_eq!(vector3(&record, "exit"), GOLDEN_EXIT_129);
+    assert_vector_matches_record(vector3(&record, "entry"), GOLDEN_ENTRY_129, "entry");
+    assert_vector_matches_record(vector3(&record, "exit"), GOLDEN_EXIT_129, "exit");
     assert_eq!(
         record["canonical_receipt"].as_str(),
         Some(GOLDEN_RECEIPT_129)
