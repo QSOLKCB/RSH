@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rsh-geometry"
-version = "2.4.0"
+version = "2.4.1"
 description = "Bounded Frenet-Serret geometry and deterministic evidence for the Robitaille-Slade Helix"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -13,7 +13,7 @@ authors = [
   {name = "J. Robitaille"},
   {name = "Trent Slade", email = "qsolimc@users.noreply.github.com"},
 ]
-keywords = ["geometry", "frenet-serret", "deterministic", "verification", "helix", "webassembly", "webgpu", "wgsl", "ffi", "cpp", "cuda"]
+keywords = ["geometry", "frenet-serret", "deterministic", "verification", "helix", "webassembly", "webgpu", "wgsl", "ffi", "cpp", "cuda", "hardware-validation"]
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
