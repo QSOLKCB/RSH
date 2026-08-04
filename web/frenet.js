@@ -102,10 +102,14 @@ function readWasmOutput() {
   const exports = state.wasm.exports;
   const pointer = Number(exports.rsh_frenet_output_ptr());
   const length = Number(exports.rsh_frenet_output_len());
-  if (!Number.isInteger(pointer) || pointer < 0 || !Number.isInteger(length) || length < 1) {
+  if (!Number.isSafeInteger(pointer) || pointer < 0 || !Number.isSafeInteger(length) || length < 1) {
     throw new Error("Numerical WASM returned an invalid output buffer");
   }
-  return JSON.parse(decoder.decode(new Uint8Array(exports.memory.buffer, pointer, length)));
+  const memory = exports.memory.buffer;
+  if (pointer > memory.byteLength || length > memory.byteLength - pointer) {
+    throw new Error("Numerical WASM returned an out-of-bounds output buffer");
+  }
+  return JSON.parse(decoder.decode(new Uint8Array(memory, pointer, length)));
 }
 
 function scientific(value) {
@@ -164,7 +168,17 @@ async function runLaboratory() {
   message.textContent = "Building the f64 Lie-midpoint path…";
 
   try {
-    state.payload = runCpuPath(current);
+    try {
+      state.payload = runCpuPath(current);
+    } catch (error) {
+      cpuStatus.textContent = "REJECTED";
+      cpuStatus.dataset.kind = "fail";
+      clearGpuResult("BLOCKED");
+      gpuStatus.dataset.kind = "fail";
+      message.textContent = error instanceof Error ? error.message : String(error);
+      return;
+    }
+
     cpuStatus.textContent = "f64 PATH PASS";
     cpuStatus.dataset.kind = "pass";
     message.textContent = `The separately versioned f64 path produced ${SAMPLES} samples. Starting WebGPU readback…`;
@@ -177,53 +191,55 @@ async function runLaboratory() {
       return;
     }
 
-    gpuStatus.textContent = "RUNNING";
-    const result = await state.gpu.run(current, state.payload);
-    state.gpuRows = result.rows;
-    adapterText.textContent = result.metadata.adapter;
-    metrics.position.textContent = scientific(result.maxPosition);
-    metrics.frame.textContent = scientific(result.maxFrame);
-    metrics.schedule.textContent = scientific(result.maxSchedule);
-    metrics.norm.textContent = scientific(result.maxFrameNorm);
-    metrics.orthogonality.textContent = scientific(result.maxFrameOrthogonality);
+    try {
+      gpuStatus.textContent = "RUNNING";
+      const result = await state.gpu.run(current, state.payload);
+      state.gpuRows = result.rows;
+      adapterText.textContent = result.metadata.adapter;
+      metrics.position.textContent = scientific(result.maxPosition);
+      metrics.frame.textContent = scientific(result.maxFrame);
+      metrics.schedule.textContent = scientific(result.maxSchedule);
+      metrics.norm.textContent = scientific(result.maxFrameNorm);
+      metrics.orthogonality.textContent = scientific(result.maxFrameOrthogonality);
 
-    const passed = gatePassed(result);
-    gpuStatus.textContent = passed ? "FULL PATH RESIDUAL PASS" : "DISPLAY ONLY";
-    gpuStatus.dataset.kind = passed ? "pass" : "fail";
-    state.sidecar = passed ? {
-      schema: "RSH-WEBGPU-FRENET-PATH-SIDECAR-V1",
-      status: "PASS",
-      numerical_contract: state.payload.numerical_contract,
-      integrator: state.payload.integrator,
-      model: state.payload.model,
-      model_version: state.payload.model_version,
-      configuration: current,
-      metadata: result.metadata,
-      residuals: {
-        max_position_component_vs_wasm_f64: result.maxPosition,
-        max_frame_component_vs_wasm_f64: result.maxFrame,
-        max_schedule_component_vs_wasm_f64: result.maxSchedule,
-        max_frame_norm_error: result.maxFrameNorm,
-        max_frame_orthogonality_error: result.maxFrameOrthogonality,
-      },
-      gates: GATES,
-      actual_gpu_execution: true,
-      full_path_execution: true,
-      execution_model: "single-invocation sequential path recurrence",
-      speedup_claim: false,
-      geometry_receipt_authority: false,
-      evidence_note: "The adapter executed the complete f32 path recurrence and read it back. The separately versioned f64 Rust/WASM path remains the numerical reference, and the canonical rsh-core geometry receipt remains unchanged.",
-    } : null;
-    downloadButton.disabled = !passed;
-    message.textContent = passed
-      ? "The adapter executed and returned the complete f32 path inside every published residual gate. This is correctness evidence, not a speedup claim."
-      : "The adapter executed the full path but exceeded at least one gate. No sidecar may be exported.";
-  } catch (error) {
-    cpuStatus.textContent = "REJECTED";
-    cpuStatus.dataset.kind = "fail";
-    clearGpuResult("BLOCKED");
-    gpuStatus.dataset.kind = "fail";
-    message.textContent = error instanceof Error ? error.message : String(error);
+      const passed = gatePassed(result);
+      gpuStatus.textContent = passed ? "FULL PATH RESIDUAL PASS" : "DISPLAY ONLY";
+      gpuStatus.dataset.kind = passed ? "pass" : "fail";
+      state.sidecar = passed ? {
+        schema: "RSH-WEBGPU-FRENET-PATH-SIDECAR-V1",
+        status: "PASS",
+        numerical_contract: state.payload.numerical_contract,
+        integrator: state.payload.integrator,
+        model: state.payload.model,
+        model_version: state.payload.model_version,
+        configuration: current,
+        metadata: result.metadata,
+        residuals: {
+          max_position_component_vs_wasm_f64: result.maxPosition,
+          max_frame_component_vs_wasm_f64: result.maxFrame,
+          max_schedule_component_vs_wasm_f64: result.maxSchedule,
+          max_frame_norm_error: result.maxFrameNorm,
+          max_frame_orthogonality_error: result.maxFrameOrthogonality,
+        },
+        gates: GATES,
+        actual_gpu_execution: true,
+        full_path_execution: true,
+        execution_model: "single-invocation sequential path recurrence",
+        speedup_claim: false,
+        geometry_receipt_authority: false,
+        evidence_note: "The adapter executed the complete f32 path recurrence and read it back. The separately versioned f64 Rust/WASM path remains the numerical reference, and the canonical rsh-core geometry receipt remains unchanged.",
+      } : null;
+      downloadButton.disabled = !passed;
+      message.textContent = passed
+        ? "The adapter executed and returned the complete f32 path inside every published residual gate. This is correctness evidence, not a speedup claim."
+        : "The adapter executed the full path but exceeded at least one gate. No sidecar may be exported.";
+    } catch (error) {
+      clearGpuResult("WASM FALLBACK");
+      gpuStatus.dataset.kind = "fallback";
+      adapterText.textContent = state.gpu?.metadata?.adapter || "WebGPU execution failed";
+      const detail = error instanceof Error ? error.message : String(error);
+      message.textContent = `The f64 path passed. WebGPU execution failed, so the WASM result remains active: ${detail}`;
+    }
   } finally {
     runButton.disabled = false;
   }
