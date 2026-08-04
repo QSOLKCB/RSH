@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b0f14">
+  <title>RSH Full Frenet Path Research</title>
+  <link rel="stylesheet" href="./frenet.css">
+</head>
+<body>
+  <main>
+    <nav><a href="./">← verified geometry laboratory</a></nav>
+    <header>
+      <p class="eyebrow">RSH⁸ · SEPARATELY VERSIONED NUMERICAL RESEARCH</p>
+      <h1>Full Frenet–Serret Path on WebGPU</h1>
+      <p class="lede">
+        A 1,025-point f64 Rust/WASM Lie-midpoint reference is compared with a complete
+        f32 WGSL path recurrence: position, tangent, normal, binormal, curvature,
+        torsion, frame projection, and midpoint centering.
+      </p>
+      <div class="boundary">
+        <strong>Correctness milestone, not a speedup claim.</strong>
+        The current GPU kernel uses one invocation because the path is recurrent.
+        It never creates the canonical geometry receipt.
+      </div>
+    </header>
+
+    <section class="workspace">
+      <form id="controls">
+        <label>
+          Curvature fraction <output id="kappa-value">0.85</output>
+          <input id="kappa-fraction" type="range" min="0.05" max="1" step="0.01" value="0.85">
+        </label>
+        <label>
+          Torsion floor <output id="tau-floor-value">0.22</output>
+          <input id="tau-floor" type="range" min="0.02" max="0.70" step="0.01" value="0.22">
+        </label>
+        <label>
+          Torsion amplitude <output id="tau-amplitude-value">0.13</output>
+          <input id="tau-amplitude" type="range" min="0" max="0.14" step="0.01" value="0.13">
+        </label>
+        <div class="actions">
+          <button id="run" type="submit">RUN FULL PATH</button>
+          <button id="download-sidecar" type="button" disabled>DOWNLOAD GPU SIDECAR</button>
+        </div>
+      </form>
+
+      <div class="status-grid">
+        <article>
+          <span>f64 RUST/WASM PATH</span>
+          <strong id="cpu-status">LOADING</strong>
+        </article>
+        <article>
+          <span>f32 WEBGPU PATH</span>
+          <strong id="gpu-status">NOT RUN</strong>
+        </article>
+      </div>
+
+      <canvas id="path-canvas" width="960" height="560" aria-label="Rotatable full Frenet path comparison"></canvas>
+      <p class="legend">
+        <span class="cpu-line">f64 reference</span>
+        <span class="gpu-line">f32 GPU readback</span>
+        <span>drag the view · midpoint frame shows T / N / B</span>
+      </p>
+    </section>
+
+    <section class="evidence">
+      <h2>Path-level residual evidence</h2>
+      <dl>
+        <div><dt>Position component</dt><dd id="res-position">—</dd></div>
+        <div><dt>Frame component</dt><dd id="res-frame">—</dd></div>
+        <div><dt>κ / τ schedule</dt><dd id="res-schedule">—</dd></div>
+        <div><dt>Frame norm</dt><dd id="res-norm">—</dd></div>
+        <div><dt>Frame orthogonality</dt><dd id="res-orthogonality">—</dd></div>
+      </dl>
+      <p><strong>Adapter:</strong> <span id="adapter">detecting…</span></p>
+      <p id="message">Loading the separately versioned numerical module…</p>
+    </section>
+
+    <section class="method">
+      <h2>Declared integration policy</h2>
+      <ol>
+        <li>Evaluate bounded κ and τ at each interval midpoint.</li>
+        <li>Advance the orthonormal frame with the SO(3) exponential map.</li>
+        <li>Advance position using the midpoint tangent.</li>
+        <li>Apply modified Gram–Schmidt after each full frame step.</li>
+        <li>Translate the exact discrete midpoint to the origin.</li>
+        <li>Read the entire GPU path back and compare every stored component.</li>
+      </ol>
+    </section>
+
+    <footer>
+      RSH v2.6.0 research surface · numerical contract RSH-FRENET-NUMERICS-V1 ·
+      canonical geometry contract remains 2.0.0
+    </footer>
+  </main>
+  <script type="module" src="./frenet.js"></script>
+</body>
+</html>
