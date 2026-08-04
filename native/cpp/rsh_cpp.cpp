@@ -31,10 +31,10 @@ struct ScheduleOwner {
 };
 
 struct Options {
-  std::uint64_t samples = 129;
+  std::uint64_t samples;
   std::string json_path;
   std::string csv_path;
-  double threshold = 1.0e-4;
+  double threshold;
 };
 
 std::string last_error() {
@@ -50,6 +50,10 @@ void validate_abi() {
       rsh_ffi_summary_size() != sizeof(RshSummaryV1) ||
       rsh_ffi_schedule_point_size() != sizeof(RshSchedulePointV1)) {
     throw std::runtime_error("RSH FFI structure layout mismatch");
+  }
+  if (rsh_ffi_max_geometry_samples() != RSH_FFI_MAX_GEOMETRY_SAMPLES ||
+      rsh_ffi_max_schedule_samples() != RSH_FFI_MAX_SCHEDULE_SAMPLES) {
+    throw std::runtime_error("RSH FFI safety-limit mismatch");
   }
 }
 
@@ -77,8 +81,8 @@ void write_bytes(const std::string& path, const std::uint8_t* data, std::size_t 
   }
 }
 
-Options parse_options(int argc, char** argv, int first) {
-  Options options;
+Options parse_options(int argc, char** argv, int first, std::uint64_t default_samples) {
+  Options options{default_samples, {}, {}, 1.0e-4};
   for (int index = first; index < argc; ++index) {
     const std::string_view argument(argv[index]);
     auto require_value = [&](std::string_view name) -> std::string_view {
@@ -245,9 +249,10 @@ void print_usage() {
       << "RSH C++ native adapter\n\n"
       << "Usage:\n"
       << "  rsh-cpp info\n"
-      << "  rsh-cpp verify [--samples N] [--json FILE]\n"
-      << "  rsh-cpp schedule [--samples N] [--csv FILE]\n"
-      << "  rsh-cpp cuda-reference [--samples N] [--threshold VALUE]\n";
+      << "  rsh-cpp verify [--samples N] [--json FILE]       (default N=129)\n"
+      << "  rsh-cpp schedule [--samples N] [--csv FILE]      (default N=129)\n"
+      << "  rsh-cpp cuda-reference [--samples N] [--threshold VALUE]"
+         "  (default N=4096)\n";
 }
 
 }  // namespace
@@ -263,12 +268,15 @@ int main(int argc, char** argv) {
     if (command == "info" || command == "--help" || command == "-h") {
       print_usage();
       std::cout << "\nABI version: " << rsh_ffi_abi_version()
+                << "\ngeometry sample cap: " << rsh_ffi_max_geometry_samples()
+                << "\nschedule sample cap: " << rsh_ffi_max_schedule_samples()
                 << "\npsi: " << std::setprecision(17) << rsh_ffi_psi()
                 << "\nkappa bound: " << rsh_ffi_kappa_bound() << "\n";
       return EXIT_SUCCESS;
     }
 
-    const Options options = parse_options(argc, argv, 2);
+    const std::uint64_t default_samples = command == "cuda-reference" ? 4096 : 129;
+    const Options options = parse_options(argc, argv, 2, default_samples);
     if (command == "verify") {
       return run_verify(options);
     }
@@ -276,11 +284,7 @@ int main(int argc, char** argv) {
       return run_schedule(options);
     }
     if (command == "cuda-reference") {
-      Options reference = options;
-      if (reference.samples == 129) {
-        reference.samples = 4096;
-      }
-      return run_cuda_reference(reference);
+      return run_cuda_reference(options);
     }
     throw std::runtime_error("unknown command: " + command);
   } catch (const std::exception& error) {
