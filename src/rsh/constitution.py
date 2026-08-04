@@ -223,6 +223,10 @@ def validate_constitution(
         if not required_refusals.issubset(set(refusals)):
             errors.append("refusal list incomplete")
 
+    terminology = payload.get("terminology")
+    if terminology != _CONSTITUTION_TEMPLATE["terminology"]:
+        errors.append("terminology boundary mismatch")
+
     return tuple(errors)
 
 
