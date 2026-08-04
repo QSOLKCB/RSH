@@ -4,9 +4,16 @@ from .constitution import (
     CONSTITUTION_VERSION,
     constitution_hash,
     constitution_report,
+    default_constitution,
     validate_constitution,
 )
-from .evidence import VerifyReport, build_and_verify, make_receipt, verify, verify_parallel
+from .evidence import (
+    VerifyReport,
+    build_and_verify,
+    make_receipt,
+    verify,
+    verify_parallel,
+)
 from .geometry import ModelConfig, Sample, build_path, logical_sample_indices
 from .refinement import (
     RefinementDecision,
@@ -40,6 +47,7 @@ __all__ = [
     "build_and_verify",
     "constitution_hash",
     "constitution_report",
+    "default_constitution",
     "evaluate_refinement",
     "logical_sample_indices",
     "make_receipt",
