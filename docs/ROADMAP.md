@@ -1,9 +1,9 @@
 # RSH implementation roadmap
 
-RSH advances by preserving one scientific contract across progressively faster
-implementations. The Python reference defines behaviour; later runtimes must
-match its declared inputs, outputs, bounds, and evidence schema within documented
-numerical tolerances.
+RSH advances by preserving explicit contracts across progressively faster or
+more compositional implementations. The Python reference defines behaviour;
+later runtimes must match declared inputs, outputs, bounds, and evidence schemas
+within documented numerical tolerances.
 
 ## Phase 1 — Python reference
 
@@ -95,7 +95,57 @@ Status: **implemented in v2.4.0; validation hardened in v2.4.1**
 The C++ and CUDA layers are adapters. Geometry, frame integration, centre
 normalisation, reports, and receipts remain authoritative in `rsh-core`.
 
-## Phase 6 — separately versioned GPU path integration research
+## Phase 6 — constitutional geometric tissue
+
+Status: **Python reference implemented in v2.5.0**
+
+- a machine-checkable constitution seals geometry invariants, oracle authority,
+  objective ordering, human-ack requirements, and refusal rules;
+- deterministic geometric cells are seeded from a verified 129-sample Python
+  geometry report rather than a second path model;
+- ring and chord edges define a bounded tissue graph;
+- each tick performs bound projection, phase coupling, binding diffusion,
+  neighbour prediction, shared-centroid normalization, and functional metric
+  calculation;
+- every tick extends a domain-separated receipt chain beginning with the seed
+  geometry receipt;
+- Q_f combines phase coherence, binding cohesion, prediction, edge continuity,
+  role coverage, and dissociation pressure;
+- Q_f is explicitly functional and does not claim consciousness, life, sentience,
+  subjective awareness, or qualia;
+- WebGPU, CUDA, and NPU values may be recorded only as residual sidecars, with
+  f64 fallback on gate failure;
+- a dry-run refinement evaluator creates intent tokens, validates bounds, detects
+  contract escalation, requires explicit human acknowledgement, compares ordered
+  objectives, and seals `KEEP_CANDIDATE` or `REVERT` recommendations;
+- the evaluator does not edit source or commit configuration autonomously;
+- `conformance/tissue_v1_8x20.json` fixes the default 8-cell, 20-tick receipt and
+  functional metrics;
+- `conformance/npu_tier2_v1.json` defines initial INT8/BF16/FP16 NPU evidence
+  gates without claiming a vendor driver implementation.
+
+The tissue layer composes accepted geometry evidence. Its shared-centroid law and
+receipt domains are separate from the geometry midpoint law and geometry receipt.
+
+## Phase 7 — Rust/WASM tissue conformance
+
+Status: **planned, not implemented**
+
+A second tissue runtime should begin from the sealed Python vectors and must
+reproduce:
+
+- cell seeding indices and initial state;
+- edge ordering;
+- phase, diffusion, prediction, and Q_f calculations;
+- shared-centroid residuals;
+- sidecar/fallback metadata;
+- every tick-chain receipt input and final report observables within declared
+  cross-runtime tolerances.
+
+Receipt byte identity must not be promised across runtimes unless serialization,
+float formatting, and domain contracts are deliberately unified.
+
+## Phase 8 — separately versioned GPU path integration research
 
 Status: **not scheduled**
 
@@ -120,13 +170,14 @@ builds `rsh_wasm.wasm`, executes the WASM/WGSL source conformance harness, place
 the module under `web/pkg/`, validates the shader and browser assets, and only
 then uploads the artifact for deployment.
 
-Native C++, FFI, and CUDA artifacts are intentionally not shipped through Pages.
-They are built and tested through the repository's native CI path. Actual CUDA
-hardware validation is available only through the manual trusted-runner workflow
-or an independently captured evidence bundle.
+Native C++, FFI, CUDA, and the Python tissue runtime are intentionally not
+executed by Pages. Native adapters are built through CI, CUDA hardware validation
+uses the manual trusted-runner workflow, and tissue evidence is currently
+produced by the Python CLI.
 
 ## Governance rule
 
-Performance does not promote an implementation to scientific authority. A later
-backend is accepted only after it reproduces the reference contracts, passes the
+Performance, compositional complexity, or anthropomorphic terminology does not
+promote an implementation to scientific authority. A later backend is accepted
+only after it reproduces the applicable reference contracts, passes the
 cross-runtime suite, and states every known source of numerical divergence.
