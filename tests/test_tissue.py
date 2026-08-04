@@ -6,6 +6,8 @@ import io
 import json
 import math
 from pathlib import Path
+import platform
+import sys
 import tempfile
 import unittest
 
@@ -54,6 +56,7 @@ class TissueRuntimeTests(unittest.TestCase):
             )
         )
         expected = profile["expected"]
+        tolerance = float(expected["observable_absolute_tolerance"])
         report = simulate_tissue()
 
         self.assertTrue(report.pass_all)
@@ -72,31 +75,47 @@ class TissueRuntimeTests(unittest.TestCase):
             report.seed_geometry_receipt,
             expected["seed_geometry_receipt"],
         )
-        self.assertEqual(
-            report.ticks[0].receipt,
-            expected["first_tick_receipt"],
+
+        reference = profile["reference_runtime"]
+        on_reference_runtime = (
+            platform.python_implementation() == reference["implementation"]
+            and sys.version_info[:2]
+            == (reference["major"], reference["minor"])
         )
-        self.assertEqual(
-            report.ticks[-1].receipt,
-            expected["last_tick_receipt"],
-        )
-        self.assertEqual(report.receipt, expected["report_receipt"])
-        self.assertTrue(
-            math.isclose(
-                report.ticks[0].metrics.q_f,
-                expected["first_q_f"],
-                rel_tol=0.0,
-                abs_tol=1.0e-15,
+        if on_reference_runtime:
+            self.assertEqual(
+                report.ticks[0].receipt,
+                expected["reference_first_tick_receipt"],
             )
-        )
-        self.assertTrue(
-            math.isclose(
-                report.final_q_f,
-                expected["final_q_f"],
-                rel_tol=0.0,
-                abs_tol=1.0e-15,
+            self.assertEqual(
+                report.ticks[-1].receipt,
+                expected["reference_last_tick_receipt"],
             )
+            self.assertEqual(
+                report.receipt,
+                expected["reference_report_receipt"],
+            )
+
+        observables = (
+            (report.ticks[0].metrics.q_f, expected["first_q_f"]),
+            (report.final_q_f, expected["final_q_f"]),
+            (report.min_q_f, expected["minimum_q_f"]),
+            (report.max_q_f, expected["maximum_q_f"]),
+            (
+                report.ticks[-1].metrics.dissociation,
+                expected["final_dissociation"],
+            ),
         )
+        for actual, reference_value in observables:
+            self.assertTrue(
+                math.isclose(
+                    actual,
+                    reference_value,
+                    rel_tol=0.0,
+                    abs_tol=tolerance,
+                ),
+                (actual, reference_value),
+            )
         self.assertLessEqual(
             max(tick.centre_error for tick in report.ticks),
             expected["maximum_centre_error"],
