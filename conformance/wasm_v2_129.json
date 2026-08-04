@@ -1,0 +1,45 @@
+{
+  "schema": "RSH-WASM-CONFORMANCE-V1",
+  "model": "Robitaille-Slade-Helix",
+  "model_version": "2.0.0",
+  "reference": "python_v2_129.json",
+  "configuration": {
+    "samples": 129,
+    "s0": 0.0,
+    "s1": 4.0,
+    "kappa_fraction": 0.85,
+    "tau_floor": 0.22,
+    "tau_amplitude": 0.13
+  },
+  "abi_version": 1,
+  "coordinate_tolerance": 1e-12,
+  "centre_tolerance": 1e-15,
+  "entry": [
+    -1.8484919565721223,
+    -0.6353766408175766,
+    -0.16593646474199972
+  ],
+  "exit": [
+    1.2097010814305758,
+    1.2168907843927106,
+    0.9663511535281694
+  ],
+  "canonical_receipt": "9cccdea9db0e0cb4c30accab275a672efb9c69fed022f5087f273a87aa28f253",
+  "required": {
+    "pass_all": true,
+    "point_count": 129,
+    "receipt_encoding": "lowercase hexadecimal SHA-256",
+    "receipt_domain": "RSH-GEOMETRY-EVIDENCE-V2\\0"
+  },
+  "receipt_policy": {
+    "python_identity_required": false,
+    "native_identity_required": true,
+    "identity_reported_separately": true,
+    "reason": "The sealed Phase 3 module and native Rust runner produce the same canonical report receipt for this profile. Python identity remains separately reported because its runtime path differs."
+  },
+  "notes": [
+    "The actual WebAssembly binary is executed against this profile in CI.",
+    "The report and centreline samples must be produced by rsh-core.",
+    "Canvas projection and interpolation are interface output, not additional evidence."
+  ]
+}

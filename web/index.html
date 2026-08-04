@@ -3,34 +3,40 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="RSH — bounded Frenet–Serret geometry with deterministic Python and Rust evidence runners.">
+  <meta name="description" content="RSH — verified bounded Frenet–Serret geometry running in Python, native Rust, and WebAssembly.">
+  <meta name="theme-color" content="#081014">
   <title>RSH — Robitaille–Slade Helix</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <header class="hero">
     <nav>
-      <a class="brand" href="./" aria-label="RSH home">RSH<span>²</span></a>
+      <a class="brand" href="./" aria-label="RSH home">RSH<span>³</span></a>
       <div class="nav-links">
+        <a href="#laboratory">Laboratory</a>
         <a href="#contracts">Contracts</a>
-        <a href="#implementations">Implementations</a>
+        <a href="#implementations">Stack</a>
         <a href="https://github.com/QSOLKCB/RSH">Source</a>
       </div>
     </nav>
 
     <div class="hero-grid">
       <section class="intro">
-        <p class="eyebrow">ROBITAILLE–SLADE HELIX · EVIDENCE RUNNER</p>
-        <h1>Bounded geometry.<br><em>Reproducible evidence.</em></h1>
-        <p class="lede">RSH prescribes curvature and torsion inside explicit bounds, integrates the Frenet–Serret frame, and verifies the resulting path with portable conformance evidence.</p>
+        <p class="eyebrow">ROBITAILLE–SLADE HELIX · WASM EVIDENCE LAB</p>
+        <h1>Verified geometry.<br><em>Now in the browser.</em></h1>
+        <p class="lede">The page no longer invents a JavaScript approximation. It calls the same Rust geometry core used by the native CLI, reads its verified samples from WebAssembly memory, and keeps JavaScript on interface duty.</p>
+        <div class="runtime-line" aria-live="polite">
+          <span id="runtime-light" class="runtime-light loading"></span>
+          <strong id="runtime-status">Loading Rust/WASM core…</strong>
+        </div>
         <div class="actions">
-          <a class="primary" href="https://github.com/QSOLKCB/RSH">Open repository</a>
-          <a class="secondary" href="#implementations">View implementation stack</a>
+          <a class="primary" href="#laboratory">Open laboratory</a>
+          <a class="secondary" href="https://github.com/QSOLKCB/RSH">Inspect source</a>
         </div>
       </section>
 
-      <section class="visual" aria-label="Schematic bounded helix projection">
-        <div class="scope-note">SCHEMATIC PROJECTION · NOT EVIDENCE</div>
+      <section class="visual" aria-label="Visual projection of verified RSH samples">
+        <div class="scope-note">VERIFIED RUST/WASM SAMPLES · VISUAL PROJECTION</div>
         <canvas id="helix" width="760" height="620"></canvas>
         <div class="axis x">κ ≤ √2 − 1</div>
         <div class="axis y">0 &lt; τ &lt; 1</div>
@@ -40,11 +46,81 @@
   </header>
 
   <main>
+    <section id="laboratory" class="laboratory">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">INTERACTIVE WASM RUNNER</p>
+          <h2>Change the schedule. Re-run the contract.</h2>
+        </div>
+        <p>Every run is calculated inside <code>rsh-core</code>. The browser receives a report and sampled coordinates through a tiny raw WebAssembly ABI.</p>
+      </div>
+
+      <div class="lab-grid">
+        <form id="controls" class="control-panel">
+          <label>
+            <span>Samples <output id="samples-value">257</output></span>
+            <input id="samples" name="samples" type="range" min="65" max="1025" step="64" value="257">
+            <small>Odd sample counts preserve the exact discrete midpoint.</small>
+          </label>
+
+          <label>
+            <span>Curvature fraction <output id="kappa-value">0.85</output></span>
+            <input id="kappa-fraction" name="kappa-fraction" type="range" min="0.10" max="1.00" step="0.01" value="0.85">
+            <small>Scales the schedule beneath κ<sub>max</sub> = √2 − 1.</small>
+          </label>
+
+          <label>
+            <span>Torsion floor <output id="tau-floor-value">0.22</output></span>
+            <input id="tau-floor" name="tau-floor" type="range" min="0.01" max="0.80" step="0.01" value="0.22">
+          </label>
+
+          <label>
+            <span>Torsion amplitude <output id="tau-amplitude-value">0.13</output></span>
+            <input id="tau-amplitude" name="tau-amplitude" type="range" min="0.00" max="0.40" step="0.01" value="0.13">
+            <small>The complete schedule must remain strictly inside (0, 1).</small>
+          </label>
+
+          <button id="run-button" type="submit">Run verified geometry</button>
+          <p id="run-message" class="run-message" role="status">Waiting for the WASM module.</p>
+        </form>
+
+        <section class="evidence-panel" aria-label="Verification evidence">
+          <div class="evidence-header">
+            <div>
+              <p class="eyebrow">CURRENT REPORT</p>
+              <h3 id="report-status">NOT RUN</h3>
+            </div>
+            <span id="abi-badge" class="badge">ABI —</span>
+          </div>
+
+          <dl class="metrics">
+            <div><dt>Samples</dt><dd id="metric-samples">—</dd></div>
+            <div><dt>Centre error</dt><dd id="metric-centre">—</dd></div>
+            <div><dt>Max κ / bound</dt><dd id="metric-kappa">—</dd></div>
+            <div><dt>τ range</dt><dd id="metric-tau">—</dd></div>
+            <div><dt>Frame error</dt><dd id="metric-frame">—</dd></div>
+            <div><dt>Path length</dt><dd id="metric-path">—</dd></div>
+          </dl>
+
+          <div class="receipt-block">
+            <span>RUNTIME RECEIPT</span>
+            <code id="metric-receipt">—</code>
+          </div>
+
+          <div class="export-actions">
+            <button id="download-report" type="button" disabled>Download JSON report</button>
+            <button id="download-trace" type="button" disabled>Download trace CSV</button>
+          </div>
+          <p class="boundary-note">The report is evidence output. The rotating canvas is a projection of those samples and does not add a physical claim.</p>
+        </section>
+      </div>
+    </section>
+
     <section id="contracts" class="panel contracts">
       <div>
         <p class="eyebrow">REFERENCE CONTRACT</p>
         <h2>The model states what it can prove.</h2>
-        <p>Centre placement is a coordinate normalisation. Receipts prove canonical report identity. Neither claim is inflated into experimental physics.</p>
+        <p>Centre placement is a coordinate normalisation. Receipts prove canonical report identity. Cross-runtime conformance proves agreement within declared observables and tolerances.</p>
       </div>
       <dl>
         <div><dt>ψ</dt><dd>√(2 + √5)</dd></div>
@@ -52,7 +128,7 @@
         <div><dt>τ(s)</dt><dd>0 &lt; τ &lt; 1</dd></div>
         <div><dt>Centre</dt><dd>exact discrete p = 0.5</dd></div>
         <div><dt>Receipt</dt><dd>domain-separated SHA-256</dd></div>
-        <div><dt>Runtime</dt><dd>offline and deterministic</dd></div>
+        <div><dt>Browser ABI</dt><dd>numeric inputs + UTF-8 JSON output</dd></div>
       </dl>
     </section>
 
@@ -64,48 +140,51 @@
           <span class="number">01</span>
           <h3>Python oracle</h3>
           <p>Readable equations, report schema, golden coordinates, receipts, exports, and tests.</p>
-          <strong>REFERENCE</strong>
+          <strong>SCIENTIFIC REFERENCE</strong>
         </article>
         <article class="card active">
           <span class="number">02</span>
           <h3>Rust core</h3>
           <p>Native geometry and CLI implementation checked against the Python conformance bundle.</p>
-          <strong>IN DEVELOPMENT</strong>
+          <strong>IMPLEMENTED · v2.1</strong>
         </article>
-        <article class="card">
+        <article class="card active">
           <span class="number">03</span>
           <h3>WASM bridge</h3>
-          <p>Offline browser access to the verified Rust core without creating a second JavaScript model.</p>
-          <strong>NEXT</strong>
+          <p>The browser executes the Rust core directly through a dependency-free raw WebAssembly ABI.</p>
+          <strong>IMPLEMENTED · v2.2</strong>
         </article>
         <article class="card">
           <span class="number">04</span>
           <h3>WGSL compute</h3>
           <p>WebGPU batch evaluation and visual kernels validated against shared conformance vectors.</p>
-          <strong>PLANNED</strong>
+          <strong>NEXT</strong>
         </article>
       </div>
     </section>
 
     <section class="terminal panel">
       <div>
-        <p class="eyebrow">RUN THE REFERENCE</p>
-        <h2>No server. No telemetry. No ceremony.</h2>
+        <p class="eyebrow">THREE RUNTIMES</p>
+        <h2>No server process. No telemetry. No duplicate browser model.</h2>
       </div>
       <pre><code><span>$</span> python3 rsh_runner.py verify -n 129
 RSH verify [PASS]
-receipt = f33042335100b7a2…
 
-<span>$</span> cargo run -p rsh-cli -- conformance
-RSH Rust conformance [PASS]</code></pre>
+<span>$</span> cargo run --locked -p rsh-cli -- conformance
+RSH Rust conformance [PASS]
+
+<span>&gt;</span> WebAssembly.instantiate(rsh_wasm.wasm)
+RSH browser report [PASS]</code></pre>
     </section>
   </main>
 
   <footer>
     <p>J. Robitaille / DeltaKingZero · Trent Slade / QSOL-IMC</p>
-    <p>RSH v2 · MPL-2.0</p>
+    <p>RSH v2.2.0 · MPL-2.0 · installable offline after first load</p>
   </footer>
 
-  <script src="app.js"></script>
+  <noscript><p class="noscript">The RSH browser laboratory requires JavaScript to load the verified WebAssembly core.</p></noscript>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

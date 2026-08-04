@@ -5,6 +5,12 @@ on:
     branches: [main]
     paths:
       - "web/**"
+      - "crates/rsh-core/**"
+      - "crates/rsh-wasm/**"
+      - "conformance/**"
+      - "scripts/test_wasm.mjs"
+      - "Cargo.toml"
+      - "Cargo.lock"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -18,31 +24,53 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Validate Pages source
+      - name: Install Rust WASM target
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add wasm32-unknown-unknown
+      - name: Test WASM bridge
+        run: cargo test --locked -p rsh-wasm
+      - name: Build verified browser module
+        run: cargo build --locked --release --target wasm32-unknown-unknown -p rsh-wasm
+      - name: Execute WebAssembly conformance profile
+        run: |
+          wasm=target/wasm32-unknown-unknown/release/rsh_wasm.wasm
+          node scripts/test_wasm.mjs "$wasm" conformance/wasm_v2_129.json
+      - name: Assemble Pages artifact
+        run: |
+          mkdir -p web/pkg
+          cp target/wasm32-unknown-unknown/release/rsh_wasm.wasm web/pkg/rsh_wasm.wasm
+      - name: Validate Pages artifact
         run: |
           test -s web/index.html
           test -s web/style.css
           test -s web/app.js
+          test -s web/sw.js
+          test -s web/pkg/rsh_wasm.wasm
+          test -s conformance/wasm_v2_129.json
+          test -s scripts/test_wasm.mjs
           test -f web/.nojekyll
           grep -q '<title>RSH' web/index.html
-          grep -q 'SCHEMATIC PROJECTION' web/index.html
+          grep -q 'VERIFIED RUST/WASM SAMPLES' web/index.html
+          grep -q 'pkg/rsh_wasm.wasm' web/app.js
+          test "$(od -An -t x1 -N4 web/pkg/rsh_wasm.wasm | tr -d ' \n')" = "0061736d"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
 
   deploy:
-    needs: validate
+    needs: build
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: web
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
