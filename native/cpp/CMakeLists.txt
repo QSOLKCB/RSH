@@ -26,6 +26,7 @@ add_custom_command(
     "${RSH_ROOT}/crates/rsh-core/src/lib.rs"
     "${RSH_ROOT}/crates/rsh-ffi/Cargo.toml"
     "${RSH_ROOT}/crates/rsh-ffi/src/lib.rs"
+    "${RSH_ROOT}/include/rsh_ffi.h"
   COMMENT "Building the verified Rust C ABI"
   VERBATIM
 )
@@ -59,4 +60,9 @@ enable_testing()
 add_test(NAME rsh_cpp_info COMMAND rsh-cpp info)
 add_test(NAME rsh_cpp_verify COMMAND rsh-cpp verify --samples 129)
 add_test(NAME rsh_cpp_schedule COMMAND rsh-cpp schedule --samples 4096)
-add_test(NAME rsh_cpp_cuda_reference COMMAND rsh-cpp cuda-reference --samples 4096 --threshold 1e-4)
+add_test(NAME rsh_cpp_cuda_reference_default COMMAND rsh-cpp cuda-reference --threshold 1e-4)
+add_test(NAME rsh_cpp_cuda_reference_explicit_129 COMMAND rsh-cpp cuda-reference --samples 129 --threshold 1e-4)
+set_tests_properties(
+  rsh_cpp_cuda_reference_explicit_129
+  PROPERTIES PASS_REGULAR_EXPRESSION "\"samples\": 129"
+)
