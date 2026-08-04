@@ -46,6 +46,7 @@ impl From<&Sample> for BrowserPoint {
 struct BrowserPayload<'a> {
     schema: &'static str,
     abi_version: u32,
+    implementation: &'static str,
     runtime: &'static str,
     implementation_version: &'static str,
     model: &'static str,
@@ -74,6 +75,7 @@ fn encode_run(config: ModelConfig) -> Result<(Vec<u8>, bool), String> {
     let payload = BrowserPayload {
         schema: BROWSER_SCHEMA,
         abi_version: ABI_VERSION,
+        implementation: IMPLEMENTATION,
         runtime: "wasm32-unknown-unknown",
         implementation_version: env!("CARGO_PKG_VERSION"),
         model: MODEL_NAME,
@@ -93,7 +95,9 @@ fn encode_error(message: &str) -> Vec<u8> {
         runtime: "wasm32-unknown-unknown",
         message,
     })
-    .unwrap_or_else(|_| b"{\"schema\":\"RSH-BROWSER-ERROR-V1\",\"message\":\"serialization failure\"}".to_vec())
+    .unwrap_or_else(|_| {
+        b"{\"schema\":\"RSH-BROWSER-ERROR-V1\",\"message\":\"serialization failure\"}".to_vec()
+    })
 }
 
 /// Return the raw ABI version expected by the browser loader.
@@ -129,7 +133,11 @@ pub extern "C" fn rsh_run(
     match encode_run(config) {
         Ok((bytes, pass_all)) => {
             set_output(bytes);
-            if pass_all { 0 } else { 1 }
+            if pass_all {
+                0
+            } else {
+                1
+            }
         }
         Err(error) => {
             set_output(encode_error(&error));
@@ -170,6 +178,7 @@ mod tests {
         let payload = read_output();
         assert_eq!(payload["schema"], BROWSER_SCHEMA);
         assert_eq!(payload["abi_version"], ABI_VERSION);
+        assert_eq!(payload["implementation"], IMPLEMENTATION);
         assert_eq!(payload["model"], MODEL_NAME);
         assert_eq!(payload["model_version"], MODEL_VERSION);
         assert_eq!(payload["report"]["pass_all"], true);
