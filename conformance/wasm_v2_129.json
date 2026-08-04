@@ -24,6 +24,7 @@
     1.2168907843927106,
     0.9663511535281694
   ],
+  "canonical_receipt": "9cccdea9db0e0cb4c30accab275a672efb9c69fed022f5087f273a87aa28f253",
   "required": {
     "pass_all": true,
     "point_count": 129,
@@ -32,9 +33,9 @@
   },
   "receipt_policy": {
     "python_identity_required": false,
-    "native_identity_required": false,
+    "native_identity_required": true,
     "identity_reported_separately": true,
-    "reason": "Transcendental floating-point paths may differ in their final bits across targets. Coordinate and contract conformance remain mandatory."
+    "reason": "The sealed Phase 3 module and native Rust runner produce the same canonical report receipt for this profile. Python identity remains separately reported because its runtime path differs."
   },
   "notes": [
     "The actual WebAssembly binary is executed against this profile in CI.",
