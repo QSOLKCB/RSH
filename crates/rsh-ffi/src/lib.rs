@@ -18,6 +18,8 @@ pub const RSH_FFI_STATUS_PASS: i32 = 0;
 pub const RSH_FFI_STATUS_CONTRACT_FAIL: i32 = 1;
 pub const RSH_FFI_STATUS_REJECTED: i32 = 2;
 pub const RSH_FFI_STATUS_PANIC: i32 = 3;
+pub const RSH_FFI_MAX_GEOMETRY_SAMPLES: usize = 262_145;
+pub const RSH_FFI_MAX_SCHEDULE_SAMPLES: usize = 16_777_216;
 
 thread_local! {
     static LAST_ERROR: RefCell<CString> = RefCell::new(CString::new("").expect("empty CString"));
@@ -152,18 +154,40 @@ fn clear_last_error() {
     LAST_ERROR.with(|slot| *slot.borrow_mut() = CString::new("").expect("empty CString"));
 }
 
-fn checked_geometry_config(input: &RshConfigV1) -> Result<ModelConfig, String> {
-    if input.struct_size < size_of::<RshConfigV1>() as u32 {
-        return Err("RshConfigV1.struct_size is too small for ABI v1".into());
+unsafe fn validate_struct_header<T>(
+    value: *const T,
+    required_size: usize,
+    label: &str,
+) -> Result<(), String> {
+    if value.is_null() {
+        return Err(format!("{label} pointer is null"));
     }
-    if input.abi_version != RSH_FFI_ABI_VERSION {
+    let words = value.cast::<u32>();
+    let struct_size = unsafe { ptr::read_unaligned(words) };
+    let abi_version = unsafe { ptr::read_unaligned(words.add(1)) };
+    if struct_size < required_size as u32 {
         return Err(format!(
-            "unsupported RSH FFI ABI {}; expected {}",
-            input.abi_version, RSH_FFI_ABI_VERSION
+            "{label}.struct_size is too small for ABI v1: {struct_size} < {required_size}"
         ));
     }
+    if abi_version != RSH_FFI_ABI_VERSION {
+        return Err(format!(
+            "unsupported {label} ABI {abi_version}; expected {RSH_FFI_ABI_VERSION}"
+        ));
+    }
+    Ok(())
+}
+
+unsafe fn checked_geometry_config(input: *const RshConfigV1) -> Result<ModelConfig, String> {
+    unsafe { validate_struct_header(input, size_of::<RshConfigV1>(), "RshConfigV1")? };
+    let input = unsafe { &*input };
     let samples = usize::try_from(input.samples)
         .map_err(|_| "sample count does not fit this platform".to_string())?;
+    if samples > RSH_FFI_MAX_GEOMETRY_SAMPLES {
+        return Err(format!(
+            "geometry samples exceed the ABI safety limit of {RSH_FFI_MAX_GEOMETRY_SAMPLES}"
+        ));
+    }
     ModelConfig {
         samples,
         s0: input.s0,
@@ -175,23 +199,20 @@ fn checked_geometry_config(input: &RshConfigV1) -> Result<ModelConfig, String> {
     .validate()
 }
 
-fn checked_schedule_config(input: &RshConfigV1) -> Result<(usize, ModelConfig), String> {
-    if input.struct_size < size_of::<RshConfigV1>() as u32 {
-        return Err("RshConfigV1.struct_size is too small for ABI v1".into());
-    }
-    if input.abi_version != RSH_FFI_ABI_VERSION {
-        return Err(format!(
-            "unsupported RSH FFI ABI {}; expected {}",
-            input.abi_version, RSH_FFI_ABI_VERSION
-        ));
-    }
+unsafe fn checked_schedule_config(
+    input: *const RshConfigV1,
+) -> Result<(usize, ModelConfig), String> {
+    unsafe { validate_struct_header(input, size_of::<RshConfigV1>(), "RshConfigV1")? };
+    let input = unsafe { &*input };
     let samples = usize::try_from(input.samples)
         .map_err(|_| "sample count does not fit this platform".to_string())?;
     if samples < 2 {
         return Err("schedule samples must be at least 2".into());
     }
-    if samples > 16_777_216 {
-        return Err("schedule samples exceed the ABI safety limit".into());
+    if samples > RSH_FFI_MAX_SCHEDULE_SAMPLES {
+        return Err(format!(
+            "schedule samples exceed the ABI safety limit of {RSH_FFI_MAX_SCHEDULE_SAMPLES}"
+        ));
     }
     if !input.s0.is_finite() || !input.s1.is_finite() || input.s1 <= input.s0 {
         return Err("s1 must be finite and greater than s0".into());
@@ -288,19 +309,14 @@ unsafe fn verify_impl(
     summary: *mut RshSummaryV1,
     json: *mut RshOwnedBytesV1,
 ) -> Result<i32, String> {
-    if config.is_null() {
-        return Err("configuration pointer is null".into());
-    }
-    if summary.is_null() {
-        return Err("summary pointer is null".into());
-    }
+    unsafe { validate_struct_header(summary, size_of::<RshSummaryV1>(), "RshSummaryV1")? };
+    let model = unsafe { checked_geometry_config(config)? };
     unsafe {
         ptr::write(summary, RshSummaryV1::default());
         if !json.is_null() {
             ptr::write(json, RshOwnedBytesV1::default());
         }
     }
-    let model = checked_geometry_config(unsafe { &*config })?;
     let (_, report) = build_and_verify(model)?;
     let output = summary_from_report(&report)?;
     let encoded = report_json(&report)?.into_bytes();
@@ -319,14 +335,11 @@ unsafe fn schedule_impl(
     config: *const RshConfigV1,
     output: *mut RshOwnedScheduleV1,
 ) -> Result<i32, String> {
-    if config.is_null() {
-        return Err("configuration pointer is null".into());
-    }
     if output.is_null() {
         return Err("schedule output pointer is null".into());
     }
+    let (samples, model) = unsafe { checked_schedule_config(config)? };
     unsafe { ptr::write(output, RshOwnedScheduleV1::default()) };
-    let (samples, model) = checked_schedule_config(unsafe { &*config })?;
     let denominator = (samples - 1) as f64;
     let mut points = Vec::with_capacity(samples);
     for index in 0..samples {
@@ -369,6 +382,16 @@ pub extern "C" fn rsh_ffi_schedule_point_size() -> usize {
 }
 
 #[no_mangle]
+pub extern "C" fn rsh_ffi_max_geometry_samples() -> u64 {
+    RSH_FFI_MAX_GEOMETRY_SAMPLES as u64
+}
+
+#[no_mangle]
+pub extern "C" fn rsh_ffi_max_schedule_samples() -> u64 {
+    RSH_FFI_MAX_SCHEDULE_SAMPLES as u64
+}
+
+#[no_mangle]
 pub extern "C" fn rsh_ffi_psi() -> f64 {
     psi()
 }
@@ -386,8 +409,10 @@ pub extern "C" fn rsh_ffi_last_error() -> *const c_char {
 /// Run the authoritative Rust geometry core and return a fixed-layout summary.
 ///
 /// # Safety
-/// `config` and `summary` must point to valid ABI-v1 structures. `json` may be
-/// null. Any returned owned buffer must be released with `rsh_ffi_free_bytes`.
+/// `config` and `summary` must each point to at least an ABI header containing
+/// `struct_size` and `abi_version`; accepted headers must describe full ABI-v1
+/// structures. `json` may be null. Any returned owned buffer must be released
+/// with `rsh_ffi_free_bytes`.
 #[no_mangle]
 pub unsafe extern "C" fn rsh_ffi_verify(
     config: *const RshConfigV1,
@@ -413,8 +438,9 @@ pub unsafe extern "C" fn rsh_ffi_verify(
 /// Evaluate an f64 schedule grid through `rsh-core`.
 ///
 /// # Safety
-/// `config` and `output` must point to valid ABI-v1 structures. The returned
-/// schedule must be released with `rsh_ffi_free_schedule`.
+/// `config` must point to at least an ABI header and, when accepted, a complete
+/// ABI-v1 structure. `output` must point to writable storage for the returned
+/// handle. The schedule must be released with `rsh_ffi_free_schedule`.
 #[no_mangle]
 pub unsafe extern "C" fn rsh_ffi_schedule(
     config: *const RshConfigV1,
@@ -477,6 +503,7 @@ mod tests {
     use super::*;
     use std::ffi::CStr;
 
+    #[cfg(target_pointer_width = "64")]
     #[test]
     fn abi_sizes_are_stable_on_64_bit_targets() {
         assert_eq!(size_of::<RshConfigV1>(), 56);
@@ -537,5 +564,42 @@ mod tests {
             .to_str()
             .expect("error UTF-8");
         assert!(message.contains("odd"));
+    }
+
+    #[test]
+    fn geometry_sample_limit_rejects_before_core_allocation() {
+        let config = RshConfigV1 {
+            samples: (RSH_FFI_MAX_GEOMETRY_SAMPLES + 2) as u64,
+            ..RshConfigV1::default()
+        };
+        let mut summary = RshSummaryV1::default();
+        let status = unsafe { rsh_ffi_verify(&config, &mut summary, ptr::null_mut()) };
+        assert_eq!(status, RSH_FFI_STATUS_REJECTED);
+        let message = unsafe { CStr::from_ptr(rsh_ffi_last_error()) }
+            .to_str()
+            .expect("error UTF-8");
+        assert!(message.contains("geometry samples exceed"));
+    }
+
+    #[test]
+    fn undersized_summary_is_rejected_before_any_full_struct_write() {
+        let config = RshConfigV1 {
+            samples: 129,
+            ..RshConfigV1::default()
+        };
+        let mut summary = RshSummaryV1 {
+            struct_size: 8,
+            abi_version: RSH_FFI_ABI_VERSION,
+            samples: 777,
+            ..RshSummaryV1::default()
+        };
+        let status = unsafe { rsh_ffi_verify(&config, &mut summary, ptr::null_mut()) };
+        assert_eq!(status, RSH_FFI_STATUS_REJECTED);
+        assert_eq!(summary.struct_size, 8);
+        assert_eq!(summary.samples, 777);
+        let message = unsafe { CStr::from_ptr(rsh_ffi_last_error()) }
+            .to_str()
+            .expect("error UTF-8");
+        assert!(message.contains("RshSummaryV1.struct_size"));
     }
 }
