@@ -1,7 +1,5 @@
 use rsh_core::ModelConfig;
-use rsh_numerics::{
-    build_lie_path, report_json, trace_csv, INTEGRATOR, NUMERICAL_CONTRACT,
-};
+use rsh_numerics::{build_lie_path, report_json, trace_csv, INTEGRATOR, NUMERICAL_CONTRACT};
 use serde_json::json;
 use std::env;
 use std::fs;
@@ -125,9 +123,23 @@ fn command_run(arguments: impl Iterator<Item = String>) -> Result<i32, String> {
     println!("  contract             = {}", report.numerical_contract);
     println!("  integrator           = {}", report.integrator);
     println!("  samples              = {}", report.samples);
-    println!("  centre_error         = {:.3e}", report.centre.iter().map(|value| value * value).sum::<f64>().sqrt());
-    println!("  frame_norm_error     = {:.3e}", report.max_frame_norm_error);
-    println!("  frame_orthogonality  = {:.3e}", report.max_frame_orthogonality_error);
+    println!(
+        "  centre_error         = {:.3e}",
+        report
+            .centre
+            .iter()
+            .map(|value| value * value)
+            .sum::<f64>()
+            .sqrt()
+    );
+    println!(
+        "  frame_norm_error     = {:.3e}",
+        report.max_frame_norm_error
+    );
+    println!(
+        "  frame_orthogonality  = {:.3e}",
+        report.max_frame_orthogonality_error
+    );
     println!("  geometry_authority   = false");
     println!("  speedup_claim        = false");
     Ok(if report.pass_all { 0 } else { 1 })
