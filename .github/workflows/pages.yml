@@ -7,6 +7,8 @@ on:
       - "web/**"
       - "crates/rsh-core/**"
       - "crates/rsh-wasm/**"
+      - "conformance/**"
+      - "scripts/test_wasm.mjs"
       - "Cargo.toml"
       - "Cargo.lock"
       - ".github/workflows/pages.yml"
@@ -35,6 +37,10 @@ jobs:
         run: cargo test --locked -p rsh-wasm
       - name: Build verified browser module
         run: cargo build --locked --release --target wasm32-unknown-unknown -p rsh-wasm
+      - name: Execute WebAssembly conformance profile
+        run: |
+          wasm=target/wasm32-unknown-unknown/release/rsh_wasm.wasm
+          node scripts/test_wasm.mjs "$wasm" conformance/wasm_v2_129.json
       - name: Assemble Pages artifact
         run: |
           mkdir -p web/pkg
@@ -46,6 +52,8 @@ jobs:
           test -s web/app.js
           test -s web/sw.js
           test -s web/pkg/rsh_wasm.wasm
+          test -s conformance/wasm_v2_129.json
+          test -s scripts/test_wasm.mjs
           test -f web/.nojekyll
           grep -q '<title>RSH' web/index.html
           grep -q 'VERIFIED RUST/WASM SAMPLES' web/index.html
