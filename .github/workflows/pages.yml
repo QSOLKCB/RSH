@@ -18,7 +18,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate Pages source
+        run: |
+          test -s web/index.html
+          test -s web/style.css
+          test -s web/app.js
+          test -f web/.nojekyll
+          grep -q '<title>RSH' web/index.html
+          grep -q 'SCHEMATIC PROJECTION' web/index.html
+
   deploy:
+    needs: validate
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
