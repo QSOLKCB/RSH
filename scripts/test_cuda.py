@@ -54,6 +54,27 @@ def load_json(path: Path) -> dict[str, Any]:
     return value
 
 
+def profile_parameters(profile: dict[str, Any]) -> tuple[int, int, float]:
+    if profile.get("schema") not in (None, "RSH-CUDA-SCHEDULE-CONFORMANCE-V1"):
+        raise ValueError("unexpected CUDA profile schema")
+    configuration = profile.get("configuration")
+    if not isinstance(configuration, dict):
+        raise ValueError("profile.configuration must be an object")
+    try:
+        samples = int(configuration["samples"])
+        block_size = int(profile["block_size"])
+        threshold = float(profile["residual_threshold"])
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError("profile samples, block size, or threshold is invalid") from error
+    if samples < 2:
+        raise ValueError("profile samples must be at least 2")
+    if block_size < 1 or block_size > 1024:
+        raise ValueError("profile block size must be in [1, 1024]")
+    if not math.isfinite(threshold) or threshold <= 0.0:
+        raise ValueError("profile residual threshold must be finite and positive")
+    return samples, block_size, threshold
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -63,15 +84,15 @@ def sha256_file(path: Path) -> str:
 
 
 def command_for(executable: Path, profile: dict[str, Any], run_number: int) -> list[str]:
-    configuration = profile["configuration"]
+    samples, block_size, threshold = profile_parameters(profile)
     return [
         str(executable),
         "--samples",
-        str(configuration["samples"]),
+        str(samples),
         "--block-size",
-        str(profile["block_size"]),
+        str(block_size),
         "--threshold",
-        str(profile["residual_threshold"]),
+        str(threshold),
         "--repeat-run",
         str(run_number),
     ]
@@ -94,11 +115,32 @@ def unavailable_message(stderr: str) -> bool:
     return any(marker in lowered for marker in markers)
 
 
+def parse_int_field(sidecar: dict[str, Any], field: str, errors: list[str]) -> int | None:
+    try:
+        return int(sidecar[field])
+    except (KeyError, TypeError, ValueError):
+        errors.append(f"{field} is missing or invalid")
+        return None
+
+
+def parse_float_field(sidecar: dict[str, Any], field: str, errors: list[str]) -> float | None:
+    try:
+        value = float(sidecar[field])
+    except (KeyError, TypeError, ValueError):
+        errors.append(f"{field} is missing or invalid")
+        return None
+    if not math.isfinite(value):
+        errors.append(f"{field} is not finite")
+        return None
+    return value
+
+
 def validate_sidecar(sidecar: dict[str, Any], profile: dict[str, Any]) -> list[str]:
     errors: list[str] = []
-    expected_samples = int(profile["configuration"]["samples"])
-    expected_block = int(profile["block_size"])
-    expected_threshold = float(profile["residual_threshold"])
+    try:
+        expected_samples, expected_block, expected_threshold = profile_parameters(profile)
+    except ValueError as error:
+        return [f"invalid profile: {error}"]
 
     def require(condition: bool, message: str) -> None:
         if not condition:
@@ -108,37 +150,28 @@ def validate_sidecar(sidecar: dict[str, Any], profile: dict[str, Any]) -> list[s
     require(sidecar.get("status") == "PASS", "CUDA sidecar did not report PASS")
     require(sidecar.get("actual_cuda_execution") is True, "actual CUDA execution was not recorded")
     require(sidecar.get("geometry_receipt_authority") is False, "CUDA claimed geometry receipt authority")
-    require(int(sidecar.get("samples", -1)) == expected_samples, "sample count mismatch")
-    require(int(sidecar.get("block_size", -1)) == expected_block, "block size mismatch")
-    require(
-        math.isclose(
-            float(sidecar.get("threshold", math.nan)),
-            expected_threshold,
-            rel_tol=0.0,
-            abs_tol=0.0,
-        ),
-        "threshold mismatch",
-    )
+
+    samples = parse_int_field(sidecar, "samples", errors)
+    block_size = parse_int_field(sidecar, "block_size", errors)
+    threshold = parse_float_field(sidecar, "threshold", errors)
+    maximum = parse_float_field(sidecar, "maximum_residual", errors)
+    parse_float_field(sidecar, "max_abs_kappa_vs_rust_f64", errors)
+    parse_float_field(sidecar, "max_abs_tau_vs_rust_f64", errors)
+
+    if samples is not None:
+        require(samples == expected_samples, "sample count mismatch")
+    if block_size is not None:
+        require(block_size == expected_block, "block size mismatch")
+    if threshold is not None:
+        require(
+            math.isclose(threshold, expected_threshold, rel_tol=0.0, abs_tol=0.0),
+            "threshold mismatch",
+        )
+    if maximum is not None:
+        require(maximum <= expected_threshold, "maximum residual exceeds the published gate")
+
     require(bool(str(sidecar.get("device", "")).strip()), "device name missing")
     require(bool(str(sidecar.get("compute_capability", "")).strip()), "compute capability missing")
-
-    for field in (
-        "max_abs_kappa_vs_rust_f64",
-        "max_abs_tau_vs_rust_f64",
-        "maximum_residual",
-    ):
-        try:
-            require(math.isfinite(float(sidecar[field])), f"{field} is not finite")
-        except (KeyError, TypeError, ValueError):
-            errors.append(f"{field} is missing or invalid")
-
-    try:
-        require(
-            float(sidecar["maximum_residual"]) <= expected_threshold,
-            "maximum residual exceeds the published gate",
-        )
-    except (KeyError, TypeError, ValueError):
-        pass
     return errors
 
 
@@ -147,13 +180,14 @@ def repeatability_record(sidecar: dict[str, Any]) -> dict[str, Any]:
 
 
 def run_cpu_reference(executable: Path, profile: dict[str, Any], output: Path) -> dict[str, Any]:
+    samples, _, threshold = profile_parameters(profile)
     command = [
         str(executable),
         "cuda-reference",
         "--samples",
-        str(profile["configuration"]["samples"]),
+        str(samples),
         "--threshold",
-        str(profile["residual_threshold"]),
+        str(threshold),
     ]
     result = run_command(command)
     output.write_text(result.stdout, encoding="utf-8", newline="\n")
@@ -163,8 +197,13 @@ def run_cpu_reference(executable: Path, profile: dict[str, Any], output: Path) -
     if result.returncode != 0:
         raise RuntimeError(f"CPU f32 reference failed with exit {result.returncode}")
     payload = json.loads(result.stdout)
+    if not isinstance(payload, dict):
+        raise RuntimeError("CPU f32 reference did not return a JSON object")
     if payload.get("actual_cuda_execution") is not False or payload.get("status") != "PASS":
         raise RuntimeError("CPU f32 reference returned an invalid authority/status boundary")
+    residual = parse_float_field(payload, "maximum_residual", [])
+    if residual is None or residual > threshold:
+        raise RuntimeError("CPU f32 reference exceeded the published residual gate")
     return payload
 
 
@@ -251,6 +290,7 @@ def main() -> int:
 
     try:
         profile = load_json(args.profile)
+        profile_parameters(profile)
     except (OSError, ValueError, json.JSONDecodeError) as error:
         print(f"invalid profile: {error}", file=sys.stderr)
         return EXIT_ARGUMENT
@@ -270,14 +310,24 @@ def main() -> int:
             cpu_reference = run_cpu_reference(
                 args.cpu_reference.resolve(), profile, output_dir / "cpu-reference.json"
             )
-        except (OSError, RuntimeError, json.JSONDecodeError) as error:
+        except (OSError, RuntimeError, json.JSONDecodeError, ValueError) as error:
             summary.update(status="FAIL", failure="cpu-reference", detail=str(error))
             write_summary(output_dir, summary)
             return EXIT_MALFORMED
 
     sidecars: list[dict[str, Any]] = []
     for run_number in range(1, args.runs + 1):
-        result = run_command(command_for(executable, profile, run_number))
+        try:
+            result = run_command(command_for(executable, profile, run_number))
+        except OSError as error:
+            summary.update(
+                status="BLOCKED BY ENVIRONMENT",
+                failure="cuda-execution",
+                run=run_number,
+                detail=str(error),
+            )
+            write_summary(output_dir, summary)
+            return EXIT_UNAVAILABLE
         (output_dir / f"run-{run_number}.stdout.json").write_text(
             result.stdout, encoding="utf-8", newline="\n"
         )
@@ -295,8 +345,11 @@ def main() -> int:
             write_summary(output_dir, summary)
             return EXIT_UNAVAILABLE if blocked else EXIT_RESIDUAL
         try:
-            sidecar = json.loads(result.stdout)
-        except json.JSONDecodeError as error:
+            decoded = json.loads(result.stdout)
+            if not isinstance(decoded, dict):
+                raise ValueError("sidecar is not a JSON object")
+            sidecar = decoded
+        except (json.JSONDecodeError, ValueError) as error:
             summary.update(
                 status="FAIL",
                 failure="malformed-sidecar",
