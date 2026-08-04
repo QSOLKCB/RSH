@@ -30,7 +30,7 @@ dependencies = [
 name = "crypto-common"
 version = "0.1.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78c8292055d1c1df0cce5d180393dc8cce0abec0a7102adb6c7b1eef6016d60a"
+checksum = "78c8292055d1df0cce5d180393dc8cce0abec0a7102adb6c7b1eef6016d60a"
 dependencies = [
  "generic-array",
  "typenum",
@@ -94,7 +94,7 @@ dependencies = [
 
 [[package]]
 name = "rsh-cli"
-version = "2.4.1"
+version = "2.5.0"
 dependencies = [
  "rsh-core",
  "serde_json",
@@ -102,7 +102,7 @@ dependencies = [
 
 [[package]]
 name = "rsh-core"
-version = "2.4.1"
+version = "2.5.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -111,14 +111,14 @@ dependencies = [
 
 [[package]]
 name = "rsh-ffi"
-version = "2.4.1"
+version = "2.5.0"
 dependencies = [
  "rsh-core",
 ]
 
 [[package]]
 name = "rsh-wasm"
-version = "2.4.1"
+version = "2.5.0"
 dependencies = [
  "rsh-core",
  "serde",
