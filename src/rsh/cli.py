@@ -15,6 +15,7 @@ from .constants import (
     TAU_MIN_EXCLUSIVE,
     VERSION,
 )
+from .constitution import constitution_report
 from .evidence import (
     benchmark,
     build_and_verify,
@@ -24,6 +25,17 @@ from .evidence import (
     write_verify_csv,
 )
 from .geometry import ModelConfig, build_path, logical_sample_indices
+from .refinement import (
+    evaluate_refinement,
+    load_proposal,
+    write_decision_json,
+)
+from .tissue import (
+    TissueConfig,
+    simulate_tissue,
+    write_tissue_report_json,
+    write_tissue_trace_csv,
+)
 from .visual import write_svg
 
 
@@ -35,6 +47,21 @@ def _config_from_args(args: argparse.Namespace) -> ModelConfig:
         kappa_fraction=args.kappa_fraction,
         tau_floor=args.tau_floor,
         tau_amplitude=args.tau_amplitude,
+    ).validate()
+
+
+def _tissue_config_from_args(args: argparse.Namespace) -> TissueConfig:
+    return TissueConfig(
+        cells=args.cells,
+        ticks=args.ticks,
+        geometry_samples=args.geometry_samples,
+        ds=args.ds,
+        phase_coupling=args.phase_coupling,
+        binding_diffusion=args.binding_diffusion,
+        sidecar_backend=args.sidecar_backend,
+        sidecar_residual=args.sidecar_residual,
+        residual_gate=args.residual_gate,
+        qf_floor=args.qf_floor,
     ).validate()
 
 
@@ -68,6 +95,28 @@ def _add_model_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_tissue_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--cells", type=int, default=8)
+    parser.add_argument("--ticks", type=int, default=20)
+    parser.add_argument(
+        "--geometry-samples",
+        type=int,
+        default=129,
+        help="odd f64 geometry seed grid (default: 129)",
+    )
+    parser.add_argument("--ds", type=float, default=0.05)
+    parser.add_argument("--phase-coupling", type=float, default=0.25)
+    parser.add_argument("--binding-diffusion", type=float, default=0.15)
+    parser.add_argument(
+        "--sidecar-backend",
+        choices=("none", "webgpu", "cuda", "npu"),
+        default="none",
+    )
+    parser.add_argument("--sidecar-residual", type=float, default=0.0)
+    parser.add_argument("--residual-gate", type=float, default=1.0e-4)
+    parser.add_argument("--qf-floor", type=float, default=0.0)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="rsh",
@@ -79,6 +128,43 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     subparsers.add_parser("info", help="show immutable model information")
+
+    constitution_parser = subparsers.add_parser(
+        "constitution",
+        help="show the machine-checkable tissue constitution",
+    )
+    constitution_parser.add_argument(
+        "--json",
+        default="",
+        help="optional JSON report path",
+    )
+
+    tissue_parser = subparsers.add_parser(
+        "tissue",
+        help="run the deterministic geometric tissue reference",
+    )
+    _add_tissue_arguments(tissue_parser)
+    tissue_parser.add_argument(
+        "--json",
+        default="",
+        help="optional complete tissue report path",
+    )
+    tissue_parser.add_argument(
+        "--trace",
+        default="",
+        help="optional per-tick CSV path",
+    )
+
+    refinement_parser = subparsers.add_parser(
+        "refine-dry-run",
+        help="evaluate and seal one bounded tissue proposal",
+    )
+    refinement_parser.add_argument("proposal", help="proposal JSON path")
+    refinement_parser.add_argument(
+        "--json",
+        default="",
+        help="optional decision report path",
+    )
 
     for command, help_text in (
         ("verify", "verify all geometric and replay contracts"),
@@ -140,12 +226,59 @@ def main(argv: Sequence[str] | None = None) -> int:
                             "midpoint coordinate normalisation"
                         ),
                         "receipt_domain_hex": RECEIPT_DOMAIN.hex(),
+                        "tissue_contract": "1.0.0",
+                        "tissue_semantics": (
+                            "functional systems simulation; no subjective "
+                            "awareness or qualia claim"
+                        ),
                     },
                     indent=2,
                     sort_keys=True,
                 )
             )
             return 0
+
+        if args.command == "constitution":
+            report = constitution_report()
+            encoded = json.dumps(report, indent=2, sort_keys=True) + "\n"
+            print(encoded, end="")
+            if args.json:
+                output = Path(args.json)
+                output.parent.mkdir(parents=True, exist_ok=True)
+                output.write_text(encoded, encoding="utf-8")
+            return 0 if report["pass_all"] else 1
+
+        if args.command == "tissue":
+            report = simulate_tissue(_tissue_config_from_args(args))
+            if args.json:
+                write_tissue_report_json(report, args.json)
+            if args.trace:
+                write_tissue_trace_csv(report, args.trace)
+            status = "PASS" if report.pass_all else "FAIL"
+            print(f"RSH tissue [{status}]")
+            print(f"  cells / ticks        = {report.config.cells} / {report.config.ticks}")
+            print(f"  seed_geometry        = {report.seed_geometry_receipt}")
+            print(f"  final_Q_f            = {report.final_q_f:.12f}")
+            print(f"  Q_f range            = [{report.min_q_f:.12f}, {report.max_q_f:.12f}]")
+            print(f"  audit_chain_valid    = {str(report.audit_chain_valid).lower()}")
+            print(f"  sidecar_accepted     = {str(report.sidecar_accepted).lower()}")
+            print(f"  fallback_used        = {str(report.fallback_used).lower()}")
+            print(f"  receipt              = {report.receipt}")
+            return 0 if report.pass_all else 1
+
+        if args.command == "refine-dry-run":
+            proposal = load_proposal(args.proposal)
+            decision = evaluate_refinement(proposal)
+            if args.json:
+                write_decision_json(decision, args.json)
+            print(f"RSH refinement [{decision.disposition}]")
+            print(f"  proposal             = {decision.proposal_id}")
+            print(f"  reason               = {decision.reason}")
+            print(f"  dry_run_only         = {str(decision.dry_run_only).lower()}")
+            print(f"  human_ack_required   = {str(decision.human_ack_required).lower()}")
+            print(f"  intent_token         = {decision.intent_token}")
+            print(f"  receipt              = {decision.receipt}")
+            return 0 if decision.disposition == "KEEP_CANDIDATE" else 1
 
         if args.command == "sample":
             indices = logical_sample_indices(
