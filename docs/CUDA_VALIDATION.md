@@ -155,11 +155,43 @@ RSH does not automate or recommend patching vendor headers. On a similar host:
 3. use a container or supported build image where practical;
 4. record any local workaround as environment provenance.
 
-## Manual GitHub hardware workflow
+## Trusted combined RTX workflow
 
-`.github/workflows/cuda-hardware.yml` is dispatch-only and targets a deliberately
-labelled self-hosted runner. It is not triggered by pull requests. Public
-repositories should never expose a self-hosted GPU runner to arbitrary PR code.
+`.github/workflows/rtx-hardware.yml` is the preferred protected hardware path.
+It combines:
+
+- pinned-container CUDA compilation and actual kernel execution;
+- three-run CUDA repeatability;
+- required memcheck and racecheck;
+- physical 4,096-sample schedule WebGPU;
+- physical 4,097-point parallel WebGPU with complete readback;
+- deterministic redacted artifact packaging.
+
+The workflow is dispatch-only, main-only, environment-protected, and restricted
+to a deliberately labelled `rsh-trusted` runner. An optional replay target must
+already be an ancestor of `main`; pull-request heads and external forks are
+refused.
+
+The raw CUDA sidecar contains a stable device UUID. It remains in a temporary
+private runner directory and is not uploaded. The public workflow artifact
+contains a redacted aggregate plus WebGPU sidecars and explicitly records:
+
+```text
+raw_device_uuid_published: false
+actual_multi_device_execution: false
+distributed_execution: false
+universal_speedup_claim: false
+geometry_receipt_authority: false
+```
+
+See [Phase 13 trusted RTX workflow](PHASE13_TRUSTED_RTX_WORKFLOW.md).
+
+## Legacy CUDA-only workflow
+
+`.github/workflows/cuda-hardware.yml` remains a narrower dispatch-only CUDA path
+for hosts that do not provide a controlled graphical WebGPU session. It is not a
+replacement for the combined trusted RTX acceptance workflow and must never gain
+a pull-request trigger.
 
 ## Authority boundary
 

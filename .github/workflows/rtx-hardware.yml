@@ -1,0 +1,387 @@
+name: Trusted RTX hardware validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_sha:
+        description: "Full commit SHA already contained in main (blank = current main)"
+        required: false
+        default: ""
+        type: string
+      cuda_architectures:
+        description: "Pinned CMake CUDA architecture list"
+        required: true
+        default: "120"
+        type: string
+      webgpu_mode:
+        description: "Chrome execution mode on the trusted runner"
+        required: true
+        default: graphical
+        type: choice
+        options:
+          - graphical
+          - headless
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rsh-trusted-rtx-hardware
+  cancel-in-progress: false
+
+jobs:
+  rtx-hardware:
+    # Never add pull_request, pull_request_target, issue, comment, or schedule
+    # triggers to this privileged hardware workflow.
+    if: github.repository == 'QSOLKCB/RSH' && github.ref == 'refs/heads/main'
+    environment: rtx-hardware
+    runs-on: [self-hosted, linux, x64, nvidia, rtx, cuda, webgpu, rsh-trusted]
+    timeout-minutes: 90
+    env:
+      RSH_TARGET_SHA_INPUT: ${{ inputs.target_sha }}
+      RSH_CUDA_ARCHITECTURES_INPUT: ${{ inputs.cuda_architectures }}
+      RSH_WEBGPU_MODE_INPUT: ${{ inputs.webgpu_mode }}
+      RSH_RAW_DIR: artifacts/rtx-private
+      RSH_PUBLISH_DIR: artifacts/rtx-publish
+    steps:
+      - name: Check out trusted main workflow source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: main
+          fetch-depth: 0
+          clean: true
+          persist-credentials: false
+
+      - name: Enforce trusted dispatch actor
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          repository = os.environ["GITHUB_REPOSITORY"]
+          actor = os.environ["GITHUB_ACTOR"]
+          token = os.environ["GH_TOKEN"]
+          request = urllib.request.Request(
+              f"https://api.github.com/repos/{repository}/collaborators/{actor}/permission",
+              headers={
+                  "Accept": "application/vnd.github+json",
+                  "Authorization": f"Bearer {token}",
+                  "X-GitHub-Api-Version": "2022-11-28",
+                  "User-Agent": "rsh-trusted-rtx-workflow",
+              },
+          )
+          with urllib.request.urlopen(request, timeout=20) as response:
+              payload = json.load(response)
+          permission = payload.get("permission")
+          if permission not in {"admin", "maintain"}:
+              raise SystemExit(
+                  f"dispatch actor {actor!r} has {permission!r} permission; admin or maintain is required"
+              )
+          print(f"Trusted dispatch actor: {actor} ({permission})")
+          PY
+
+      - name: Resolve trusted target commit
+        id: target
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          git fetch --no-tags --prune origin \
+            +refs/heads/main:refs/remotes/origin/main
+          target="$(printf '%s' "$RSH_TARGET_SHA_INPUT" | tr 'A-F' 'a-f' | tr -d '[:space:]')"
+          if [ -z "$target" ]; then
+            target="$(git rev-parse refs/remotes/origin/main)"
+          fi
+          case "$target" in
+            *[!0-9a-f]*|'')
+              echo "target_sha must be a hexadecimal commit SHA" >&2
+              exit 2
+              ;;
+          esac
+          test "${#target}" -eq 40 || {
+            echo "target_sha must be a full 40-character SHA" >&2
+            exit 2
+          }
+          git cat-file -e "${target}^{commit}"
+          git merge-base --is-ancestor "$target" refs/remotes/origin/main || {
+            echo "Refusing to execute a commit that is not already contained in main." >&2
+            exit 2
+          }
+          git checkout --detach "$target"
+          test "$(git rev-parse HEAD)" = "$target"
+          test -f scripts/test_rtx_webgpu.cjs
+          test -f scripts/verify_rtx_hardware.py
+          printf 'sha=%s\n' "$target" >> "$GITHUB_OUTPUT"
+          printf '%s\n' "$target" > tested-commit.txt
+
+      - name: Validate workflow inputs and runner contract
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          case "$RSH_CUDA_ARCHITECTURES_INPUT" in
+            ''|*[!0-9;]*)
+              echo "cuda_architectures must contain only numeric architectures separated by semicolons" >&2
+              exit 2
+              ;;
+          esac
+          case "$RSH_WEBGPU_MODE_INPUT" in
+            graphical|headless) ;;
+            *) echo "invalid WebGPU mode" >&2; exit 2 ;;
+          esac
+          # shellcheck disable=SC1090
+          [ ! -f "$HOME/.config/rsh-gpu-agent/env" ] || \
+            . "$HOME/.config/rsh-gpu-agent/env"
+          for command in \
+            python3 node cmake rustup cargo docker nvidia-smi \
+            rsh-gpu-shell rsh-gpu-check google-chrome-stable
+          do
+            command -v "$command" >/dev/null 2>&1 || {
+              echo "trusted runner command is unavailable: $command" >&2
+              exit 20
+            }
+          done
+          if [ "$RSH_WEBGPU_MODE_INPUT" = graphical ] \
+            && [ -z "${WAYLAND_DISPLAY:-}" ] \
+            && [ -z "${DISPLAY:-}" ]; then
+            echo "graphical WebGPU mode requires WAYLAND_DISPLAY or DISPLAY on the runner service" >&2
+            exit 20
+          fi
+          rm -rf "$RSH_RAW_DIR" "$RSH_PUBLISH_DIR" build/rtx-cuda
+          mkdir -p "$RSH_RAW_DIR" "$RSH_PUBLISH_DIR"
+          rsh-gpu-check > "$RSH_RAW_DIR/runner-gpu-check.txt" 2>&1
+          google-chrome-stable --version > "$RSH_RAW_DIR/chrome-version.txt"
+          node --version > "$RSH_RAW_DIR/node-version.txt"
+          if command -v vulkaninfo >/dev/null 2>&1; then
+            vulkaninfo --summary > "$RSH_RAW_DIR/vulkan-summary.txt" 2>&1 || true
+          fi
+
+      - name: Install Rust and build browser WASM
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add wasm32-unknown-unknown
+          cargo build --locked --release --target wasm32-unknown-unknown \
+            -p rsh-wasm \
+            -p rsh-parallel-wasm
+          mkdir -p web/pkg
+          cp target/wasm32-unknown-unknown/release/rsh_wasm.wasm web/pkg/
+          cp target/wasm32-unknown-unknown/release/rsh_parallel_wasm.wasm web/pkg/
+
+      - name: Execute CUDA audit in pinned runner container
+        id: cuda
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p target "$RSH_RAW_DIR/cuda"
+          cat > target/rtx-cuda-audit.sh <<'SH'
+          #!/usr/bin/env bash
+          set -Eeuo pipefail
+          arch="$1"
+          rm -rf build/rtx-cuda artifacts/rtx-private/cuda
+          mkdir -p artifacts/rtx-private/cuda
+          sh scripts/cuda_preflight.sh > artifacts/rtx-private/cuda/preflight.txt 2>&1
+          cmake -S native/cpp -B build/rtx-cuda \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DRSH_ENABLE_CUDA=ON \
+            -DRSH_CUDA_ARCHITECTURES="$arch" \
+            > artifacts/rtx-private/cuda/cmake-configure.txt 2>&1
+          cmake --build build/rtx-cuda \
+            --target rsh-cpp rsh-cuda \
+            --parallel "$(nproc)" \
+            > artifacts/rtx-private/cuda/cmake-build.txt 2>&1
+          python3 scripts/test_cuda.py \
+            --executable build/rtx-cuda/rsh-cuda \
+            --cpu-reference build/rtx-cuda/rsh-cpp \
+            --profile conformance/cuda_schedule_v1_4096.json \
+            --runs 3 \
+            --sanitizers required \
+            --output artifacts/rtx-private/cuda/evidence \
+            > artifacts/rtx-private/cuda/harness-console.json 2>&1
+          SH
+          chmod 0700 target/rtx-cuda-audit.sh
+          set +e
+          rsh-gpu-shell "$PWD" \
+            bash target/rtx-cuda-audit.sh "$RSH_CUDA_ARCHITECTURES_INPUT"
+          status=$?
+          set -e
+          printf '%s\n' "$status" > "$RSH_RAW_DIR/cuda/exit-code.txt"
+          printf 'status=%s\n' "$status" >> "$GITHUB_OUTPUT"
+          exit "$status"
+
+      - name: Execute physical schedule and parallel WebGPU
+        id: webgpu
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          # shellcheck disable=SC1090
+          [ ! -f "$HOME/.config/rsh-gpu-agent/env" ] || \
+            . "$HOME/.config/rsh-gpu-agent/env"
+          rm -rf "$RSH_RAW_DIR/webgpu"
+          mkdir -p "$RSH_RAW_DIR/webgpu"
+          python3 -m http.server 8765 \
+            --bind 127.0.0.1 \
+            --directory web \
+            > "$RSH_RAW_DIR/webgpu/http-server.txt" 2>&1 &
+          server_pid=$!
+          cleanup_server() {
+            kill "$server_pid" 2>/dev/null || true
+            wait "$server_pid" 2>/dev/null || true
+          }
+          trap cleanup_server EXIT
+          python3 - <<'PY'
+          import time
+          import urllib.request
+
+          for _ in range(100):
+              try:
+                  with urllib.request.urlopen("http://127.0.0.1:8765/", timeout=1) as response:
+                      if response.status == 200:
+                          break
+              except OSError:
+                  time.sleep(0.1)
+          else:
+              raise SystemExit("local browser laboratory did not start")
+          PY
+          set +e
+          NODE_PATH="$HOME/.local/share/rsh-gpu-agent/webgpu/node_modules" \
+            node scripts/test_rtx_webgpu.cjs \
+              --base-url http://127.0.0.1:8765/ \
+              --output "$RSH_RAW_DIR/webgpu/evidence" \
+              --chrome "$(command -v google-chrome-stable)" \
+              --mode "$RSH_WEBGPU_MODE_INPUT" \
+              --timeout 240000 \
+              > "$RSH_RAW_DIR/webgpu/harness-console.txt" 2>&1
+          status=$?
+          set -e
+          printf '%s\n' "$status" > "$RSH_RAW_DIR/webgpu/exit-code.txt"
+          printf 'status=%s\n' "$status" >> "$GITHUB_OUTPUT"
+          exit "$status"
+
+      - name: Aggregate and redact RTX evidence
+        id: aggregate
+        if: always()
+        continue-on-error: true
+        shell: bash
+        env:
+          TESTED_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p "$RSH_PUBLISH_DIR"
+          set +e
+          python3 scripts/verify_rtx_hardware.py \
+            --commit "$TESTED_SHA" \
+            --cuda-summary "$RSH_RAW_DIR/cuda/evidence/audit-summary.json" \
+            --schedule "$RSH_RAW_DIR/webgpu/evidence/schedule.json" \
+            --parallel "$RSH_RAW_DIR/webgpu/evidence/parallel.json" \
+            --output "$RSH_PUBLISH_DIR/audit-summary.json" \
+            --workflow-run "${GITHUB_RUN_ID}:${GITHUB_RUN_ATTEMPT}" \
+            --actor "$GITHUB_ACTOR" \
+            --runner "self-hosted-rsh-trusted"
+          status=$?
+          set -e
+          if [ ! -f "$RSH_PUBLISH_DIR/audit-summary.json" ]; then
+            python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          payload = {
+              "schema": "RSH-TRUSTED-RTX-HARDWARE-AUDIT-V1",
+              "status": "FAIL",
+              "tested_commit": os.environ.get("TESTED_SHA", "unknown"),
+              "failure": "aggregate evidence inputs were incomplete",
+              "actual_rtx_hardware_execution": False,
+              "actual_multi_device_execution": False,
+              "distributed_execution": False,
+              "universal_speedup_claim": False,
+              "geometry_receipt_authority": False,
+          }
+          Path(os.environ["RSH_PUBLISH_DIR"], "audit-summary.json").write_text(
+              json.dumps(payload, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+          fi
+          [ ! -f "$RSH_RAW_DIR/webgpu/evidence/schedule.json" ] || \
+            cp "$RSH_RAW_DIR/webgpu/evidence/schedule.json" \
+              "$RSH_PUBLISH_DIR/schedule.json"
+          [ ! -f "$RSH_RAW_DIR/webgpu/evidence/parallel.json" ] || \
+            cp "$RSH_RAW_DIR/webgpu/evidence/parallel.json" \
+              "$RSH_PUBLISH_DIR/parallel.json"
+          [ ! -f "$RSH_RAW_DIR/webgpu/evidence/audit-summary.json" ] || \
+            cp "$RSH_RAW_DIR/webgpu/evidence/audit-summary.json" \
+              "$RSH_PUBLISH_DIR/webgpu-audit-summary.json"
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          publish = Path(os.environ["RSH_PUBLISH_DIR"])
+          aggregate = json.loads((publish / "audit-summary.json").read_text(encoding="utf-8"))
+          if aggregate.get("schema") != "RSH-TRUSTED-RTX-HARDWARE-AUDIT-V1":
+              raise SystemExit("combined RTX audit summary was replaced or malformed")
+
+          metadata = {
+              "schema": "RSH-TRUSTED-RTX-WORKFLOW-METADATA-V1",
+              "tested_commit": os.environ.get("TESTED_SHA"),
+              "workflow_run_id": os.environ.get("GITHUB_RUN_ID"),
+              "workflow_run_attempt": os.environ.get("GITHUB_RUN_ATTEMPT"),
+              "dispatch_actor": os.environ.get("GITHUB_ACTOR"),
+              "repository": os.environ.get("GITHUB_REPOSITORY"),
+              "cuda_architectures": os.environ.get("RSH_CUDA_ARCHITECTURES_INPUT"),
+              "webgpu_mode": os.environ.get("RSH_WEBGPU_MODE_INPUT"),
+              "raw_device_uuid_published": False,
+              "geometry_receipt_authority": False,
+          }
+          (publish / "workflow-metadata.json").write_text(
+              json.dumps(metadata, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+          printf 'status=%s\n' "$status" >> "$GITHUB_OUTPUT"
+          exit "$status"
+
+      - name: Package redacted immutable evidence
+        if: always()
+        shell: bash
+        env:
+          TESTED_SHA: ${{ steps.target.outputs.sha }}
+        run: |
+          set -Eeuo pipefail
+          mkdir -p artifacts
+          python3 scripts/package_evidence.py \
+            "$RSH_PUBLISH_DIR" \
+            "artifacts/RSH-trusted-RTX-${TESTED_SHA}.zip"
+
+      - name: Upload redacted RTX evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: RSH-trusted-RTX-${{ steps.target.outputs.sha }}-${{ github.run_id }}
+          path: |
+            artifacts/rtx-publish/
+            artifacts/RSH-trusted-RTX-${{ steps.target.outputs.sha }}.zip
+            artifacts/RSH-trusted-RTX-${{ steps.target.outputs.sha }}.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce hardware acceptance
+        if: always()
+        shell: bash
+        run: |
+          test '${{ steps.cuda.outputs.status }}' = '0'
+          test '${{ steps.webgpu.outputs.status }}' = '0'
+          test '${{ steps.aggregate.outputs.status }}' = '0'
+
+      - name: Remove private raw evidence from runner workspace
+        if: always()
+        shell: bash
+        run: |
+          rm -rf "$RSH_RAW_DIR" build/rtx-cuda target/rtx-cuda-audit.sh
