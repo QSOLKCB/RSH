@@ -422,7 +422,9 @@ fn snapshot(cell: &CellState) -> CellSnapshot {
     }
 }
 
-fn initial_state(config: TissueConfig) -> Result<(Vec<CellState>, Vec<[usize; 2]>, String), String> {
+fn initial_state(
+    config: TissueConfig,
+) -> Result<(Vec<CellState>, Vec<[usize; 2]>, String), String> {
     let model = ModelConfig {
         samples: config.geometry_samples,
         ..ModelConfig::default()
@@ -469,7 +471,10 @@ fn initial_state(config: TissueConfig) -> Result<(Vec<CellState>, Vec<[usize; 2]
 
     Ok((
         cells,
-        edges.into_iter().map(|(left, right)| [left, right]).collect(),
+        edges
+            .into_iter()
+            .map(|(left, right)| [left, right])
+            .collect(),
         geometry_report.receipt,
     ))
 }
@@ -723,7 +728,7 @@ pub fn simulate_tissue(config: TissueConfig) -> Result<TissueReport, String> {
         let mut tick = TissueTick {
             schema: TICK_SCHEMA.to_string(),
             index: tick_index,
-            previous_receipt: previous_receipt,
+            previous_receipt,
             centre_shift,
             centre_error,
             bound_fixes,
@@ -738,12 +743,15 @@ pub fn simulate_tissue(config: TissueConfig) -> Result<TissueReport, String> {
     }
 
     let final_cells = cells.iter().map(snapshot).collect::<Vec<_>>();
-    let q_values = ticks.iter().map(|tick| tick.metrics.q_f).collect::<Vec<_>>();
+    let q_values = ticks
+        .iter()
+        .map(|tick| tick.metrics.q_f)
+        .collect::<Vec<_>>();
     let computed_constitution_hash = constitution_hash()?;
     let pass_constitution = computed_constitution_hash == EXPECTED_CONSTITUTION_HASH;
-    let pass_bounds = final_cells
-        .iter()
-        .all(|cell| 0.0 <= cell.kappa && cell.kappa <= kappa_max() && 0.0 < cell.tau && cell.tau < 1.0);
+    let pass_bounds = final_cells.iter().all(|cell| {
+        0.0 <= cell.kappa && cell.kappa <= kappa_max() && 0.0 < cell.tau && cell.tau < 1.0
+    });
     let pass_centre = ticks
         .iter()
         .map(|tick| tick.centre_error)
@@ -817,14 +825,11 @@ pub fn tissue_trace_csv(report: &TissueReport) -> String {
 
 pub fn check_python_conformance() -> Result<TissueConformanceResult, String> {
     let report = simulate_tissue(TissueConfig::default())?;
-    let first_q_f_error =
-        (report.ticks[0].metrics.q_f - PYTHON_REFERENCE_FIRST_Q_F).abs();
+    let first_q_f_error = (report.ticks[0].metrics.q_f - PYTHON_REFERENCE_FIRST_Q_F).abs();
     let final_q_f_error = (report.final_q_f - PYTHON_REFERENCE_FINAL_Q_F).abs();
     let minimum_q_f_error = (report.min_q_f - PYTHON_REFERENCE_MIN_Q_F).abs();
     let maximum_q_f_error = (report.max_q_f - PYTHON_REFERENCE_MAX_Q_F).abs();
-    let final_dissociation_error = (report.ticks[report.ticks.len() - 1]
-        .metrics
-        .dissociation
+    let final_dissociation_error = (report.ticks[report.ticks.len() - 1].metrics.dissociation
         - PYTHON_REFERENCE_FINAL_DISSOCIATION)
         .abs();
     let constitution_hash_matches = report.constitution_hash == EXPECTED_CONSTITUTION_HASH;
