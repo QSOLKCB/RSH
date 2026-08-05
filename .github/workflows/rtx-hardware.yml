@@ -309,17 +309,24 @@ jobs:
           )
           PY
           fi
-          for source in \
-            "$RSH_RAW_DIR/webgpu/evidence/schedule.json" \
-            "$RSH_RAW_DIR/webgpu/evidence/parallel.json" \
-            "$RSH_RAW_DIR/webgpu/evidence/audit-summary.json"
-          do
-            [ ! -f "$source" ] || cp "$source" "$RSH_PUBLISH_DIR/"
-          done
+          [ ! -f "$RSH_RAW_DIR/webgpu/evidence/schedule.json" ] || \
+            cp "$RSH_RAW_DIR/webgpu/evidence/schedule.json" \
+              "$RSH_PUBLISH_DIR/schedule.json"
+          [ ! -f "$RSH_RAW_DIR/webgpu/evidence/parallel.json" ] || \
+            cp "$RSH_RAW_DIR/webgpu/evidence/parallel.json" \
+              "$RSH_PUBLISH_DIR/parallel.json"
+          [ ! -f "$RSH_RAW_DIR/webgpu/evidence/audit-summary.json" ] || \
+            cp "$RSH_RAW_DIR/webgpu/evidence/audit-summary.json" \
+              "$RSH_PUBLISH_DIR/webgpu-audit-summary.json"
           python3 - <<'PY'
           import json
           import os
           from pathlib import Path
+
+          publish = Path(os.environ["RSH_PUBLISH_DIR"])
+          aggregate = json.loads((publish / "audit-summary.json").read_text(encoding="utf-8"))
+          if aggregate.get("schema") != "RSH-TRUSTED-RTX-HARDWARE-AUDIT-V1":
+              raise SystemExit("combined RTX audit summary was replaced or malformed")
 
           metadata = {
               "schema": "RSH-TRUSTED-RTX-WORKFLOW-METADATA-V1",
@@ -333,7 +340,7 @@ jobs:
               "raw_device_uuid_published": False,
               "geometry_receipt_authority": False,
           }
-          Path(os.environ["RSH_PUBLISH_DIR"], "workflow-metadata.json").write_text(
+          (publish / "workflow-metadata.json").write_text(
               json.dumps(metadata, indent=2, sort_keys=True) + "\n",
               encoding="utf-8",
           )
@@ -355,7 +362,7 @@ jobs:
 
       - name: Upload redacted RTX evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: RSH-trusted-RTX-${{ steps.target.outputs.sha }}-${{ github.run_id }}
           path: |
