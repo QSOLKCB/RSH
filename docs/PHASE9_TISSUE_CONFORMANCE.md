@@ -10,6 +10,20 @@ The Python implementation remains the readable tissue authority. Rust and WASM
 are accepted by reproducing the sealed default profile and the complete portable
 observable report within the declared tolerance.
 
+## Version boundary
+
+| Surface | Version |
+|---|---|
+| RSH software release / crates | `2.7.0` |
+| Geometry model contract | `2.0.0` |
+| Tissue contract | `1.0.0` |
+| Tissue WASM ABI | `1` |
+| Tissue conformance profile schema | `RSH-TISSUE-CONFORMANCE-V1` |
+
+A software release may add adapters, tests, or documentation without changing a
+scientific or numerical contract. Contract versions move only when their declared
+behaviour changes.
+
 ## Runtime structure
 
 ```text
@@ -53,6 +67,25 @@ computed value must match the Python reference hash:
 090416435f8ae2adc7555dab356eafef7aadfeabdb99c68e7c381ddf3bf9e544
 ```
 
+## Profile and golden policy
+
+`conformance/tissue_v1_8x20.json` has three explicit roles:
+
+1. configuration for the sealed 8-cell, 20-tick run;
+2. pinned Python golden observables and receipts;
+3. cross-runtime tolerance and authority requirements.
+
+CI always executes the Python reference again. The checked-in JSON is not a
+substitute for a live report. `scripts/verify_tissue_goldens.py` compares the
+fresh Python report with the pinned constitution hash, seed receipt, tick and
+report receipts, Q_f values, final dissociation, centring gate, and audit-chain
+state.
+
+The sealed default profile retains an absolute portable-observable tolerance of
+`1e-12`. A longer or numerically harsher stress run may use a looser tolerance
+only through a separately named profile with its own schema identity and stated
+rationale. The default profile must not be silently weakened.
+
 ## Receipt policy
 
 Receipts prove deterministic report identity within a runtime and serialization
@@ -90,7 +123,9 @@ Status codes:
 - `2`: invalid input or runtime error.
 
 The adapter applies stricter output-size limits than the general native tissue
-contract so browser reports remain bounded.
+contract so browser reports remain bounded. Regression tests exercise all three
+status codes, structured errors, stale-output replacement, and the exported
+pointer/length buffer contract.
 
 ## Executable conformance
 
@@ -105,7 +140,9 @@ contract so browser reports remain bounded.
 - checks authority and terminology boundaries.
 
 CI generates fresh Python and native Rust reports before running the harness. No
-checked-in generated report is trusted as a substitute for execution.
+checked-in generated report is trusted as a substitute for execution. Temporary
+outputs use the runner-provided temporary directory or a workspace-local fallback
+rather than assuming a Unix `/tmp` layout.
 
 ## Scientific boundary
 
