@@ -106,10 +106,7 @@ mod tests {
 
     #[test]
     fn path_length_uses_overflow_safe_norms() {
-        let points = [
-            point(0, 0.0, 0.0, 0.0),
-            point(1, 1.0e155, 1.0e155, 0.0),
-        ];
+        let points = [point(0, 0.0, 0.0, 0.0), point(1, 1.0e155, 1.0e155, 0.0)];
         let length = overflow_safe_path_length(&points);
         assert!(length.is_finite());
         assert_eq!(length, 1.0e155_f64.hypot(1.0e155));
