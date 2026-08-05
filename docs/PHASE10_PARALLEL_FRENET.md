@@ -110,6 +110,33 @@ For `N` samples, the adapter executes `ceil(log2(N))` scan passes. Each pass use
 64-thread workgroups. The browser reads back all path components and compares
 them with the f64 parallel Rust/WASM payload.
 
+The WebGPU transform buffer stores each rotation as a normalized f32 quaternion
+in `(x, y, z, w)` order plus a translation vector. Each transform therefore uses
+32 bytes rather than three independently accumulated basis columns and a
+translation. Quaternion multiplication preserves the declared SE(3) composition
+order. Each newly composed quaternion is normalized before the next scan pass,
+and the tangent, normal, and binormal are reconstructed only when the final path
+is emitted.
+
+Local interval quaternions use the declared accelerator policy
+`small-angle-sinc-polynomial-f32-v1`. For the supported 1,025- and 4,097-point
+profiles, the per-interval half-angle is small enough that the explicit series
+
+```text
+sin(x) / x ≈ 1 - x²/6 + x⁴/120
+cos(x)     ≈ 1 - x²/2 + x⁴/24
+```
+
+has omitted terms far below the published residual gates. This avoids accumulating
+adapter-specific `sin`/`cos` approximation drift in thousands of local frame
+rotations. The shader also avoids renormalizing already-normalized input
+quaternions before every multiplication; it normalizes the newly composed result
+and the final emitted rotation instead.
+
+This accelerator arithmetic does not change the f64 contract, midpoint Rodrigues
+interval definition, scan policy, gates, or authority boundary. It is an f32
+implementation policy checked against the Rust/WASM f64 path.
+
 The initial f32 gates are deliberately separate from the sequential path gates:
 
 | Component | Maximum absolute error |
@@ -121,7 +148,10 @@ The initial f32 gates are deliberately separate from the sequential path gates:
 | Frame orthogonality | `5e-5` |
 
 These are research gates. They may be tightened only after observations from
-multiple adapters and toolchains.
+multiple adapters and toolchains. `scripts/test_parallel_quaternion.mjs` runs a
+deterministic 4,097-point f32 arithmetic mirror against the same f64 construction
+in portable CI. That regression implements the same small-angle polynomial and
+normalization order, and is not a hardware-execution claim.
 
 ## Benchmark policy
 
@@ -154,8 +184,22 @@ universal_speedup_claim: false
 geometry_receipt_authority: false
 ```
 
-Routine CI does not have a browser GPU and therefore never emits an actual
-speedup claim.
+A warm-up or measured run that fails a residual gate is still useful hardware
+evidence. The laboratory therefore retains a downloadable rejection sidecar
+containing:
+
+- all five observed residuals and gates;
+- the failed gate names;
+- warm-up or measured stage and run index;
+- adapter, browser, sample count, and scan-pass metadata;
+- partial timing evidence;
+- `speedup_claim: false`;
+- `universal_speedup_claim: false`;
+- `geometry_receipt_authority: false`.
+
+A rejected sidecar proves that execution and complete readback occurred; it does
+not prove conformance. Routine CI does not have a browser GPU and therefore never
+emits an actual speedup claim.
 
 ## Multi-device and distributed groundwork
 
@@ -208,6 +252,11 @@ cargo run --locked -p rsh-parallel-cli -- \
 cargo run --release --locked -p rsh-parallel-cli -- \
   benchmark --samples 16385 --loops 10 \
   --json rsh_parallel_cpu_benchmark.json
+
+node scripts/test_parallel_quaternion.mjs \
+  conformance/frenet_parallel_v1_1025.json
+
+node scripts/test_parallel_rejection.mjs
 ```
 
 The native benchmark deliberately reports `speedup_claim: false`; it times the

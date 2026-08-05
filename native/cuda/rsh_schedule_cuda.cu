@@ -247,8 +247,7 @@ int main(int argc, char** argv) {
       throw std::runtime_error("requested block size exceeds the selected device limit");
     }
 
-    cudaUUID_t uuid{};
-    check_cuda(cudaDeviceGetUuid(&uuid, options.device), "cudaDeviceGetUuid");
+    const cudaUUID_t uuid = properties.uuid;
     int driver_api_version = 0;
     int runtime_version = 0;
     check_cuda(cudaDriverGetVersion(&driver_api_version), "cudaDriverGetVersion");

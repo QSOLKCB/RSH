@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -145,6 +146,22 @@ for (const point of payload.points) {
   assert.ok(numbers.every(Number.isFinite), `non-finite point ${point.index}`);
 }
 
+const quaternionProcess = spawnSync(
+  process.execPath,
+  ["scripts/test_parallel_quaternion.mjs", profilePath],
+  { encoding: "utf8" },
+);
+assert.equal(
+  quaternionProcess.status,
+  0,
+  quaternionProcess.stderr || quaternionProcess.stdout || "quaternion regression failed",
+);
+const quaternionRegression = JSON.parse(quaternionProcess.stdout);
+assert.equal(quaternionRegression.status, "PASS");
+assert.equal(quaternionRegression.actual_gpu_execution, false);
+assert.equal(quaternionRegression.speedup_claim, false);
+assert.equal(quaternionRegression.geometry_receipt_authority, false);
+
 console.log(JSON.stringify({
   schema: "RSH-FRENET-PARALLEL-WASM-CONFORMANCE-RESULT-V1",
   status: "PASS",
@@ -153,6 +170,7 @@ console.log(JSON.stringify({
   compared_report_numbers: comparedNumbers,
   maximum_native_wasm_residual: maximumResidual,
   tolerance,
+  quaternion_f32_regression: quaternionRegression,
   actual_parallel_hardware_execution: false,
   actual_multi_device_execution: false,
   speedup_claim: false,
