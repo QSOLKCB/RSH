@@ -1,0 +1,68 @@
+name: Agent guides and UI boundaries
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-agent-guides:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate root agent documentation
+        run: |
+          test -s AGENTS.md
+          test -s ARCHITECTURE.md
+          test -s COMMANDS.md
+          test -s TESTING.md
+          test -s ROADMAP.md
+          grep -q 'TESTING.md' AGENTS.md
+          grep -q 'COMMANDS.md' AGENTS.md
+          grep -q 'ARCHITECTURE.md' AGENTS.md
+          grep -q 'geometry_receipt_authority: false' AGENTS.md
+          grep -q 'python -m unittest discover' TESTING.md
+          grep -q 'cargo test --locked --workspace' TESTING.md
+          grep -q 'test_parallel_frenet.mjs' TESTING.md
+          grep -q 'test_tissue_wasm.mjs' TESTING.md
+          grep -q 'scripts/test_cuda.py' TESTING.md
+          grep -q 'rsh-parallel-cli' COMMANDS.md
+          grep -q 'RSH-FRENET-PARALLEL-V1' ARCHITECTURE.md
+
+  validate-parallel-ui-boundaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate JavaScript syntax and bounded controls
+        run: |
+          node --check web/parallel.js
+          node --check web/parallel-gpu.js
+          if grep -q 'value="16385"' web/parallel.html; then
+            echo 'The 16,385-sample browser option exceeds the current fixed f32 gates.' >&2
+            exit 1
+          fi
+          grep -q 'value="1025"' web/parallel.html
+          grep -q 'value="4097"' web/parallel.html
+      - name: Ensure control validation is caught by the rejected-state handler
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          source = Path("web/parallel.js").read_text(encoding="utf-8")
+          start = source.index("async function runBenchmark()")
+          end = source.index("\nfunction downloadSidecar()", start)
+          body = source[start:end]
+
+          try_index = body.index("try {")
+          config_index = body.index("const config = currentConfig();")
+          catch_index = body.index("} catch (error) {")
+          finally_index = body.index("} finally {")
+
+          assert try_index < config_index < catch_index < finally_index
+          assert 'output.status.textContent = "REJECTED";' in body
+          assert 'output.message.textContent = error instanceof Error' in body
+          assert 'runButton.disabled = false;' in body
+          PY
