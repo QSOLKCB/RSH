@@ -336,8 +336,10 @@ function downloadStudy() {
   const anchor = document.createElement("a");
   anchor.href = url;
   anchor.download = "rsh-jitterbug-dzhanibekov-exploratory.json";
+  document.body.append(anchor);
   anchor.click();
-  URL.revokeObjectURL(url);
+  anchor.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
 function animate(now) {
@@ -380,7 +382,9 @@ elements.time.addEventListener("input", () => {
 elements.download.addEventListener("click", downloadStudy);
 
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./sw.js").catch(() => undefined);
+  navigator.serviceWorker.register("./sw.js").catch((error) => {
+    console.info("Offline cache registration failed.", error);
+  });
 }
 
 updateControlLabels();
