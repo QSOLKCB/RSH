@@ -20,7 +20,7 @@ jobs:
   portable-boundaries:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
       - name: Validate scripts
         run: |
           node --check scripts/test_rtx_webgpu.cjs
@@ -51,15 +51,25 @@ jobs:
               "--sanitizers required",
               "actual_multi_device_execution",
               "geometry_receipt_authority",
+              "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+              '"$RSH_PUBLISH_DIR/webgpu-audit-summary.json"',
+              '"schema") != "RSH-TRUSTED-RTX-HARDWARE-AUDIT-V1"',
           )
           missing = [value for value in required if value not in source]
           if missing:
               raise SystemExit(f"RTX workflow boundary text is missing: {missing}")
-          if "artifacts/rtx-private/" in re.search(
-              r"(?ms)- name: Upload redacted RTX evidence.*?(?=\n      - name:)",
+
+          upload_match = re.search(
+              r"(?ms)^      - name: Upload redacted RTX evidence\n.*?(?=^      - name:|\Z)",
               source,
-          ).group(0):
+          )
+          if upload_match is None:
+              raise SystemExit("Upload redacted RTX evidence step is missing or malformed")
+          upload_step = upload_match.group(0)
+          if "artifacts/rtx-private/" in upload_step:
               raise SystemExit("private raw evidence must not be uploaded")
+          if "actions/upload-artifact@v" in upload_step:
+              raise SystemExit("artifact upload action must be pinned to an immutable commit SHA")
           PY
       - name: Validate privacy and authority boundaries
         run: |
@@ -70,3 +80,6 @@ jobs:
           grep -q 'geometry_receipt_authority.*False' scripts/verify_rtx_hardware.py
           grep -q 'software WebGPU adapter is not accepted' scripts/test_rtx_webgpu.cjs
           grep -q 'expected an NVIDIA adapter' scripts/test_rtx_webgpu.cjs
+          grep -q 'actual_gpu_execution: false' scripts/test_rtx_webgpu.cjs
+          grep -q 'max_position_component_vs_parallel_wasm_f64' scripts/test_rtx_webgpu.cjs
+          grep -q 'max_position_component_vs_parallel_wasm_f64' scripts/verify_rtx_hardware.py
