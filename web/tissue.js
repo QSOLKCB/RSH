@@ -1,39 +1,60 @@
 const decoder = new TextDecoder("utf-8");
-const canvas = document.getElementById("tissue-canvas");
+
+function requireElement(id, constructor) {
+  const element = document.getElementById(id);
+  if (!(element instanceof constructor)) {
+    throw new Error(`The tissue laboratory is missing a valid #${id} element`);
+  }
+  return element;
+}
+
+const canvas = requireElement("tissue-canvas", HTMLCanvasElement);
 const context = canvas.getContext("2d");
-const form = document.getElementById("controls");
-const runButton = document.getElementById("run");
-const downloadButton = document.getElementById("download");
+if (!context) {
+  throw new Error("The tissue laboratory could not create its 2D canvas context");
+}
+
+const form = requireElement("controls", HTMLFormElement);
+const runButton = requireElement("run", HTMLButtonElement);
+const downloadButton = requireElement("download", HTMLButtonElement);
 const fields = {
-  cells: document.getElementById("cells"),
-  ticks: document.getElementById("ticks"),
-  phaseCoupling: document.getElementById("phase-coupling"),
-  bindingDiffusion: document.getElementById("binding-diffusion"),
+  cells: requireElement("cells", HTMLInputElement),
+  ticks: requireElement("ticks", HTMLInputElement),
+  phaseCoupling: requireElement("phase-coupling", HTMLInputElement),
+  bindingDiffusion: requireElement("binding-diffusion", HTMLInputElement),
 };
 const labels = {
-  phaseCoupling: document.getElementById("phase-value"),
-  bindingDiffusion: document.getElementById("binding-value"),
+  phaseCoupling: requireElement("phase-value", HTMLElement),
+  bindingDiffusion: requireElement("binding-value", HTMLElement),
 };
 const output = {
-  status: document.getElementById("status"),
-  finalQf: document.getElementById("final-qf"),
-  qfRange: document.getElementById("qf-range"),
-  audit: document.getElementById("audit"),
-  message: document.getElementById("message"),
-  seedReceipt: document.getElementById("seed-receipt"),
-  tissueReceipt: document.getElementById("tissue-receipt"),
-  constitutionHash: document.getElementById("constitution-hash"),
+  status: requireElement("status", HTMLElement),
+  finalQf: requireElement("final-qf", HTMLElement),
+  qfRange: requireElement("qf-range", HTMLElement),
+  audit: requireElement("audit", HTMLElement),
+  message: requireElement("message", HTMLElement),
+  seedReceipt: requireElement("seed-receipt", HTMLElement),
+  tissueReceipt: requireElement("tissue-receipt", HTMLElement),
+  constitutionHash: requireElement("constitution-hash", HTMLElement),
 };
-
-if (!(canvas instanceof HTMLCanvasElement) || !context || !(form instanceof HTMLFormElement)) {
-  throw new Error("The tissue laboratory could not initialize its interface");
-}
 
 const state = { wasm: null, report: null };
 
 function syncLabels() {
   labels.phaseCoupling.textContent = Number(fields.phaseCoupling.value).toFixed(2);
   labels.bindingDiffusion.textContent = Number(fields.bindingDiffusion.value).toFixed(2);
+}
+
+function clearEvidence() {
+  state.report = null;
+  output.finalQf.textContent = "—";
+  output.qfRange.textContent = "—";
+  output.audit.textContent = "—";
+  output.seedReceipt.textContent = "—";
+  output.tissueReceipt.textContent = "—";
+  output.constitutionHash.textContent = "—";
+  downloadButton.disabled = true;
+  context.clearRect(0, 0, canvas.width, canvas.height);
 }
 
 async function instantiateWasm(url) {
@@ -159,7 +180,7 @@ function draw(report) {
 async function runTissue() {
   if (!state.wasm) return;
   runButton.disabled = true;
-  downloadButton.disabled = true;
+  clearEvidence();
   output.status.textContent = "RUNNING";
   output.message.textContent = "Executing the shared Rust tissue runtime in WebAssembly…";
   try {
@@ -199,7 +220,7 @@ async function runTissue() {
     downloadButton.disabled = false;
     draw(state.report);
   } catch (error) {
-    state.report = null;
+    clearEvidence();
     output.status.textContent = "REJECTED";
     output.message.textContent = error instanceof Error ? error.message : String(error);
   } finally {
@@ -227,6 +248,7 @@ form.addEventListener("submit", (event) => {
 });
 downloadButton.addEventListener("click", downloadReport);
 syncLabels();
+clearEvidence();
 
 try {
   state.wasm = await instantiateWasm("./pkg/rsh_tissue_wasm.wasm");
@@ -234,6 +256,7 @@ try {
   output.status.textContent = "READY";
   void runTissue();
 } catch (error) {
+  clearEvidence();
   output.status.textContent = "LOAD FAILED";
   output.message.textContent = error instanceof Error ? error.message : String(error);
 }
