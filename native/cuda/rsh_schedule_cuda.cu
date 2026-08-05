@@ -141,7 +141,7 @@ std::string format_uuid(const cudaUUID_t& uuid) {
     output.push_back(digits[byte >> 4U]);
     output.push_back(digits[byte & 0x0FU]);
   }
-  return output.str();
+  return output;
 }
 
 std::uint64_t parse_unsigned(std::string_view text, std::string_view option) {
