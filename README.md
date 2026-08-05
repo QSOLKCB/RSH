@@ -8,10 +8,22 @@ translating the exact discrete midpoint to the coordinate origin.
 
 **Authors:** J. Robitaille (DeltaKingZero) and Trent Slade / QSOL-IMC  
 **Release:** 2.7.0  
-**Geometry model contract:** 2.0.0  
-**Tissue contract:** 1.0.0  
-**Frenet numerical research contract:** 1.0.0  
-**Implementations:** Python geometry oracle and tissue reference + Rust geometry and tissue cores/CLIs + canonical geometry and tissue WASM bridges + WGSL schedule field + versioned C ABI/C++ adapter + optional CUDA schedule kernel + Tier 2 NPU evidence profile + separate Rust/WASM/WGSL full-path research stack
+**Implementations:** Python geometry oracle and tissue reference + Rust geometry and tissue cores/CLIs + canonical geometry and tissue WASM bridges + WGSL schedule field + versioned C ABI/C++ adapter + optional CUDA schedule kernel + Tier 2 NPU evidence profile + separate Rust/WASM/WGSL full-path and parallel-prefix research stacks
+
+## Contract and interface versions
+
+| Surface | Version / identifier |
+|---|---|
+| RSH software release / workspace crates | `2.7.0` |
+| Geometry model contract | `2.0.0` |
+| Tissue contract | `1.0.0` |
+| Frenet numerical research contract | `1.0.0` / `RSH-FRENET-NUMERICS-V1` |
+| Parallel Frenet research contract | `RSH-FRENET-PARALLEL-V1` |
+| Geometry, numerical, parallel, and tissue raw WASM ABIs | `1` |
+
+Release numbers, scientific contracts, numerical research contracts, and ABI
+versions are intentionally separate. Adding an adapter, test, or workflow does
+not silently revise the geometry or tissue contract.
 
 ## Browser laboratories
 
@@ -31,6 +43,12 @@ WebGPU and compares it with a separately versioned f64 Rust/WASM numerical path:
 
 **https://qsolkcb.github.io/RSH/frenet.html**
 
+The parallel Frenet laboratory evaluates the separately versioned SE(3)
+prefix-scan contract and permits an observed-device speedup statement only after
+real WebGPU execution, complete readback, and published residual gates:
+
+**https://qsolkcb.github.io/RSH/parallel.html**
+
 The v2.7.0 tissue laboratory executes the shared Rust tissue runtime directly in
 WebAssembly, visualizes the final ring/chord graph and Q_f trace, and exports its
 chained evidence report:
@@ -39,8 +57,8 @@ chained evidence report:
 
 The visualizations are projections of returned runtime data. They do not create
 a physical, biological, or subjective interpretation. After the first successful
-load, a service worker caches all three laboratories, all three WASM modules, and
-both WGSL shaders for offline reuse.
+load, a service worker caches all four laboratories, all four WASM modules, and
+all three WGSL shaders for offline reuse.
 
 ## Implementation authority
 
@@ -78,6 +96,12 @@ per-step frame projection, and path-level evidence. It exists for numerical and
 accelerator research. It does not replace the canonical geometry algorithm or
 receipt.
 
+The separate `rsh-parallel` stack defines `RSH-FRENET-PARALLEL-V1`: midpoint
+Frenet intervals represented as ordered SE(3) transforms and composed through a
+deterministic inclusive doubling scan. It is a parallel accelerator correctness
+surface, not a replacement geometry oracle. Multi-device and distributed
+execution remain future research.
+
 WebGPU, CUDA, and future NPU bindings are not promoted to oracle. They may report
 residual sidecars only after comparison with an accepted f64 reference. The
 canonical geometry receipt remains an oracle artifact.
@@ -104,6 +128,7 @@ canonical geometry receipt remains an oracle artifact.
 | CUDA diagnostic band | residual ≤ `1e-6` is reported as nominal, without tightening the hard gate |
 | NPU Tier 2 | quantized residual sidecar under a precision-specific gate; never geometry authority |
 | Full-path numerical research | named f64 Lie-midpoint policy plus component-level f32 readback gates |
+| Parallel Frenet research | ordered SE(3) prefix scan, complete shard coverage, native/WASM conformance, and adapter-scoped timing evidence |
 | Accelerator authority | residual sidecar only; never replaces the geometry receipt |
 
 Bounds hold by construction and are verified again after integration or tissue
@@ -162,6 +187,14 @@ cargo run --locked -p rsh-tissue-cli -- \
   run --json rsh_tissue_rust.json --csv rsh_tissue_rust.csv
 cargo run --locked -p rsh-tissue-cli -- \
   conformance --json rsh_tissue_rust_conformance.json
+```
+
+Verify a fresh Python report against the sealed goldens:
+
+```bash
+python3 scripts/verify_tissue_goldens.py \
+  --profile conformance/tissue_v1_8x20.json \
+  --report rsh_tissue.json
 ```
 
 The default Python reference result is:
@@ -269,43 +302,95 @@ is sequential. This is a correctness milestone, not a parallel speedup claim.
 
 See [Phase 8 Frenet numerical research](docs/PHASE8_FRENET_NUMERICS.md).
 
+## Parallel Frenet acceleration research
+
+Run the f64 SE(3) prefix reference and export complete path evidence:
+
+```bash
+cargo run --locked -p rsh-parallel-cli -- \
+  run --samples 1025 \
+  --json rsh_parallel_path.json \
+  --csv rsh_parallel_path.csv
+```
+
+Generate complete ordered shard summaries:
+
+```bash
+cargo run --locked -p rsh-parallel-cli -- \
+  shards --samples 4097 --interval-width 256 \
+  --json rsh_parallel_shards.json
+```
+
+The contract rejects missing prefixes or tails, empty lists, zero-width ranges,
+overlap, ordering faults, arithmetic overflow, and non-finite transforms. The
+complete path report separately compares the merged shard reduction with the
+expected sequential reduction of the same local transforms.
+
+The browser WebGPU path constructs intervals in parallel, applies deterministic
+ping-pong prefix passes, captures the midpoint, emits the centred path, and reads
+the complete result back. A local `speedup_claim: true` requires a real adapter,
+full conformance, warm-up, repeated median timing, and at least 4,097 samples.
+`universal_speedup_claim` and `geometry_receipt_authority` remain false.
+
+See [Phase 10 parallel Frenet research](docs/PHASE10_PARALLEL_FRENET.md).
+
 ## WebAssembly and WGSL conformance
 
-Build all browser modules:
+Build all browser modules through the same locked command used by the reusable CI
+action:
 
 ```bash
 rustup target add wasm32-unknown-unknown
 cargo test --locked \
-  -p rsh-wasm -p rsh-numerics-wasm -p rsh-tissue-wasm
+  -p rsh-wasm \
+  -p rsh-numerics-wasm \
+  -p rsh-parallel-wasm \
+  -p rsh-tissue-wasm
 cargo build --locked --release --target wasm32-unknown-unknown \
-  -p rsh-wasm -p rsh-numerics-wasm -p rsh-tissue-wasm
+  -p rsh-wasm \
+  -p rsh-numerics-wasm \
+  -p rsh-parallel-wasm \
+  -p rsh-tissue-wasm
 mkdir -p web/pkg
 cp target/wasm32-unknown-unknown/release/rsh_wasm.wasm web/pkg/
 cp target/wasm32-unknown-unknown/release/rsh_numerics_wasm.wasm web/pkg/
+cp target/wasm32-unknown-unknown/release/rsh_parallel_wasm.wasm web/pkg/
 cp target/wasm32-unknown-unknown/release/rsh_tissue_wasm.wasm web/pkg/
 ```
 
-Run the executable conformance harnesses:
+Run the executable conformance harnesses with a portable output directory:
 
 ```bash
+OUT="${TMPDIR:-$PWD/target/conformance}"
+mkdir -p "$OUT"
+
+cargo run --locked -p rsh-cli -- \
+  verify -n 129 --json "$OUT/rsh_native_129.json"
 node scripts/test_wasm.mjs \
   target/wasm32-unknown-unknown/release/rsh_wasm.wasm \
   conformance/wasm_v2_129.json \
-  /tmp/rsh_native_129.json \
+  "$OUT/rsh_native_129.json" \
   conformance/wgsl_v1_4096.json
 
 node scripts/test_frenet_path.mjs \
   target/wasm32-unknown-unknown/release/rsh_numerics_wasm.wasm \
   conformance/frenet_path_v1_1025.json
 
-python3 rsh_runner.py tissue --json /tmp/rsh_tissue_python.json
+cargo run --locked -p rsh-parallel-cli -- \
+  run --samples 1025 --json "$OUT/rsh_parallel_native.json"
+node scripts/test_parallel_frenet.mjs \
+  target/wasm32-unknown-unknown/release/rsh_parallel_wasm.wasm \
+  conformance/frenet_parallel_v1_1025.json \
+  "$OUT/rsh_parallel_native.json"
+
+python3 rsh_runner.py tissue --json "$OUT/rsh_tissue_python.json"
 cargo run --locked -p rsh-tissue-cli -- \
-  run --json /tmp/rsh_tissue_rust.json
+  run --json "$OUT/rsh_tissue_rust.json"
 node scripts/test_tissue_wasm.mjs \
   target/wasm32-unknown-unknown/release/rsh_tissue_wasm.wasm \
   conformance/tissue_v1_8x20.json \
-  /tmp/rsh_tissue_python.json \
-  /tmp/rsh_tissue_rust.json
+  "$OUT/rsh_tissue_python.json" \
+  "$OUT/rsh_tissue_rust.json"
 ```
 
 No `wasm-bindgen`, `wasm-pack`, npm, bundler, CDN, or runtime server is required.
@@ -469,6 +554,7 @@ can modify a numerical contract.
 |---|---:|---|
 | Python geometry 3.10 / 3.12 / 3.14 | yes | reference tests and evidence smoke suite |
 | Python tissue 3.10 / 3.12 / 3.14 | yes | constitution, default receipt chain, Q_f vectors, fallback, dry-run policy |
+| Sealed Python tissue goldens | yes | fresh CPython 3.12 report checked explicitly at `1e-12` plus exact receipt/hash gates |
 | Rust canonical geometry | yes | formatting, Clippy, tests, conformance, canonical Rust receipt |
 | Geometry WASM | yes | actual compiled module executed against sealed geometry vectors |
 | Rust tissue | yes | full port, constitution hash, deterministic replay, audit chain, Python observable gates |
@@ -477,6 +563,9 @@ can modify a numerical contract.
 | Rust f64 Frenet numerical path | yes | named policy, sealed path vectors, deterministic stress corpus |
 | Numerical WASM | yes | actual compiled module executed against the 1,025-point profile |
 | WGSL full path | browser-specific | complete path readback and five path-level residual gates; no speedup claim |
+| Rust parallel Frenet | yes | f64 interval construction, prefix scan, complete shard coverage, and sequential equivalence |
+| Parallel WASM | yes | actual compiled module executed against native f64 report |
+| WGSL parallel scan | browser-specific | full path readback, fixed gates, adapter-scoped benchmark policy |
 | C++ ABI | yes | compiled consumer, ABI layout, ownership, coordinates, receipt |
 | CUDA CPU reference | yes | portable f32 arithmetic; `actual_cuda_execution: false` |
 | CUDA RTX 5060 Ti / sm_120 | externally observed | actual kernel pass, residual `4.0915928645191e-08` |
@@ -528,6 +617,9 @@ crates/rsh-ffi/                     Versioned C ABI over `rsh-core`
 crates/rsh-numerics/                Separately versioned f64 Frenet path research
 crates/rsh-numerics-cli/            Numerical path runner and benchmark
 crates/rsh-numerics-wasm/           Separate numerical path WASM ABI
+crates/rsh-parallel/                SE(3) parallel-prefix Frenet reference
+crates/rsh-parallel-cli/            Parallel path, shard, and benchmark CLI
+crates/rsh-parallel-wasm/           Parallel-prefix raw WASM ABI
 crates/rsh-tissue/                  Shared Rust tissue runtime
 crates/rsh-tissue-cli/              Native tissue runner and conformance CLI
 crates/rsh-tissue-wasm/             Raw tissue WASM ABI over `rsh-tissue`
@@ -537,6 +629,7 @@ native/cuda/                        Optional CUDA schedule residual executable
 conformance/wasm_v2_129.json        Sealed geometry/WASM profile
 conformance/wgsl_v1_4096.json       WebGPU schedule-field profile
 conformance/frenet_path_v1_1025.json Full-path numerical and accelerator profile
+conformance/frenet_parallel_v1_1025.json Parallel-prefix native/WASM profile
 conformance/ffi_v1_129.json         Native ABI profile
 conformance/cuda_schedule_v1_4096.json Optional CUDA schedule profile
 conformance/tissue_v1_8x20.json     Python/Rust/WASM tissue profile
@@ -544,11 +637,14 @@ conformance/npu_tier2_v1.json       Tier 2 NPU evidence profile
 conformance/observed/               Noncanonical hardware observations
 scripts/test_wasm.mjs               Canonical geometry WASM and schedule harness
 scripts/test_frenet_path.mjs        Numerical WASM and f32 full-path harness
+scripts/test_parallel_frenet.mjs    Parallel native/WASM conformance harness
 scripts/test_tissue_wasm.mjs        Python/Rust/WASM tissue harness
+scripts/verify_tissue_goldens.py    Fresh Python report vs sealed goldens
 scripts/test_cpp_ffi.py             C++ ABI and CUDA-reference harness
 scripts/test_cuda.py                Actual CUDA sidecar/repeatability/sanitizer harness
 scripts/cuda_preflight.sh           Non-mutating CUDA host readiness report
 scripts/package_evidence.py         Deterministic evidence archive generator
+.github/actions/build-wasm/         Shared locked WASM test/build action
 fuzz/                               Isolated bounded numerical fuzz target
 web/                                Static Pages laboratories and offline cache
 tests/                              Geometry, tissue, governance, CLI, and tooling tests
@@ -558,6 +654,7 @@ docs/PHASE5_NATIVE.md               C ABI, C++, and optional CUDA boundary
 docs/PHASE6_TISSUE.md               Constitutional tissue contract
 docs/PHASE8_FRENET_NUMERICS.md      Full-path numerical research contract
 docs/PHASE9_TISSUE_CONFORMANCE.md   Rust/WASM tissue conformance
+docs/PHASE10_PARALLEL_FRENET.md     Parallel Frenet research contract
 docs/OPERATIONAL_AWARENESS.md       Instrumentation and no-qualia boundary
 docs/CUDA_VALIDATION.md             Hardware evidence and toolchain guidance
 docs/SCIENTIFIC_BOUNDARY.md         Claims the evidence does and does not support
@@ -587,7 +684,9 @@ consciousness, or subjective experience.
 5. **Native C ABI, C++17 consumer, and optional CUDA schedule adapter** — implemented in v2.4.0 and hardware-validation hardened in v2.4.1.
 6. **Constitutional geometric tissue Python reference** — implemented in v2.5.0.
 7. **Rust/WASM tissue conformance** — implemented in v2.7.0 from the sealed Python vectors.
-8. **Full-path Frenet numerical research** — implemented in v2.6.0 as a separate f64/WASM/WGSL correctness surface; parallel acceleration remains future research.
+8. **Full-path Frenet numerical research** — implemented in v2.6.0 as a separate f64/WASM/WGSL correctness surface.
+9. **Single-device parallel Frenet research** — implemented under `RSH-FRENET-PARALLEL-V1` with native Rust, compiled WASM, multi-pass WGSL, complete readback, and scoped benchmark policy.
+10. **Multi-device and distributed parallel execution** — future research; current shard summaries provide ordered deterministic groundwork only.
 
 Performance, compositional complexity, or anthropomorphic language never promotes
 an adapter or simulation to scientific authority.
