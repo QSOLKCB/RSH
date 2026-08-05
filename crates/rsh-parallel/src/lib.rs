@@ -387,15 +387,30 @@ pub fn segment_summaries(
     Ok(summaries)
 }
 
-pub fn merge_segment_summaries(summaries: &[SegmentSummary]) -> Result<TransformSnapshot, String> {
+pub fn merge_segment_summaries(
+    summaries: &[SegmentSummary],
+    expected_intervals: usize,
+) -> Result<TransformSnapshot, String> {
+    if expected_intervals == 0 {
+        return Err("expected parallel interval count must be positive".into());
+    }
+    if summaries.is_empty() {
+        return Err("parallel segment summaries do not cover the expected interval range".into());
+    }
+
     let mut expected_start = 0usize;
     let mut reduction = Se3::identity();
     for summary in summaries {
         if summary.schema != "RSH-FRENET-PARALLEL-SEGMENT-V1" {
             return Err("unexpected parallel segment schema".into());
         }
-        if summary.start_interval != expected_start
-            || summary.end_interval_exclusive != summary.start_interval + summary.interval_count
+        let declared_end = summary
+            .start_interval
+            .checked_add(summary.interval_count)
+            .ok_or_else(|| "parallel segment interval range overflow".to_string())?;
+        if summary.interval_count == 0
+            || summary.start_interval != expected_start
+            || summary.end_interval_exclusive != declared_end
         {
             return Err("parallel segment summaries are missing, overlapping, or unordered".into());
         }
@@ -405,6 +420,10 @@ pub fn merge_segment_summaries(summaries: &[SegmentSummary]) -> Result<Transform
         }
         reduction = reduction.compose(transform);
         expected_start = summary.end_interval_exclusive;
+    }
+
+    if expected_start != expected_intervals {
+        return Err("parallel segment summaries do not cover the expected interval range".into());
     }
     Ok(reduction.snapshot())
 }
@@ -491,7 +510,7 @@ pub fn build_parallel_path(
 
     let shard_interval_width = 128usize;
     let summaries = segment_summaries(config, shard_interval_width)?;
-    let merged = merge_segment_summaries(&summaries)?.transform();
+    let merged = merge_segment_summaries(&summaries, config.samples - 1)?.transform();
     let expected_final = sequential
         .last()
         .copied()
@@ -643,7 +662,8 @@ mod tests {
             ..ModelConfig::default()
         };
         let summaries = segment_summaries(config, 257).expect("segment summaries");
-        let merged = merge_segment_summaries(&summaries).expect("merged summaries");
+        let merged = merge_segment_summaries(&summaries, config.samples - 1)
+            .expect("merged summaries");
         let transforms = interval_transforms(config).expect("interval transforms");
         let sequential = sequential_prefixes(&transforms);
         let expected = sequential.last().copied().expect("final transform");
@@ -651,13 +671,23 @@ mod tests {
     }
 
     #[test]
-    fn unordered_or_missing_shards_are_rejected() {
+    fn unordered_or_missing_prefix_shards_are_rejected() {
         let config = ModelConfig::default();
         let mut summaries = segment_summaries(config, 32).expect("segment summaries");
         summaries.remove(0);
-        assert!(merge_segment_summaries(&summaries)
+        assert!(merge_segment_summaries(&summaries, config.samples - 1)
             .expect_err("missing first shard must fail")
             .contains("missing, overlapping, or unordered"));
+    }
+
+    #[test]
+    fn missing_tail_shards_are_rejected() {
+        let config = ModelConfig::default();
+        let mut summaries = segment_summaries(config, 32).expect("segment summaries");
+        summaries.pop();
+        assert!(merge_segment_summaries(&summaries, config.samples - 1)
+            .expect_err("missing final shard must fail")
+            .contains("do not cover the expected interval range"));
     }
 
     #[test]
