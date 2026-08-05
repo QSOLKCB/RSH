@@ -1,5 +1,10 @@
 const TAU = 2 * Math.PI;
 const EPSILON = 1e-15;
+const MAX_INTEGRATION_STEPS = 2_000_000;
+const MAX_OUTPUT_SAMPLES = 200_001;
+const MIN_COMPARISON_SAMPLES = 50;
+const MAX_COMPARISON_SAMPLES = 10_000;
+const MAX_ALIGNMENT_CANDIDATES = 256;
 
 export const ATTITUDE_SCHEMA = "RSH-ATTITUDE-COMPARISON-EXPLORATORY-V1";
 export const DEFAULT_DZHANIBEKOV = Object.freeze({
@@ -39,6 +44,16 @@ function finiteNumber(value, label) {
 function positive(value, label) {
   finiteNumber(value, label);
   if (value <= 0) throw new Error(`${label} must be positive`);
+  return value;
+}
+
+function integerInRange(value, label, minimum, maximum) {
+  if (!Number.isFinite(value) || !Number.isInteger(value)) {
+    throw new Error(`${label} must be a finite integer`);
+  }
+  if (value < minimum || value > maximum) {
+    throw new Error(`${label} must be in [${minimum}, ${maximum}]`);
+  }
   return value;
 }
 
@@ -217,13 +232,24 @@ function rk4Step(derivative, time, state, dt) {
 }
 
 function summarizeSeries(values) {
-  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
-  const variance = values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length;
-  const minimum = Math.min(...values);
-  const maximum = Math.max(...values);
+  if (!Array.isArray(values) || values.length === 0) {
+    throw new Error("summary series must contain at least one value");
+  }
+  let sum = 0;
+  let minimum = Infinity;
+  let maximum = -Infinity;
+  for (const value of values) {
+    finiteNumber(value, "summary series value");
+    sum += value;
+    minimum = Math.min(minimum, value);
+    maximum = Math.max(maximum, value);
+  }
+  const mean = sum / values.length;
+  let squaredDeviation = 0;
+  for (const value of values) squaredDeviation += (value - mean) ** 2;
   return {
     mean,
-    standard_deviation: Math.sqrt(variance),
+    standard_deviation: Math.sqrt(squaredDeviation / values.length),
     minimum,
     maximum,
     relative_drift: Math.abs(maximum - minimum) / Math.max(Math.abs(mean), EPSILON),
@@ -273,12 +299,15 @@ function detectReversals(samples, thresholdDegrees = 170, cooldownSeconds = 2.0)
 function validateIntegrationConfig(config) {
   positive(config.duration, "duration");
   positive(config.dt, "dt");
-  if (!Number.isInteger(config.outputStride) || config.outputStride < 1) {
-    throw new Error("outputStride must be a positive integer");
-  }
+  integerInRange(config.outputStride, "outputStride", 1, MAX_INTEGRATION_STEPS);
   const steps = Math.round(config.duration / config.dt);
-  if (steps < 2 || steps > 2_000_000) {
-    throw new Error("integration step count must be in [2, 2000000]");
+  if (steps < 2 || steps > MAX_INTEGRATION_STEPS) {
+    throw new Error(`integration step count must be in [2, ${MAX_INTEGRATION_STEPS}]`);
+  }
+  const regularOutputs = Math.floor(steps / config.outputStride) + 1;
+  const emittedSamples = regularOutputs + (steps % config.outputStride === 0 ? 0 : 1);
+  if (emittedSamples > MAX_OUTPUT_SAMPLES) {
+    throw new Error(`emitted sample count must not exceed ${MAX_OUTPUT_SAMPLES}`);
   }
   return steps;
 }
@@ -517,10 +546,13 @@ function alignOne(dzhanibekov, jitterbug, timeScale, timeShift, sampleCount) {
     dzExcursions.push(quaternionDistance(dzSamples[0].quaternion, dz.quaternion));
     jbExcursions.push(quaternionDistance(jbSamples[0].quaternion, jb.quaternion));
   }
-  if (distances.length < 50) return null;
+  if (distances.length < MIN_COMPARISON_SAMPLES) return null;
   const mean = distances.reduce((sum, value) => sum + value, 0) / distances.length;
   const rms = Math.sqrt(distances.reduce((sum, value) => sum + value ** 2, 0) / distances.length);
   const excursionCorrelation = correlation(dzExcursions, jbExcursions);
+  const distanceSummary = summarizeSeries(distances);
+  const dzExcursionSummary = summarizeSeries(dzExcursions);
+  const jbExcursionSummary = summarizeSeries(jbExcursions);
   return {
     time_scale_factor: timeScale,
     time_shift: timeShift,
@@ -528,16 +560,16 @@ function alignOne(dzhanibekov, jitterbug, timeScale, timeShift, sampleCount) {
     quaternion_distance: {
       mean_rad: mean,
       rms_rad: rms,
-      max_rad: Math.max(...distances),
+      max_rad: distanceSummary.maximum,
       median_rad: percentile(distances, 0.5),
       mean_deg: mean * 180 / Math.PI,
       rms_deg: rms * 180 / Math.PI,
-      max_deg: Math.max(...distances) * 180 / Math.PI,
+      max_deg: distanceSummary.maximum * 180 / Math.PI,
       p95_deg: percentile(distances, 0.95) * 180 / Math.PI,
     },
     attitude_excursion_correlation: excursionCorrelation,
-    max_attitude_excursion_dz_deg: Math.max(...dzExcursions) * 180 / Math.PI,
-    max_attitude_excursion_jb_deg: Math.max(...jbExcursions) * 180 / Math.PI,
+    max_attitude_excursion_dz_deg: dzExcursionSummary.maximum * 180 / Math.PI,
+    max_attitude_excursion_jb_deg: jbExcursionSummary.maximum * 180 / Math.PI,
     score: rms - 0.15 * excursionCorrelation,
   };
 }
@@ -549,7 +581,22 @@ export function compareAttitudeTrajectories(
 ) {
   const timeScales = options.timeScales ?? [0.5, 1, 2, 10];
   const timeShifts = options.timeShifts ?? [-10, -5, 0, 5, 10];
-  const sampleCount = options.sampleCount ?? 800;
+  const sampleCount = integerInRange(
+    options.sampleCount ?? 800,
+    "sampleCount",
+    MIN_COMPARISON_SAMPLES,
+    MAX_COMPARISON_SAMPLES,
+  );
+  if (!Array.isArray(timeScales) || timeScales.length === 0) {
+    throw new Error("timeScales must be a non-empty array");
+  }
+  if (!Array.isArray(timeShifts) || timeShifts.length === 0) {
+    throw new Error("timeShifts must be a non-empty array");
+  }
+  if (timeScales.length * timeShifts.length > MAX_ALIGNMENT_CANDIDATES) {
+    throw new Error(`alignment candidate count must not exceed ${MAX_ALIGNMENT_CANDIDATES}`);
+  }
+
   const results = [];
   for (const timeScale of timeScales) {
     positive(timeScale, "time scale");
@@ -581,8 +628,10 @@ export function compareAttitudeTrajectories(
   return {
     schema: ATTITUDE_SCHEMA,
     verdict,
+    comparison_sample_count: sampleCount,
     best_alignment: best,
     best_excursion_alignment: bestExcursion,
+    verdict_alignment: verdict === "PARTIAL TRAJECTORY RESEMBLANCE" ? bestExcursion : best,
     results_by_scale: timeScales.map((scale) => (
       results.filter((result) => result.time_scale_factor === scale)
         .sort((left, right) => left.score - right.score)[0]
@@ -608,6 +657,7 @@ export function runDefaultAttitudeStudy(overrides = {}) {
 }
 
 export function compactTrajectory(result, maximumSamples = 1001) {
+  integerInRange(maximumSamples, "maximumSamples", 1, MAX_OUTPUT_SAMPLES);
   const stride = Math.max(1, Math.ceil(result.samples.length / maximumSamples));
   return {
     schema: result.schema,
