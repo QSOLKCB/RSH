@@ -9,6 +9,14 @@ const EXIT_ENVIRONMENT = 20;
 const EXIT_SCHEDULE = 31;
 const EXIT_PARALLEL = 32;
 
+const PARALLEL_RESIDUAL_GATES = Object.freeze([
+  ["max_position_component_vs_parallel_wasm_f64", "position"],
+  ["max_frame_component_vs_parallel_wasm_f64", "frame"],
+  ["max_schedule_component_vs_parallel_wasm_f64", "schedule"],
+  ["max_frame_norm_error", "frameNorm"],
+  ["max_frame_orthogonality_error", "frameOrthogonality"],
+]);
+
 function parseArguments(argv) {
   const options = {
     baseUrl: "http://127.0.0.1:8765/",
@@ -167,17 +175,10 @@ function validateParallelSidecar(sidecar) {
   }
   const residuals = sidecar.residuals || {};
   const gates = sidecar.gates || {};
-  const comparisons = [
-    ["max_position_component_vs_f64", "position_component_gate"],
-    ["max_frame_component_vs_f64", "frame_component_gate"],
-    ["max_schedule_component_vs_f64", "schedule_component_gate"],
-    ["max_frame_norm_error", "frame_norm_gate"],
-    ["max_frame_orthogonality_error", "frame_orthogonality_gate"],
-  ];
-  for (const [residualName, gateName] of comparisons) {
+  for (const [residualName, gateName] of PARALLEL_RESIDUAL_GATES) {
     const residual = finite(residuals[residualName], `parallel ${residualName}`);
     const gate = finite(gates[gateName], `parallel ${gateName}`);
-    if (residual > gate) throw new Error(`${residualName} ${residual} exceeds ${gate}`);
+    if (residual > gate) throw new Error(`${residualName} ${residual} exceeds ${gateName}=${gate}`);
   }
   return { adapter };
 }
@@ -275,14 +276,15 @@ async function testParallel(browser, options, consoleLog) {
       schema: "RSH-TRUSTED-RTX-WEBGPU-PARALLEL-V1",
       status: status === "REJECTED" ? "REJECTED" : "BLOCKED BY ENVIRONMENT",
       observed: snapshot,
-      actual_gpu_execution: status === "REJECTED",
-      parallel_scan_execution: status === "REJECTED",
-      complete_path_readback: status === "REJECTED",
+      actual_gpu_execution: false,
+      parallel_scan_execution: false,
+      complete_path_readback: false,
       actual_multi_device_execution: false,
       distributed_execution: false,
       speedup_claim: false,
       universal_speedup_claim: false,
       geometry_receipt_authority: false,
+      evidence_note: "No downloadable adapter sidecar was available, so physical GPU execution and complete readback are not asserted.",
     };
     await page.close();
     return { pass: false, evidence };
