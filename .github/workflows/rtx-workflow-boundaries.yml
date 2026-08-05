@@ -59,11 +59,15 @@ jobs:
           missing = [value for value in required if value not in source]
           if missing:
               raise SystemExit(f"RTX workflow boundary text is missing: {missing}")
-          if "''|*[!0-9;]*)" in source:
+
+          unsafe_case_pattern = re.compile(
+              r"''\s*\|\s*\*\[\s*!0-9;\s*\]\s*\*\s*\)",
+          )
+          if unsafe_case_pattern.search(source):
               raise SystemExit("unsafe CUDA architecture case pattern reintroduced")
 
           upload_match = re.search(
-              r"(?ms)^      - name: Upload redacted RTX evidence\n.*?(?=^      - name:|\Z)",
+              r"(?ms)^      - name: Upload redacted RTX evidence\n.*?(?=^      - |\Z)",
               source,
           )
           if upload_match is None:
@@ -76,7 +80,7 @@ jobs:
 
           validator_match = re.search(
               r"(?ms)^      - name: Validate workflow inputs and runner contract\n"
-              r".*?^        run: \|\n(.*?)(?=^      - name:)",
+              r".*?^        run: \|\n(.*?)(?=^      - |\Z)",
               source,
           )
           if validator_match is None:
