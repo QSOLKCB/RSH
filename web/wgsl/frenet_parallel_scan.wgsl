@@ -59,21 +59,31 @@ fn quaternion_multiply(left: vec4<f32>, right: vec4<f32>) -> vec4<f32> {
   );
 }
 
-fn rotate_quaternion(rotation: vec4<f32>, vector: vec3<f32>) -> vec3<f32> {
-  let unit = normalize_quaternion(rotation);
-  let doubled_cross = 2.0 * cross(unit.xyz, vector);
-  return vector + unit.w * doubled_cross + cross(unit.xyz, doubled_cross);
+fn rotate_unit_quaternion(rotation: vec4<f32>, vector: vec3<f32>) -> vec3<f32> {
+  let doubled_cross = 2.0 * cross(rotation.xyz, vector);
+  return vector
+    + rotation.w * doubled_cross
+    + cross(rotation.xyz, doubled_cross);
 }
 
 fn quaternion_from_omega(omega: vec3<f32>, step: f32) -> vec4<f32> {
-  let magnitude = length(omega);
-  if (magnitude <= 1.0e-8) {
-    return identity_quaternion();
-  }
-  let half_angle = 0.5 * magnitude * step;
+  // Every supported browser profile uses a very small per-interval angle.
+  // Evaluating sin(x) / x and cos(x) with explicit even polynomials avoids
+  // adapter-specific transcendental drift while remaining equivalent to the
+  // midpoint Rodrigues interval through terms far below the published gates.
+  let half_step = 0.5 * step;
+  let half_step_squared = half_step * half_step;
+  let half_angle_squared = dot(omega, omega) * half_step_squared;
+  let half_angle_fourth = half_angle_squared * half_angle_squared;
+  let sinc = 1.0
+    - half_angle_squared / 6.0
+    + half_angle_fourth / 120.0;
+  let cosine = 1.0
+    - half_angle_squared / 2.0
+    + half_angle_fourth / 24.0;
   return normalize_quaternion(vec4<f32>(
-    (omega / magnitude) * sin(half_angle),
-    cos(half_angle),
+    omega * (half_step * sinc),
+    cosine,
   ));
 }
 
@@ -85,13 +95,14 @@ fn identity_transform() -> Transform {
 }
 
 fn compose(left: Transform, right: Transform) -> Transform {
-  let left_rotation = normalize_quaternion(left.rotation);
-  let right_rotation = normalize_quaternion(right.rotation);
+  // All inputs are normalized when built or after the preceding scan pass.
+  // Normalize only the newly composed quaternion so inverseSqrt noise is not
+  // injected repeatedly into each input before every multiplication.
   return Transform(
-    normalize_quaternion(quaternion_multiply(left_rotation, right_rotation)),
+    normalize_quaternion(quaternion_multiply(left.rotation, right.rotation)),
     vec4<f32>(
       left.translation.xyz
-        + rotate_quaternion(left_rotation, right.translation.xyz),
+        + rotate_unit_quaternion(left.rotation, right.translation.xyz),
       0.0,
     ),
   );
@@ -111,7 +122,7 @@ fn local_interval(interval: u32) -> Transform {
   return Transform(
     rotation,
     vec4<f32>(
-      rotate_quaternion(half_rotation, vec3<f32>(1.0, 0.0, 0.0)) * ds,
+      rotate_unit_quaternion(half_rotation, vec3<f32>(1.0, 0.0, 0.0)) * ds,
       0.0,
     ),
   );
@@ -164,9 +175,9 @@ fn emit_path(@builtin(global_invocation_id) global_id: vec3<u32>) {
   let s = params.s0 + p * (params.s1 - params.s0);
   let transform = source_transforms[index];
   let rotation = normalize_quaternion(transform.rotation);
-  let tangent = rotate_quaternion(rotation, vec3<f32>(1.0, 0.0, 0.0));
-  let normal = rotate_quaternion(rotation, vec3<f32>(0.0, 1.0, 0.0));
-  let binormal = rotate_quaternion(rotation, vec3<f32>(0.0, 0.0, 1.0));
+  let tangent = rotate_unit_quaternion(rotation, vec3<f32>(1.0, 0.0, 0.0));
+  let normal = rotate_unit_quaternion(rotation, vec3<f32>(0.0, 1.0, 0.0));
+  let binormal = rotate_unit_quaternion(rotation, vec3<f32>(0.0, 0.0, 1.0));
   output_path[index] = PathPoint(
     vec4<f32>(
       transform.translation.xyz - centre_value[0].xyz,
