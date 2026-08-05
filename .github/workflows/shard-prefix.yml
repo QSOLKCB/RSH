@@ -1,0 +1,64 @@
+name: Deterministic shard-prefix reconstruction
+
+on:
+  pull_request:
+    paths:
+      - "crates/rsh-parallel/**"
+      - "crates/rsh-parallel-cli/**"
+      - "conformance/frenet_shard_prefix_v1_4097.json"
+      - "scripts/test_shard_prefix_reconstruction.mjs"
+      - "docs/PHASE12_SHARD_PREFIX_RECONSTRUCTION.md"
+      - "docs/PHASE10_PARALLEL_FRENET.md"
+      - "ROADMAP.md"
+      - ".github/workflows/shard-prefix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  reconstruct:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install stable Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt
+          rustup default stable
+      - name: Validate source
+        run: |
+          cargo fmt --all -- --check
+          node --check scripts/test_shard_prefix_reconstruction.mjs
+      - name: Test shard reconstruction library
+        run: |
+          cargo test --locked -p rsh-parallel
+      - name: Produce deterministic reconstruction evidence
+        run: |
+          OUT="${RUNNER_TEMP}/rsh-shard-prefix"
+          mkdir -p "$OUT"
+          cargo run --locked -p rsh-parallel-cli -- \
+            reconstruct \
+            --samples 4097 \
+            --interval-width 257 \
+            --json "$OUT/report.json" \
+            --csv "$OUT/path.csv" \
+            --shards-json "$OUT/shards.json"
+          node scripts/test_shard_prefix_reconstruction.mjs \
+            conformance/frenet_shard_prefix_v1_4097.json \
+            "$OUT/report.json" \
+            "$OUT/shards.json" \
+            "$OUT/path.csv"
+      - name: Preserve evidence boundaries
+        run: |
+          grep -q 'RSH-FRENET-SHARD-PREFIX-V1' \
+            crates/rsh-parallel/src/shard_prefix.rs
+          grep -q 'hillis-steele-exclusive-shard-se3-v1' \
+            crates/rsh-parallel/src/shard_prefix.rs
+          grep -q 'actual_multi_device_execution: false' \
+            crates/rsh-parallel/src/shard_prefix.rs
+          grep -q 'distributed_execution: false' \
+            crates/rsh-parallel/src/shard_prefix.rs
+          grep -q 'speedup_claim: false' \
+            crates/rsh-parallel/src/shard_prefix.rs
+          grep -q 'geometry_receipt_authority: false' \
+            crates/rsh-parallel/src/shard_prefix.rs

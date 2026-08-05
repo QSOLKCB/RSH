@@ -37,48 +37,60 @@ Acceptance evidence is recorded by `conformance/tissue_v1_8x20.json` and
 
 ## 2. Parallel Frenet acceleration research
 
-**Status: Active — first implementation milestone in progress**
+**Status: Complete — single-device hardware validated**
 
-The current full-path WGSL kernel executes the entire recurrence on a real GPU,
-but does so in one invocation because each state depends on its predecessor. The
-next contract will replace that serial recurrence with an associative prefix
-composition of local rigid transforms.
+`RSH-FRENET-PARALLEL-V1` now provides:
 
-### Planned milestones
+- midpoint Rodrigues SE(3) interval transforms;
+- a deterministic inclusive doubling scan;
+- native Rust and compiled WASM f64 references;
+- a multi-pass normalized-quaternion WGSL implementation;
+- full path readback and residual comparison;
+- rejection sidecars that preserve failed hardware evidence;
+- real RTX 5060 Ti WebGPU execution at 4,097 samples;
+- real `sm_120` CUDA schedule execution, repeatability, and sanitizer evidence;
+- a device/browser-scoped observed speedup statement with no universal claim.
 
-1. Define `RSH-FRENET-PARALLEL-V1` independently of the canonical geometry and
-   existing projected sequential numerical contract.
-2. Represent every interval as a local SE(3) transform containing:
-   - the midpoint Rodrigues frame rotation;
-   - the midpoint-tangent displacement;
-   - the interval schedule metadata required for evidence.
-3. Define a deterministic inclusive doubling scan whose composition order is
-   stable across native Rust, WASM, and WGSL.
-4. Add a native f64 reference and compiled WASM bridge.
-5. Add a multi-pass WGSL implementation using parallel interval construction,
-   ping-pong prefix passes, parallel path emission, and midpoint centering.
-6. Compare every returned position, frame, curvature, and torsion component with
-   the f64 parallel reference under separately published gates.
-7. Add browser benchmarking with warm-up, repeated measurements, medians,
-   adapter metadata, and readback-inclusive timing.
-8. Permit an **observed speedup statement** only when the real adapter executes,
-   conformance passes, the benchmark protocol is complete, and the sidecar
-   records the exact device, browser, sample count, and timing method.
-9. Define shard summaries for multi-device or distributed experiments. A shard
-   may export a local transform reduction, but no distributed result is accepted
-   until ordered merge and full-path readback reproduce the same contract.
+The accepted single-device work does not replace the canonical geometry receipt.
+Raw hardware evidence containing stable device identifiers remains outside the
+public repository; only redacted observations belong in project documentation.
 
-### Non-goals for the first milestone
+## 3. Deterministic shard-prefix path reconstruction
 
-- no universal GPU speedup claim;
-- no replacement of the canonical geometry receipt;
-- no silent reuse of the sequential per-step Gram–Schmidt policy, because that
-  nonlinear projection is not associative;
-- no claim that browser WebGPU exposes multiple physical GPUs;
-- no distributed networking layer before deterministic shard composition is
-  demonstrated locally.
+**Status: Complete — local deterministic reconstruction**
 
-## 3. NPU hardware support
+`RSH-FRENET-SHARD-PREFIX-V1` proves the composition boundary required before any
+multi-device or distributed experiment:
+
+1. partition the complete interval range into contiguous shard work units;
+2. compute every shard's local inclusive prefixes and local reduction;
+3. compute exclusive shard bases with an immutable-source Hillis–Steele scan;
+4. apply each shard base to every local prefix;
+5. assemble the complete ordered path and centre the discrete midpoint;
+6. compare every reconstructed point and frame component with
+   `RSH-FRENET-PARALLEL-V1`;
+7. reject missing, reordered, overlapping, malformed, tampered, non-finite, or
+   authority-promoting shard evidence.
+
+The sealed 4,097-point profile uses 257-interval shards, including an irregular
+final shard. Evidence is defined by:
+
+```text
+conformance/frenet_shard_prefix_v1_4097.json
+docs/PHASE12_SHARD_PREFIX_RECONSTRUCTION.md
+scripts/test_shard_prefix_reconstruction.mjs
+```
+
+This milestone proves local composition correctness only:
+
+```text
+actual_multi_device_execution: false
+distributed_execution: false
+speedup_claim: false
+geometry_receipt_authority: false
+```
+
+## 4. NPU hardware support
 
 **Status: Queued**
 
@@ -93,7 +105,7 @@ composition of local rigid transforms.
 The existing `conformance/npu_tier2_v1.json` remains a requirements profile, not
 a hardware-execution claim.
 
-## 4. WebGPU full-path laboratory enhancements
+## 5. WebGPU full-path laboratory enhancements
 
 **Status: Queued**
 
@@ -104,12 +116,12 @@ a hardware-execution claim.
 - exportable snapshots and residual traces;
 - richer 3D navigation without turning the display into evidence.
 
-## 5. C++ and CUDA expansion
+## 6. C++ and CUDA expansion
 
 **Status: Queued**
 
 - unified-memory experiments for large evidence grids;
-- explicit multi-device partitioning and ordered reduction;
+- explicit multi-device partitioning using the accepted shard-prefix contract;
 - a separately versioned CUDA full-path or tissue adapter;
 - richer C++17 report, trace, and benchmark commands;
 - continued sanitizer, ownership, ABI-layout, and authority-boundary testing.
@@ -117,10 +129,11 @@ a hardware-execution claim.
 No CUDA adapter becomes geometry authority, and CUDA schedule validation remains
 separate from full-path or tissue execution.
 
-## 6. Fuzzing expansion
+## 7. Fuzzing expansion
 
 **Status: Queued**
 
+- shard bundle range, order, fingerprint, and local-prefix mutation fuzzing;
 - tissue configuration and audit-chain fuzz targets;
 - C ABI ownership, length, layout, and malformed-input fuzzing;
 - WASM pointer/length and structured-error boundary fuzzing;
@@ -129,19 +142,19 @@ separate from full-path or tissue execution.
 - scheduled or continuous fuzzing that never executes untrusted public-PR code
   on privileged hardware.
 
-## 7. Documentation and examples
+## 8. Documentation and examples
 
 **Status: Queued**
 
 - guided examples for Python geometry, Rust geometry, tissue, numerical paths,
-  WASM laboratories, C++ FFI, and CUDA evidence;
+  WASM laboratories, C++ FFI, CUDA evidence, and shard reconstruction;
 - crate-level API documentation and examples that compile in CI;
-- tutorials explaining receipts, runtime identity, residual sidecars, and the
-  difference between a correctness surface and an oracle;
+- tutorials explaining receipts, runtime identity, residual sidecars, shard
+  fingerprints, and the difference between a correctness surface and an oracle;
 - research notebooks or static derivations that do not become runtime
   dependencies.
 
-## 8. Dependency and toolchain maintenance
+## 9. Dependency and toolchain maintenance
 
 **Status: Continuous**
 
@@ -152,7 +165,7 @@ separate from full-path or tissue execution.
 - track WebGPU and core WASM changes through browser-source validation;
 - update dependencies only with locked builds and full conformance replay.
 
-## 9. Additional geometry and tissue models
+## 10. Additional geometry and tissue models
 
 **Status: Exploratory**
 
@@ -168,12 +181,14 @@ Candidate work:
 - explicitly versioned Q_f factor extensions;
 - model-comparison reports that keep each contract's evidence separate.
 
-## 10. Performance optimization
+## 11. Performance optimization
 
 **Status: Queued, with measurements required**
 
-- profile `rsh-core`, `rsh-numerics`, and `rsh-tissue` before optimization;
-- evaluate portable SIMD for schedule, frame, and metric calculations;
+- profile `rsh-core`, `rsh-numerics`, `rsh-parallel`, and `rsh-tissue` before
+  optimization;
+- evaluate portable SIMD for schedule, frame, shard-prefix, and metric
+  calculations;
 - reduce WASM size and parse/allocation overhead;
 - add benchmark baselines and regression thresholds only after stable runner
   methodology is established;
@@ -182,7 +197,7 @@ Candidate work:
 
 Optimization must preserve contract output within its declared tolerance.
 
-## 11. CI/CD and hardware automation
+## 12. CI/CD and hardware automation
 
 **Status: Queued**
 
@@ -193,13 +208,13 @@ Optimization must preserve contract output within its declared tolerance.
 - detect performance regressions only on pinned hardware and toolchains;
 - never expose privileged hardware runners to arbitrary public pull-request code.
 
-## 12. Cross-language contract testing
+## 13. Cross-language contract testing
 
 **Status: Continuous expansion**
 
 - add more sealed configurations rather than relying on one golden case;
 - add property-based invariants for bounds, centering, frame orthonormality,
-  deterministic replay, and audit-chain completeness;
+  deterministic replay, shard coverage, and audit-chain completeness;
 - compare Python, native Rust, WASM, C++/FFI, WGSL, CUDA, and future NPU outputs
   only where they implement the same named contract;
 - record receipt identity separately from numerical observable conformance;
@@ -209,10 +224,11 @@ Optimization must preserve contract output within its declared tolerance.
 
 The current priority sequence is:
 
-1. complete the parallel Frenet contract and single-device WGSL scan;
-2. collect real browser GPU measurements and publish noncanonical observations;
-3. prove deterministic shard composition before multi-device experiments;
-4. expand fuzzing around the new parallel and tissue boundaries;
+1. fuzz and harden the accepted shard-prefix evidence boundary;
+2. build a trusted self-hosted RTX workflow for protected hardware validation;
+3. implement a separately versioned multi-device CUDA path experiment using the
+   accepted local shard contract;
+4. expand full-path browser inspection and residual-debugging tools;
 5. proceed to hardware-backed NPU work;
 6. continue documentation, toolchain maintenance, performance profiling, and
    cross-language matrix expansion throughout.

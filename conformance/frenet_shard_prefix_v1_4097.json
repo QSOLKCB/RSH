@@ -1,0 +1,49 @@
+{
+  "schema": "RSH-FRENET-SHARD-PREFIX-CONFORMANCE-V1",
+  "software_version": "2.7.0",
+  "shard_prefix_contract": "RSH-FRENET-SHARD-PREFIX-V1",
+  "source_parallel_contract": "RSH-FRENET-PARALLEL-V1",
+  "interval_policy": "midpoint-rodrigues-se3-v1",
+  "local_prefix_policy": "sequential-local-inclusive-se3-v1",
+  "shard_prefix_policy": "hillis-steele-exclusive-shard-se3-v1",
+  "assembly_policy": "ordered-base-compose-local-prefix-v1",
+  "fingerprint_policy": "fnv1a64-domain-separated-evidence-only-v1",
+  "configuration": {
+    "samples": 4097,
+    "s0": 0.0,
+    "s1": 4.0,
+    "kappa_fraction": 0.85,
+    "tau_floor": 0.22,
+    "tau_amplitude": 0.13
+  },
+  "sharding": {
+    "interval_width": 257,
+    "expected_intervals": 4096,
+    "expected_shard_count": 16,
+    "expected_shard_prefix_passes": 4,
+    "expected_reconstructed_prefix_count": 4097,
+    "expected_final_shard_interval_count": 241
+  },
+  "tolerances": {
+    "maximum_reconstruction_vs_parallel_component_error": 1e-11,
+    "maximum_local_tail_vs_reduction_component_error": 1e-12,
+    "maximum_frame_error": 1e-11,
+    "maximum_centre_error": 1e-12
+  },
+  "requirements": {
+    "pass_finite": true,
+    "pass_coverage": true,
+    "pass_fingerprints": true,
+    "pass_local_prefix_integrity": true,
+    "pass_reference_equivalence": true,
+    "pass_centre": true,
+    "pass_frame": true,
+    "pass_schedule_bounds": true,
+    "pass_all": true,
+    "actual_local_shard_execution": true,
+    "actual_multi_device_execution": false,
+    "distributed_execution": false,
+    "speedup_claim": false,
+    "geometry_receipt_authority": false
+  }
+}
