@@ -1,0 +1,44 @@
+name: Exploratory attitude dynamics
+
+on:
+  pull_request:
+    paths:
+      - "web/attitude*.js"
+      - "web/attitude*.html"
+      - "web/attitude*.css"
+      - "web/sw.js"
+      - "scripts/test_attitude_exploratory.mjs"
+      - "conformance/attitude_exploratory_v1.json"
+      - "research/jitterbug-dzhanibekov/**"
+      - "docs/PHASE11_ATTITUDE_DYNAMICS.md"
+      - ".github/workflows/attitude-exploratory.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-study:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate source
+        run: |
+          node --check web/attitude-model.js
+          node --check web/attitude.js
+          node --check scripts/test_attitude_exploratory.mjs
+      - name: Execute exploratory regression
+        run: |
+          node scripts/test_attitude_exploratory.mjs \
+            conformance/attitude_exploratory_v1.json
+      - name: Validate browser and offline boundary
+        run: |
+          test -s web/attitude.html
+          test -s web/attitude.css
+          grep -q '<title>RSH Jitterbug / Dzhanibekov Attitude Lab</title>' \
+            web/attitude.html
+          grep -q 'attitude.html' web/sw.js
+          grep -q 'attitude-model.js' web/sw.js
+          grep -q 'physical_equivalence_claim: false' web/attitude-model.js
+          grep -q 'geometry_receipt_authority: false' web/attitude-model.js
+          grep -q 'universal_scale_invariance_claim: false' web/attitude-model.js
