@@ -60,15 +60,15 @@ fn overflowing_shard_range_is_rejected() {
         geometry_receipt_authority: false,
     };
 
-    let error = merge_segment_summaries(&[summary], 1)
-        .expect_err("overflowing interval range must fail");
+    let error =
+        merge_segment_summaries(&[summary], 1).expect_err("overflowing interval range must fail");
     assert!(error.contains("interval range overflow"));
 }
 
 #[test]
 fn zero_expected_interval_count_is_rejected() {
-    let error = merge_segment_summaries(&[], 0)
-        .expect_err("zero expected interval count must fail");
+    let error =
+        merge_segment_summaries(&[], 0).expect_err("zero expected interval count must fail");
     assert!(error.contains("must be positive"));
 }
 
@@ -76,8 +76,8 @@ fn zero_expected_interval_count_is_rejected() {
 fn mutated_final_reduction_exceeds_the_conformance_gate() {
     let config = ModelConfig::default();
     let summaries = segment_summaries(config, 32).expect("segment summaries");
-    let expected = merge_segment_summaries(&summaries, config.samples - 1)
-        .expect("complete reduction");
+    let expected =
+        merge_segment_summaries(&summaries, config.samples - 1).expect("complete reduction");
 
     let mut altered = summaries.clone();
     altered
