@@ -121,12 +121,11 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          case "$RSH_CUDA_ARCHITECTURES_INPUT" in
-            ''|*[!0-9;]*)
-              echo "cuda_architectures must contain only numeric architectures separated by semicolons" >&2
-              exit 2
-              ;;
-          esac
+          cuda_architectures_pattern='^[0-9]+(;[0-9]+)*$'
+          if [[ ! "$RSH_CUDA_ARCHITECTURES_INPUT" =~ $cuda_architectures_pattern ]]; then
+            echo "cuda_architectures must contain one or more numeric architectures separated by single semicolons" >&2
+            exit 2
+          fi
           case "$RSH_WEBGPU_MODE_INPUT" in
             graphical|headless) ;;
             *) echo "invalid WebGPU mode" >&2; exit 2 ;;
