@@ -662,8 +662,8 @@ mod tests {
             ..ModelConfig::default()
         };
         let summaries = segment_summaries(config, 257).expect("segment summaries");
-        let merged = merge_segment_summaries(&summaries, config.samples - 1)
-            .expect("merged summaries");
+        let merged =
+            merge_segment_summaries(&summaries, config.samples - 1).expect("merged summaries");
         let transforms = interval_transforms(config).expect("interval transforms");
         let sequential = sequential_prefixes(&transforms);
         let expected = sequential.last().copied().expect("final transform");
