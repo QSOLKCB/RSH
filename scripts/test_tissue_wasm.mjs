@@ -128,18 +128,18 @@ comparePortable(wasmReport, rustReport, "wasm_vs_native");
 comparePortable(rustReport, pythonReport, "native_vs_python");
 comparePortable(wasmReport, pythonReport, "wasm_vs_python");
 
-assert.equal(pythonReport.receipt, profile.expected.python_reference_report_receipt);
+assert.equal(pythonReport.receipt, profile.expected.reference_report_receipt);
 assert.equal(
   pythonReport.seed_geometry_receipt,
-  profile.expected.python_seed_geometry_receipt,
+  profile.expected.seed_geometry_receipt,
 );
 assert.equal(
   pythonReport.ticks[0].receipt,
-  profile.expected.python_reference_first_tick_receipt,
+  profile.expected.reference_first_tick_receipt,
 );
 assert.equal(
   pythonReport.ticks.at(-1).receipt,
-  profile.expected.python_reference_last_tick_receipt,
+  profile.expected.reference_last_tick_receipt,
 );
 for (const [actual, expected] of [
   [pythonReport.ticks[0].metrics.q_f, profile.expected.first_q_f],
