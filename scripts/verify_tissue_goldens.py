@@ -123,8 +123,7 @@ def main() -> int:
     checks.append(
         (
             "maximum_centre_error_gate",
-            math.isfinite(maximum_centre_error)
-            and maximum_centre_error <= centre_gate + tolerance,
+            math.isfinite(maximum_centre_error) and maximum_centre_error <= centre_gate,
             maximum_centre_error,
             centre_gate,
         )
