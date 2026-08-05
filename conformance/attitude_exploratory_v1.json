@@ -1,0 +1,50 @@
+{
+  "schema": "RSH-ATTITUDE-EXPLORATORY-PROFILE-V1",
+  "status": "exploratory",
+  "dzhanibekov": {
+    "inertia": [1.0, 2.0, 3.0],
+    "omega0": [0.05, 1.0, 0.02],
+    "quaternion0": [0.0, 0.0, 0.0, 1.0],
+    "duration": 40.0,
+    "dt": 0.002,
+    "outputStride": 10
+  },
+  "jitterbug": {
+    "inertiaClosed": [1.0, 1.2, 2.8],
+    "inertiaOpen": [1.0, 2.6, 2.9],
+    "axisTiltAmplitude": 0.4,
+    "shapePeriod": 8.0,
+    "omega0": [0.08, 0.95, 0.05],
+    "quaternion0": [0.0, 0.0, 0.0, 1.0],
+    "duration": 40.0,
+    "dt": 0.002,
+    "outputStride": 10
+  },
+  "comparison": {
+    "timeScales": [0.5, 1.0, 2.0, 10.0],
+    "timeShifts": [-10.0, -5.0, 0.0, 5.0, 10.0],
+    "sampleCount": 800
+  },
+  "expected": {
+    "verdict": "PARTIAL TRAJECTORY RESEMBLANCE",
+    "dzhanibekov_max_angular_momentum_relative_drift": 1e-9,
+    "dzhanibekov_max_energy_relative_drift": 1e-9,
+    "jitterbug_max_angular_momentum_relative_drift": 5e-6,
+    "jitterbug_min_energy_relative_drift": 0.25,
+    "maximum_quaternion_normalization_error": 1e-12,
+    "minimum_dzhanibekov_reversals": 5,
+    "minimum_jitterbug_reversals": 3,
+    "minimum_best_alignment_rms_degrees": 60.0,
+    "minimum_excursion_correlation": 0.2,
+    "maximum_excursion_correlation": 0.8
+  },
+  "claims": {
+    "jitterbug_is_dzhanibekov": false,
+    "proves_quantized_spacetime": false,
+    "visual_similarity_establishes_identical_dynamics": false,
+    "rsh_contains_validated_jitterbug_dynamics": false,
+    "geometry_receipt_authority": false,
+    "universal_scale_invariance_claim": false,
+    "physical_equivalence_claim": false
+  }
+}
