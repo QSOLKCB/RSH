@@ -37,12 +37,15 @@ fn phase_updates_remain_wrapped_to_one_turn() {
 fn shared_centroid_is_normalized_to_the_origin() {
     let report = short_report();
     let count = report.final_cells.len() as f64;
-    let centre = report.final_cells.iter().fold([0.0_f64; 3], |mut sum, cell| {
-        sum[0] += cell.x;
-        sum[1] += cell.y;
-        sum[2] += cell.z;
-        sum
-    });
+    let centre = report
+        .final_cells
+        .iter()
+        .fold([0.0_f64; 3], |mut sum, cell| {
+            sum[0] += cell.x;
+            sum[1] += cell.y;
+            sum[2] += cell.z;
+            sum
+        });
     let error = (centre[0] / count)
         .hypot(centre[1] / count)
         .hypot(centre[2] / count);
@@ -64,7 +67,10 @@ fn functional_cohesion_factors_are_clamped_to_unit_interval() {
             ("dissociation", metrics.dissociation),
             ("q_f", metrics.q_f),
         ] {
-            assert!((0.0..=1.0).contains(&value), "{name} escaped [0, 1]: {value}");
+            assert!(
+                (0.0..=1.0).contains(&value),
+                "{name} escaped [0, 1]: {value}"
+            );
         }
     }
 }
