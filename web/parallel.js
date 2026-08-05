@@ -1,15 +1,16 @@
 import { createParallelFrenetGpuRunner } from "./parallel-gpu.js";
+import {
+  PARALLEL_GATES,
+  ParallelResidualGateError,
+  assertResidualGates,
+  createRejectedParallelSidecar,
+  residualSnapshot,
+} from "./parallel-evidence.js";
 
 const WARMUP_RUNS = 2;
 const MEASURED_RUNS = 7;
 const MINIMUM_SPEEDUP_SAMPLES = 4097;
-const GATES = {
-  position: 5e-4,
-  frame: 5e-4,
-  schedule: 1e-4,
-  frameNorm: 5e-5,
-  frameOrthogonality: 5e-5,
-};
+const GATES = PARALLEL_GATES;
 const decoder = new TextDecoder("utf-8");
 
 function requireElement(id, constructor) {
@@ -152,14 +153,6 @@ function runWasm(config) {
   return { payload, elapsedMilliseconds };
 }
 
-function gatePassed(result) {
-  return result.maxPosition <= GATES.position
-    && result.maxFrame <= GATES.frame
-    && result.maxSchedule <= GATES.schedule
-    && result.maxFrameNorm <= GATES.frameNorm
-    && result.maxFrameOrthogonality <= GATES.frameOrthogonality;
-}
-
 function median(values) {
   const sorted = [...values].sort((left, right) => left - right);
   const middle = Math.floor(sorted.length / 2);
@@ -191,6 +184,15 @@ function clearEvidence() {
   output.claim.textContent = "NONE";
 }
 
+function renderResiduals(result) {
+  output.position.textContent = scientific(result.maxPosition);
+  output.frame.textContent = scientific(result.maxFrame);
+  output.schedule.textContent = scientific(result.maxSchedule);
+  output.norm.textContent = scientific(result.maxFrameNorm);
+  output.orthogonality.textContent = scientific(result.maxFrameOrthogonality);
+  output.scanPasses.textContent = String(result.metadata.scan_passes);
+}
+
 async function runBenchmark() {
   if (!state.wasm) {
     output.message.textContent = "The parallel WASM module is still loading.";
@@ -203,19 +205,23 @@ async function runBenchmark() {
   output.status.dataset.kind = "";
   output.message.textContent = "Validating controls and warming the f64 Rust/WASM parallel reference…";
 
+  let config = null;
+  let oracle = null;
+  const wasmTimings = [];
+  const gpuTimings = [];
+  let wasmMedian = null;
+
   try {
-    const config = currentConfig();
-    let oracle = null;
+    config = currentConfig();
     for (let index = 0; index < WARMUP_RUNS; index += 1) {
       oracle = runWasm(config).payload;
     }
-    const wasmTimings = [];
     for (let index = 0; index < MEASURED_RUNS; index += 1) {
       const result = runWasm(config);
       oracle = result.payload;
       wasmTimings.push(result.elapsedMilliseconds);
     }
-    const wasmMedian = median(wasmTimings);
+    wasmMedian = median(wasmTimings);
     output.wasmMedian.textContent = milliseconds(wasmMedian);
     output.scanPasses.textContent = String(oracle.report.scan_passes);
 
@@ -231,16 +237,13 @@ async function runBenchmark() {
     output.message.textContent = "Warming the real WebGPU prefix scan and readback path…";
     for (let index = 0; index < WARMUP_RUNS; index += 1) {
       const result = await state.gpu.run(config, oracle);
-      if (!gatePassed(result)) throw new Error("A WebGPU warm-up run exceeded the residual gates");
+      assertResidualGates(result, "warm-up", index + 1, GATES);
     }
 
-    const gpuTimings = [];
     let gpuResult = null;
     for (let index = 0; index < MEASURED_RUNS; index += 1) {
       gpuResult = await state.gpu.run(config, oracle);
-      if (!gatePassed(gpuResult)) {
-        throw new Error(`WebGPU measured run ${index + 1} exceeded the residual gates`);
-      }
+      assertResidualGates(gpuResult, "measured", index + 1, GATES);
       gpuTimings.push(gpuResult.elapsedMilliseconds);
     }
 
@@ -248,11 +251,7 @@ async function runBenchmark() {
     const observedSpeedup = wasmMedian / gpuMedian;
     const speedupClaim = config.samples >= MINIMUM_SPEEDUP_SAMPLES && observedSpeedup > 1;
 
-    output.position.textContent = scientific(gpuResult.maxPosition);
-    output.frame.textContent = scientific(gpuResult.maxFrame);
-    output.schedule.textContent = scientific(gpuResult.maxSchedule);
-    output.norm.textContent = scientific(gpuResult.maxFrameNorm);
-    output.orthogonality.textContent = scientific(gpuResult.maxFrameOrthogonality);
+    renderResiduals(gpuResult);
     output.gpuMedian.textContent = milliseconds(gpuMedian);
     output.speedup.textContent = `${observedSpeedup.toFixed(3)}×`;
     output.claim.textContent = speedupClaim ? "OBSERVED DEVICE SPEEDUP" : "NO SPEEDUP CLAIM";
@@ -269,13 +268,7 @@ async function runBenchmark() {
       model_version: oracle.model_version,
       configuration: config,
       metadata: gpuResult.metadata,
-      residuals: {
-        max_position_component_vs_parallel_wasm_f64: gpuResult.maxPosition,
-        max_frame_component_vs_parallel_wasm_f64: gpuResult.maxFrame,
-        max_schedule_component_vs_parallel_wasm_f64: gpuResult.maxSchedule,
-        max_frame_norm_error: gpuResult.maxFrameNorm,
-        max_frame_orthogonality_error: gpuResult.maxFrameOrthogonality,
-      },
+      residuals: residualSnapshot(gpuResult),
       gates: GATES,
       benchmark: {
         warmup_runs: WARMUP_RUNS,
@@ -294,6 +287,7 @@ async function runBenchmark() {
       },
       actual_gpu_execution: true,
       parallel_scan_execution: true,
+      complete_path_readback: true,
       actual_multi_device_execution: false,
       distributed_execution: false,
       speedup_claim: speedupClaim,
@@ -302,14 +296,41 @@ async function runBenchmark() {
         : "none",
       universal_speedup_claim: false,
       geometry_receipt_authority: false,
-      evidence_note: "The adapter executed the multi-pass f32 SE(3) prefix scan and passed full-path readback gates. Any speedup statement is a local observation, not a universal performance claim or geometry receipt.",
+      evidence_note: "The adapter executed the normalized-quaternion f32 SE(3) prefix scan and passed full-path readback gates. Any speedup statement is a local observation, not a universal performance claim or geometry receipt.",
     };
     downloadButton.disabled = false;
     output.message.textContent = speedupClaim
       ? `Conformance passed and this adapter produced an observed ${observedSpeedup.toFixed(3)}× median end-to-end speedup.`
       : "Conformance passed. The timing result does not satisfy the policy for an observed speedup statement.";
   } catch (error) {
-    clearEvidence();
+    if (
+      error instanceof ParallelResidualGateError
+      && config
+      && oracle
+      && Number.isFinite(wasmMedian)
+    ) {
+      renderResiduals(error.result);
+      output.gpuMedian.textContent = gpuTimings.length > 0
+        ? milliseconds(median(gpuTimings))
+        : `failed ${error.stage} ${error.runIndex}`;
+      output.speedup.textContent = "—";
+      output.claim.textContent = "REJECTED · NO CLAIM";
+      state.sidecar = createRejectedParallelSidecar({
+        oracle,
+        config,
+        error,
+        gates: GATES,
+        warmupRuns: WARMUP_RUNS,
+        measuredRuns: MEASURED_RUNS,
+        wasmTimings,
+        gpuTimings,
+        wasmMedian,
+        minimumSpeedupSamples: MINIMUM_SPEEDUP_SAMPLES,
+      });
+      downloadButton.disabled = false;
+    } else {
+      clearEvidence();
+    }
     output.status.textContent = "REJECTED";
     output.status.dataset.kind = "fail";
     output.message.textContent = error instanceof Error ? error.message : String(error);
@@ -326,7 +347,9 @@ function downloadSidecar() {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "rsh-webgpu-frenet-parallel-benchmark.json";
+  anchor.download = state.sidecar.status === "PASS"
+    ? "rsh-webgpu-frenet-parallel-benchmark.json"
+    : "rsh-webgpu-frenet-parallel-rejection.json";
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
