@@ -37,15 +37,22 @@ jobs:
         run: |
           grep -q 'const cudaUUID_t uuid = properties.uuid;' \
             native/cuda/rsh_schedule_cuda.cu
-          grep -q '^  return output;$' native/cuda/rsh_schedule_cuda.cu
           if grep -q 'cudaDeviceGetUuid' native/cuda/rsh_schedule_cuda.cu; then
             echo 'cudaDeviceGetUuid is not a CUDA Runtime API and must not return.' >&2
             exit 1
           fi
-          if grep -q 'return output\.str();' native/cuda/rsh_schedule_cuda.cu; then
-            echo 'format_uuid returns std::string directly; output.str() must not return.' >&2
-            exit 1
-          fi
+          python3 - <<'PY'
+          from pathlib import Path
+
+          source = Path("native/cuda/rsh_schedule_cuda.cu").read_text(encoding="utf-8")
+          start = source.index("std::string format_uuid")
+          end = source.index("\nstd::uint64_t parse_unsigned", start)
+          body = source[start:end]
+          if "return output;" not in body:
+              raise SystemExit("format_uuid must return its std::string directly")
+          if "return output.str();" in body:
+              raise SystemExit("format_uuid must not call .str() on std::string")
+          PY
       - name: Validate quaternion WebGPU contract
         run: |
           grep -q 'rotation_representation' \
