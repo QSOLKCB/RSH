@@ -1,0 +1,74 @@
+{
+  "schema": "RSH-JITTERBUG-MECHANISM-INPUT-DRAFT-V1",
+  "status": "future-input-boundary-only",
+  "units": {
+    "length": "metre",
+    "mass": "kilogram",
+    "time": "second",
+    "angle": "radian"
+  },
+  "shape_coordinate": {
+    "name": "lambda",
+    "minimum": 0.0,
+    "maximum": 1.0,
+    "initial": 0.0,
+    "initial_rate": 0.0
+  },
+  "vertices": [
+    {
+      "id": "v0",
+      "mass": 0.0,
+      "coordinate_samples": [
+        { "lambda": 0.0, "position": [-1.0, 0.0, 0.0] },
+        { "lambda": 1.0, "position": [-0.5, 0.0, 0.0] }
+      ]
+    },
+    {
+      "id": "v1",
+      "mass": 0.0,
+      "coordinate_samples": [
+        { "lambda": 0.0, "position": [0.0, 0.0, 0.0] },
+        { "lambda": 1.0, "position": [0.0, 0.5, 0.0] }
+      ]
+    },
+    {
+      "id": "v2",
+      "mass": 0.0,
+      "coordinate_samples": [
+        { "lambda": 0.0, "position": [1.0, 0.0, 0.0] },
+        { "lambda": 1.0, "position": [0.5, 0.0, 0.0] }
+      ]
+    }
+  ],
+  "members": [
+    {
+      "id": "m0",
+      "vertex_a": "v0",
+      "vertex_b": "v1",
+      "mass": 0.0,
+      "length_constraint": "fixed"
+    },
+    {
+      "id": "m1",
+      "vertex_a": "v1",
+      "vertex_b": "v2",
+      "mass": 0.0,
+      "length_constraint": "fixed"
+    }
+  ],
+  "hinges": [
+    {
+      "id": "h0",
+      "members": ["m0", "m1"],
+      "minimum_angle": 0.0,
+      "maximum_angle": 3.141592653589793
+    }
+  ],
+  "initial_attitude_xyzw": [0.0, 0.0, 0.0, 1.0],
+  "initial_angular_momentum_world": [0.0, 0.0, 0.0],
+  "external_torque": [0.0, 0.0, 0.0],
+  "provenance": {
+    "source": "replace-with-measured-or-derived-geometry",
+    "geometry_receipt_authority": false
+  }
+}

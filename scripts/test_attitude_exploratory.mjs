@@ -1,0 +1,160 @@
+#!/usr/bin/env node
+
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import {
+  CLAIM_BOUNDARIES,
+  compareAttitudeTrajectories,
+  integrateDzhanibekov,
+  integrateJitterbugAnalogue,
+  jitterbugInertiaState,
+  quaternionDistance,
+} from "../web/attitude-model.js";
+
+const profilePath = process.argv[2] ?? "conformance/attitude_exploratory_v1.json";
+const profile = JSON.parse(await readFile(profilePath, "utf8"));
+const mechanism = JSON.parse(await readFile(
+  new URL("../research/jitterbug-dzhanibekov/vertex-schema.example.json", import.meta.url),
+  "utf8",
+));
+
+const dz = integrateDzhanibekov(profile.dzhanibekov);
+const jb = integrateJitterbugAnalogue(profile.jitterbug);
+const comparison = compareAttitudeTrajectories(dz, jb, profile.comparison);
+
+assert.equal(dz.schema, "RSH-EXPLORATORY-DZHANIBEKOV-RIGID-V1");
+assert.equal(jb.schema, "RSH-EXPLORATORY-JITTERBUG-VARIABLE-INERTIA-V1");
+assert.equal(comparison.schema, "RSH-ATTITUDE-COMPARISON-EXPLORATORY-V1");
+assert.equal(comparison.verdict, profile.expected.verdict);
+assert.equal(comparison.comparison_sample_count, profile.comparison.sampleCount);
+assert.ok(
+  dz.invariants.angular_momentum.relative_drift
+    <= profile.expected.dzhanibekov_max_angular_momentum_relative_drift,
+);
+assert.ok(
+  dz.invariants.energy.relative_drift
+    <= profile.expected.dzhanibekov_max_energy_relative_drift,
+);
+assert.ok(
+  jb.invariants.angular_momentum.relative_drift
+    <= profile.expected.jitterbug_max_angular_momentum_relative_drift,
+);
+assert.ok(
+  jb.invariants.energy.relative_drift
+    >= profile.expected.jitterbug_min_energy_relative_drift,
+);
+assert.ok(
+  dz.invariants.quaternion_normalization_error_max
+    <= profile.expected.maximum_quaternion_normalization_error,
+);
+assert.ok(
+  jb.invariants.quaternion_normalization_error_max
+    <= profile.expected.maximum_quaternion_normalization_error,
+);
+assert.ok(dz.attitude_reversals_approx_180deg.length >= profile.expected.minimum_dzhanibekov_reversals);
+assert.ok(jb.attitude_reversals_approx_180deg.length >= profile.expected.minimum_jitterbug_reversals);
+assert.ok(
+  comparison.best_alignment.quaternion_distance.rms_deg
+    >= profile.expected.minimum_best_alignment_rms_degrees,
+);
+assert.ok(
+  comparison.best_excursion_alignment.attitude_excursion_correlation
+    >= profile.expected.minimum_excursion_correlation,
+);
+assert.ok(
+  comparison.best_excursion_alignment.attitude_excursion_correlation
+    <= profile.expected.maximum_excursion_correlation,
+);
+assert.deepEqual(comparison.verdict_alignment, comparison.best_excursion_alignment);
+
+const signInvariant = quaternionDistance([0, 0, 0, 1], [0, 0, 0, -1]);
+assert.ok(signInvariant <= Number.EPSILON);
+
+for (const time of [0, 1, 2, 4, 8, 17.5]) {
+  const state = jitterbugInertiaState(time, profile.jitterbug);
+  assert.ok(state.lambda >= 0 && state.lambda <= 1);
+  assert.ok(state.principal_moments.every((value) => Number.isFinite(value) && value > 0));
+  assert.ok(state.inertia.flat().every(Number.isFinite));
+  assert.ok(state.inertia_rate.flat().every(Number.isFinite));
+}
+
+const vertexIds = new Set(mechanism.vertices.map((vertex) => vertex.id));
+const memberIds = new Set(mechanism.members.map((member) => member.id));
+assert.equal(vertexIds.size, mechanism.vertices.length, "vertex IDs must be unique");
+assert.equal(memberIds.size, mechanism.members.length, "member IDs must be unique");
+for (const member of mechanism.members) {
+  assert.ok(vertexIds.has(member.vertex_a), `${member.id}.vertex_a must exist`);
+  assert.ok(vertexIds.has(member.vertex_b), `${member.id}.vertex_b must exist`);
+}
+for (const hinge of mechanism.hinges) {
+  for (const memberId of hinge.members) {
+    assert.ok(memberIds.has(memberId), `${hinge.id} member ${memberId} must exist`);
+  }
+}
+
+for (const [name, value] of Object.entries(CLAIM_BOUNDARIES)) {
+  assert.equal(value, false, `${name} must remain false`);
+  assert.equal(comparison.claims[name], false, `${name} must remain false in report`);
+}
+
+assert.throws(
+  () => integrateDzhanibekov({ inertia: [1, 1, 3], duration: 1, dt: 0.01 }),
+  /I1 < I2 < I3/,
+);
+assert.throws(
+  () => integrateJitterbugAnalogue({ inertiaClosed: [1, 0, 2], duration: 1, dt: 0.01 }),
+  /positive/,
+);
+assert.throws(
+  () => integrateJitterbugAnalogue({ shapePeriod: 0, duration: 1, dt: 0.01 }),
+  /positive/,
+);
+assert.throws(
+  () => integrateDzhanibekov({ duration: 2000, dt: 0.001, outputStride: 1 }),
+  /emitted sample count/,
+);
+assert.throws(
+  () => compareAttitudeTrajectories(dz, jb, { ...profile.comparison, sampleCount: 1e12 }),
+  /sampleCount/,
+);
+assert.throws(
+  () => compareAttitudeTrajectories(dz, jb, { ...profile.comparison, sampleCount: 800.5 }),
+  /sampleCount/,
+);
+assert.throws(
+  () => compareAttitudeTrajectories(dz, jb, {
+    timeScales: Array.from({ length: 17 }, (_value, index) => index + 1),
+    timeShifts: Array.from({ length: 17 }, (_value, index) => index),
+    sampleCount: 800,
+  }),
+  /alignment candidate count/,
+);
+
+console.log(JSON.stringify({
+  schema: "RSH-ATTITUDE-EXPLORATORY-REGRESSION-V1",
+  status: "PASS",
+  verdict: comparison.verdict,
+  dzhanibekov: {
+    samples: dz.samples.length,
+    reversals: dz.attitude_reversals_approx_180deg.length,
+    angular_momentum_relative_drift: dz.invariants.angular_momentum.relative_drift,
+    energy_relative_drift: dz.invariants.energy.relative_drift,
+    maximum_quaternion_normalization_error: dz.invariants.quaternion_normalization_error_max,
+  },
+  jitterbug_analogue: {
+    samples: jb.samples.length,
+    reversals: jb.attitude_reversals_approx_180deg.length,
+    angular_momentum_relative_drift: jb.invariants.angular_momentum.relative_drift,
+    generalized_energy_relative_drift: jb.invariants.energy.relative_drift,
+    maximum_quaternion_normalization_error: jb.invariants.quaternion_normalization_error_max,
+  },
+  comparison: {
+    best_alignment: comparison.best_alignment,
+    best_excursion_alignment: comparison.best_excursion_alignment,
+    verdict_alignment: comparison.verdict_alignment,
+  },
+  mechanism_reference_integrity: true,
+  geometry_receipt_authority: false,
+  physical_equivalence_claim: false,
+  universal_scale_invariance_claim: false,
+}, null, 2));

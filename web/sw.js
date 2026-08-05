@@ -1,4 +1,4 @@
-const CACHE_NAME = "rsh-browser-lab-v2.7.0-parallel-v1-stable-quaternion";
+const CACHE_NAME = "rsh-browser-lab-v2.7.0-attitude-exploratory-v1";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -15,6 +15,10 @@ const CORE_ASSETS = [
   "./parallel.js",
   "./parallel-gpu.js",
   "./parallel-evidence.js",
+  "./attitude.html",
+  "./attitude.css",
+  "./attitude.js",
+  "./attitude-model.js",
   "./tissue.html",
   "./tissue.css",
   "./tissue.js",

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="RSH exploratory comparison of torque-free Dzhanibekov attitude flips and a reduced variable-inertia Jitterbug analogue.">
+  <meta name="theme-color" content="#081014">
+  <title>RSH Jitterbug / Dzhanibekov Attitude Lab</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="attitude.css">
+</head>
+<body>
+  <header class="attitude-hero">
+    <nav>
+      <a class="brand" href="./">RSH<span>¹¹</span></a>
+      <div class="nav-links">
+        <a href="./">Geometry</a>
+        <a href="frenet.html">Full path</a>
+        <a href="parallel.html">Parallel</a>
+        <a href="tissue.html">Tissue</a>
+        <a href="https://github.com/QSOLKCB/RSH">Source</a>
+      </div>
+    </nav>
+    <div class="attitude-intro">
+      <p class="eyebrow">EXPLORATORY ATTITUDE DYNAMICS · UNIT QUATERNIONS</p>
+      <h1>Same visual motif.<br><em>Different machinery.</em></h1>
+      <p class="lede">Compare a torque-free intermediate-axis rigid body with a prescribed variable-inertia analogue inspired by Fuller’s Jitterbug. Both can make large attitude reversals. The lab measures whether their quaternion paths actually agree—and keeps “looks similar” separate from “is the same physics.”</p>
+      <div class="claim-strip">
+        <span>PHYSICAL EQUIVALENCE: FALSE</span>
+        <span>QUANTIZED SPACETIME CLAIM: FALSE</span>
+        <span>GEOMETRY AUTHORITY: FALSE</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="attitude-main">
+    <section class="panel attitude-controls">
+      <div>
+        <p class="eyebrow">REDUCED MODEL CONTROLS</p>
+        <h2>Move the shape clock. Watch the resemblance move with it.</h2>
+        <p>The rigid reference conserves angular momentum and rotational energy. The Jitterbug analogue prescribes a periodic inertia tensor, so shape work may change kinetic energy while angular momentum remains the primary invariant.</p>
+      </div>
+      <form id="attitude-controls">
+        <label>
+          <span>Shape period <output id="shape-period-value">8.0</output></span>
+          <input id="shape-period" type="range" min="4" max="16" step="0.25" value="8">
+        </label>
+        <label>
+          <span>Principal-axis tilt <output id="tilt-value">0.40</output> rad</span>
+          <input id="tilt" type="range" min="0" max="0.8" step="0.02" value="0.4">
+        </label>
+        <label>
+          <span>Jitterbug ω₂ <output id="omega-y-value">0.95</output></span>
+          <input id="omega-y" type="range" min="0.5" max="1.4" step="0.01" value="0.95">
+        </label>
+        <button id="recompute" type="submit">Recompute both trajectories</button>
+      </form>
+      <p id="attitude-message" class="attitude-message" role="status">Preparing the deterministic fixed-step study…</p>
+    </section>
+
+    <section class="panel attitude-stage">
+      <div class="stage-heading">
+        <div>
+          <p class="eyebrow">DISPLAY-ONLY ATTITUDE PROJECTION</p>
+          <h2>Rigid instability / shape-driven analogue</h2>
+        </div>
+        <div class="playback-controls">
+          <button id="play" type="button">Pause</button>
+          <label>Rate
+            <select id="rate">
+              <option value="0.5">0.5×</option>
+              <option value="1" selected>1×</option>
+              <option value="2">2×</option>
+              <option value="4">4×</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <canvas id="attitude-canvas" width="1280" height="760" aria-label="Side-by-side attitude and trajectory visualization"></canvas>
+      <label class="scrubber">
+        <span>Simulation time <output id="time-value">0.00 s</output></span>
+        <input id="time" type="range" min="0" max="2000" step="1" value="0">
+      </label>
+      <p class="boundary-note">The wireframes depict inertia and body axes, not a validated Fuller hinge mechanism. Animation is a projection of the calculated trajectories and adds no physical claim.</p>
+    </section>
+
+    <section class="panel attitude-results">
+      <div class="result-heading">
+        <div>
+          <p class="eyebrow">EXPLORATORY COMPARISON</p>
+          <h2 id="verdict">CALCULATING</h2>
+        </div>
+        <button id="download-attitude" type="button" disabled>Download comparison sidecar</button>
+      </div>
+      <dl class="attitude-metrics">
+        <div><dt>Best geodesic RMS</dt><dd id="metric-rms">—</dd></div>
+        <div><dt>Best excursion correlation</dt><dd id="metric-correlation">—</dd></div>
+        <div><dt>Rigid reversals</dt><dd id="metric-dz-flips">—</dd></div>
+        <div><dt>Analogue reversals</dt><dd id="metric-jb-flips">—</dd></div>
+        <div><dt>Rigid |L| drift</dt><dd id="metric-dz-l">—</dd></div>
+        <div><dt>Rigid energy drift</dt><dd id="metric-dz-e">—</dd></div>
+        <div><dt>Analogue |L| drift</dt><dd id="metric-jb-l">—</dd></div>
+        <div><dt>Analogue energy variation</dt><dd id="metric-jb-e">—</dd></div>
+        <div><dt>Best time scale</dt><dd id="metric-scale">—</dd></div>
+        <div><dt>Physical equivalence</dt><dd>FALSE</dd></div>
+      </dl>
+    </section>
+
+    <section class="panel attitude-explanation">
+      <div>
+        <p class="eyebrow">WHAT IS BEING COMPARED?</p>
+        <h2>Quaternion paths, not screenshots.</h2>
+      </div>
+      <div class="explanation-grid">
+        <article>
+          <h3>Dzhanibekov reference</h3>
+          <p>A rigid body with fixed principal moments I₁ &lt; I₂ &lt; I₃, initialized near the unstable intermediate-axis rotation. Its torque-free Euler equations conserve both |L| and rotational energy.</p>
+        </article>
+        <article>
+          <h3>Jitterbug analogue</h3>
+          <p>A positive-definite inertia tensor changes with a bounded periodic shape coordinate λ(t). It is a reduced variable-inertia model—not a multibody Fuller Jitterbug with vertices, hinges, constraints and internal momentum coupling.</p>
+        </article>
+        <article>
+          <h3>Distance</h3>
+          <p><code>d(q₁,q₂) = 2 acos(|q₁·q₂|)</code> respects the fact that q and −q describe the same attitude. Global orientation, time shift and one scalar time rescaling are allowed during comparison.</p>
+        </article>
+        <article>
+          <h3>Interpretation</h3>
+          <p>“Partial resemblance” means both trajectories contain a large flip-like motif, but their complete attitude histories remain far apart. It is evidence for a research question, not identity of mechanism.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>J. Robitaille / DeltaKingZero · Trent Slade / QSOL-IMC</p>
+    <p>Exploratory attitude comparison · no physical-equivalence claim</p>
+  </footer>
+
+  <noscript><p class="noscript">This deterministic attitude laboratory requires JavaScript.</p></noscript>
+  <script type="module" src="attitude.js"></script>
+</body>
+</html>
