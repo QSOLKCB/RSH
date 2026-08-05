@@ -18,6 +18,16 @@ cmake --version
 Optional GPU, CUDA, WebGPU, or NPU tools must be reported separately. Never infer
 hardware execution from a source check, a successful build, or a CPU reference.
 
+Use a portable output directory rather than assuming a Unix `/tmp` layout:
+
+```bash
+OUT="${RUNNER_TEMP:-${TMPDIR:-$PWD/audit-output}}"
+mkdir -p "$OUT"
+```
+
+The examples below use `audit-output/` for readability. CI uses the runner-provided
+temporary directory with a workspace-local fallback.
+
 ## Python reference
 
 ```bash
@@ -48,7 +58,16 @@ rsh constitution --json audit-output/python-constitution.json
 rsh tissue \
   --json audit-output/python-tissue.json \
   --trace audit-output/python-tissue.csv
+
+python scripts/verify_tissue_goldens.py \
+  --profile conformance/tissue_v1_8x20.json \
+  --report audit-output/python-tissue.json
 ```
+
+The golden verifier checks the fresh Python report against the pinned
+constitution hash, geometry seed receipt, first/last tick receipts, report
+receipt, Q_f values, final dissociation, centring gate, and audit-chain state.
+The sealed 8×20 tolerance remains `1e-12`.
 
 The project uses `unittest` as its canonical Python runner. A pytest-only result
 is useful additional evidence, but it is not the declared CI contract.
@@ -106,6 +125,9 @@ cargo run --release --locked -p rsh-parallel-cli -- \
 ```
 
 ## Compiled WebAssembly
+
+The portable workflows use the composite action at
+`.github/actions/build-wasm/action.yml`. Its canonical commands are:
 
 ```bash
 rustup target add wasm32-unknown-unknown
@@ -174,6 +196,10 @@ Tissue conformance across Python, native Rust, and compiled WASM:
 
 ```bash
 python rsh_runner.py tissue --json audit-output/tissue-python.json
+python scripts/verify_tissue_goldens.py \
+  --profile conformance/tissue_v1_8x20.json \
+  --report audit-output/tissue-python.json
+
 cargo run --locked -p rsh-tissue-cli -- \
   run --json audit-output/tissue-rust.json
 
@@ -183,6 +209,9 @@ node scripts/test_tissue_wasm.mjs \
   audit-output/tissue-python.json \
   audit-output/tissue-rust.json
 ```
+
+The Node harness defaults use `node:os.tmpdir()` rather than a hard-coded Linux
+path when report paths are omitted.
 
 Runtime receipts may differ. Cross-runtime acceptance uses the declared portable
 observable tolerance; same-runtime deterministic replay remains mandatory.
@@ -269,7 +298,8 @@ done
 python3 -m py_compile \
   scripts/test_cpp_ffi.py \
   scripts/test_cuda.py \
-  scripts/package_evidence.py
+  scripts/package_evidence.py \
+  scripts/verify_tissue_goldens.py
 
 sh -n scripts/cuda_preflight.sh
 ```
@@ -286,7 +316,9 @@ sh -n scripts/cuda_preflight.sh
 | CUDA | portable checks; actual claims require a hardware run |
 | conformance JSON | JSON parse plus every profile consumer |
 | receipt/canonical JSON | deterministic replay and receipt regression tests |
-| parallel shards | prefix, overlap, order, missing-tail, coverage, final reduction |
+| tissue golden profile | fresh Python report plus `verify_tissue_goldens.py` |
+| parallel shards | empty, prefix, overlap, order, missing-tail, overflow, coverage, final reduction |
+| workflow output paths | runner temp or workspace fallback; no fixed `/tmp/rsh_*` paths |
 | docs only | links, commands, filenames, and CI presence checks |
 
 ## Evidence manifest
