@@ -2,11 +2,13 @@
 
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const wasmPath = process.argv[2]
   ?? "target/wasm32-unknown-unknown/release/rsh_parallel_wasm.wasm";
 const profilePath = process.argv[3] ?? "conformance/frenet_parallel_v1_1025.json";
-const nativeReportPath = process.argv[4] ?? "/tmp/rsh_parallel_native.json";
+const nativeReportPath = process.argv[4] ?? join(tmpdir(), "rsh_parallel_native.json");
 
 const [wasmBytes, profile, nativeReport] = await Promise.all([
   readFile(wasmPath),

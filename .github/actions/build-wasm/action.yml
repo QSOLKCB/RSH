@@ -1,0 +1,28 @@
+name: Build RSH WebAssembly
+
+description: Test the raw WASM ABIs and build all portable browser modules with locked dependencies.
+
+runs:
+  using: composite
+  steps:
+    - name: Install Rust WASM target
+      shell: bash
+      run: rustup target add wasm32-unknown-unknown
+
+    - name: Test raw WASM ABIs on the host
+      shell: bash
+      run: |
+        cargo test --locked \
+          -p rsh-wasm \
+          -p rsh-numerics-wasm \
+          -p rsh-parallel-wasm \
+          -p rsh-tissue-wasm
+
+    - name: Build browser WASM modules
+      shell: bash
+      run: |
+        cargo build --locked --release --target wasm32-unknown-unknown \
+          -p rsh-wasm \
+          -p rsh-numerics-wasm \
+          -p rsh-parallel-wasm \
+          -p rsh-tissue-wasm

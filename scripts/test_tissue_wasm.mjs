@@ -2,12 +2,14 @@
 
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const wasmPath = process.argv[2]
   ?? "target/wasm32-unknown-unknown/release/rsh_tissue_wasm.wasm";
 const profilePath = process.argv[3] ?? "conformance/tissue_v1_8x20.json";
-const pythonPath = process.argv[4] ?? "/tmp/rsh_tissue_python.json";
-const rustPath = process.argv[5] ?? "/tmp/rsh_tissue_rust.json";
+const pythonPath = process.argv[4] ?? join(tmpdir(), "rsh_tissue_python.json");
+const rustPath = process.argv[5] ?? join(tmpdir(), "rsh_tissue_rust.json");
 
 const [wasmBytes, profile, pythonReport, rustReport] = await Promise.all([
   readFile(wasmPath),
