@@ -189,7 +189,13 @@ async function testSchedule(browser, options, consoleLog) {
   page.on("pageerror", (error) => consoleLog.push(`[schedule:pageerror] ${error.stack || error}`));
   await page.goto(options.baseUrl, { waitUntil: "networkidle0", timeout: options.timeout });
   await page.waitForFunction(
-    () => document.querySelector("#runtime-status")?.textContent?.toLowerCase().includes("ready"),
+    () => {
+      const button = document.querySelector("#run-button");
+      const status = document.querySelector("#gpu-status")?.textContent?.trim();
+      return button instanceof HTMLButtonElement
+        && !button.disabled
+        && ["READY", "RESIDUAL PASS", "DISPLAY ONLY", "CPU/WASM FALLBACK"].includes(status);
+    },
     { timeout: options.timeout },
   );
   await page.click("#run-button");
