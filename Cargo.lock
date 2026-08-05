@@ -145,6 +145,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "rsh-parallel"
+version = "2.7.0"
+dependencies = [
+ "rsh-core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "rsh-parallel-cli"
+version = "2.7.0"
+dependencies = [
+ "rsh-core",
+ "rsh-parallel",
+ "serde_json",
+]
+
+[[package]]
+name = "rsh-parallel-wasm"
+version = "2.7.0"
+dependencies = [
+ "rsh-core",
+ "rsh-parallel",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "rsh-tissue"
 version = "2.7.0"
 dependencies = [

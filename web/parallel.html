@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="RSH parallel Frenet prefix-scan research and observed WebGPU benchmark laboratory.">
+  <meta name="theme-color" content="#081014">
+  <title>RSH Parallel Frenet Research</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="parallel.css">
+</head>
+<body>
+  <header class="parallel-hero">
+    <nav>
+      <a class="brand" href="./">RSH<span>¹⁰</span></a>
+      <div class="nav-links">
+        <a href="./">Geometry</a>
+        <a href="frenet.html">Sequential full path</a>
+        <a href="tissue.html">Tissue</a>
+        <a href="https://github.com/QSOLKCB/RSH">Source</a>
+      </div>
+    </nav>
+    <div class="parallel-intro">
+      <p class="eyebrow">RSH-FRENET-PARALLEL-V1 · SE(3) PREFIX SCAN</p>
+      <h1>One recurrence.<br><em>Many ordered transforms.</em></h1>
+      <p class="lede">The f64 Rust/WASM reference converts each interval into a local rigid transform. WebGPU builds those intervals in parallel, composes them through deterministic doubling passes, emits the complete path, reads it back, and compares every component before any benchmark statement is allowed.</p>
+    </div>
+  </header>
+
+  <main class="parallel-main">
+    <section class="panel parallel-controls">
+      <div>
+        <p class="eyebrow">PARALLEL RESEARCH PROFILE</p>
+        <h2>Run conformance and timing together.</h2>
+      </div>
+      <form id="controls">
+        <label>
+          <span>Samples</span>
+          <select id="samples">
+            <option value="1025">1,025 — correctness</option>
+            <option value="4097" selected>4,097 — benchmark minimum</option>
+          </select>
+        </label>
+        <label>
+          <span>Curvature fraction <output id="kappa-value">0.85</output></span>
+          <input id="kappa-fraction" type="range" min="0.10" max="1.00" step="0.01" value="0.85">
+        </label>
+        <label>
+          <span>Torsion floor <output id="tau-floor-value">0.22</output></span>
+          <input id="tau-floor" type="range" min="0.01" max="0.70" step="0.01" value="0.22">
+        </label>
+        <label>
+          <span>Torsion amplitude <output id="tau-amplitude-value">0.13</output></span>
+          <input id="tau-amplitude" type="range" min="0.00" max="0.25" step="0.01" value="0.13">
+        </label>
+        <button id="run" type="submit">Run parallel benchmark</button>
+      </form>
+      <p id="message" class="parallel-message" role="status">Loading the parallel Rust/WASM module…</p>
+    </section>
+
+    <section class="panel parallel-results">
+      <div class="result-heading">
+        <div>
+          <p class="eyebrow">CURRENT EVIDENCE</p>
+          <h2 id="status">LOADING</h2>
+        </div>
+        <button id="download" type="button" disabled>Download benchmark sidecar</button>
+      </div>
+      <p id="adapter" class="adapter">WebGPU adapter not requested yet.</p>
+      <dl class="parallel-metrics">
+        <div><dt>Scan passes</dt><dd id="scan-passes">—</dd></div>
+        <div><dt>Max position residual</dt><dd id="res-position">—</dd></div>
+        <div><dt>Max frame residual</dt><dd id="res-frame">—</dd></div>
+        <div><dt>Max schedule residual</dt><dd id="res-schedule">—</dd></div>
+        <div><dt>Frame norm error</dt><dd id="res-norm">—</dd></div>
+        <div><dt>Frame orthogonality</dt><dd id="res-orthogonality">—</dd></div>
+        <div><dt>WASM median</dt><dd id="wasm-median">—</dd></div>
+        <div><dt>GPU median + readback</dt><dd id="gpu-median">—</dd></div>
+        <div><dt>Observed speedup</dt><dd id="speedup">—</dd></div>
+        <div><dt>Claim state</dt><dd id="claim">NONE</dd></div>
+      </dl>
+      <p class="boundary-note">An observed speedup is scoped to this adapter, browser, sample count, and timing method. It is not a universal hardware claim and never replaces the canonical geometry receipt.</p>
+    </section>
+
+    <section class="panel parallel-explanation">
+      <p class="eyebrow">WHY A NEW CONTRACT?</p>
+      <h2>Associativity has rules.</h2>
+      <p>The v2.6 sequential path applies modified Gram–Schmidt after every step. That nonlinear projection cannot be inserted into an associative prefix operation without changing the mathematics. The parallel contract therefore composes midpoint Rodrigues SE(3) transforms in a named doubling order and validates that order independently.</p>
+      <pre><code>local interval transforms
+        ↓
+build_local[0 … n−1]
+        ↓
+scan offsets 1, 2, 4, 8 …
+        ↓
+capture midpoint → emit centred path
+        ↓
+readback + f64 residual gates + benchmark sidecar</code></pre>
+    </section>
+  </main>
+
+  <footer>
+    <p>J. Robitaille / DeltaKingZero · Trent Slade / QSOL-IMC</p>
+    <p>Parallel research contract · no universal speedup claim</p>
+  </footer>
+
+  <script type="module" src="parallel.js"></script>
+</body>
+</html>

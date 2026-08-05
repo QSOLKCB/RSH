@@ -1,0 +1,12 @@
+[package]
+name = "rsh-parallel"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[dependencies]
+rsh-core = { path = "../rsh-core" }
+serde.workspace = true
+serde_json.workspace = true
