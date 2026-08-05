@@ -48,6 +48,7 @@ jobs:
               "git merge-base --is-ancestor",
               "github.ref == 'refs/heads/main'",
               "github.repository == 'QSOLKCB/RSH'",
+              "cuda_architectures_pattern='^[0-9]+(;[0-9]+)*$'",
               "--sanitizers required",
               "actual_multi_device_execution",
               "geometry_receipt_authority",
@@ -58,6 +59,8 @@ jobs:
           missing = [value for value in required if value not in source]
           if missing:
               raise SystemExit(f"RTX workflow boundary text is missing: {missing}")
+          if "''|*[!0-9;]*)" in source:
+              raise SystemExit("unsafe CUDA architecture case pattern reintroduced")
 
           upload_match = re.search(
               r"(?ms)^      - name: Upload redacted RTX evidence\n.*?(?=^      - name:|\Z)",
@@ -70,7 +73,42 @@ jobs:
               raise SystemExit("private raw evidence must not be uploaded")
           if "actions/upload-artifact@v" in upload_step:
               raise SystemExit("artifact upload action must be pinned to an immutable commit SHA")
+
+          validator_match = re.search(
+              r"(?ms)^      - name: Validate workflow inputs and runner contract\n"
+              r".*?^        run: \|\n(.*?)(?=^      - name:)",
+              source,
+          )
+          if validator_match is None:
+              raise SystemExit("runner-contract validation step is missing or malformed")
+          lines = []
+          for line in validator_match.group(1).splitlines():
+              if line.startswith("          "):
+                  lines.append(line[10:])
+              elif line.strip():
+                  raise SystemExit("unexpected indentation in runner-contract validation script")
+              else:
+                  lines.append("")
+          Path("/tmp/rsh-runner-contract-validator.sh").write_text(
+              "\n".join(lines) + "\n",
+              encoding="utf-8",
+          )
           PY
+          bash -n /tmp/rsh-runner-contract-validator.sh
+      - name: Validate CUDA architecture input policy
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          pattern='^[0-9]+(;[0-9]+)*$'
+          for accepted in 120 75 75\;86 89\;90\;120; do
+            [[ "$accepted" =~ $pattern ]]
+          done
+          for rejected in '' ';120' '120;' '120;;121' 'sm_120' '120,121' '120 121'; do
+            if [[ "$rejected" =~ $pattern ]]; then
+              echo "unexpectedly accepted CUDA architecture input: $rejected" >&2
+              exit 1
+            fi
+          done
       - name: Validate privacy and authority boundaries
         run: |
           grep -q 'raw_device_uuid_published.*False' .github/workflows/rtx-hardware.yml
