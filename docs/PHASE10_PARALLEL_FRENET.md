@@ -114,14 +114,28 @@ The WebGPU transform buffer stores each rotation as a normalized f32 quaternion
 in `(x, y, z, w)` order plus a translation vector. Each transform therefore uses
 32 bytes rather than three independently accumulated basis columns and a
 translation. Quaternion multiplication preserves the declared SE(3) composition
-order, and every scan composition normalizes the result before the next pass.
-The tangent, normal, and binormal are reconstructed only when the final path is
-emitted.
+order. Each newly composed quaternion is normalized before the next scan pass,
+and the tangent, normal, and binormal are reconstructed only when the final path
+is emitted.
 
-This representation does not change the f64 contract, interval definition, scan
-policy, gates, or authority boundary. It reduces f32 frame-norm and
-orthogonality drift on long scans while remaining an accelerator-side
-approximation checked against the Rust/WASM f64 path.
+Local interval quaternions use the declared accelerator policy
+`small-angle-sinc-polynomial-f32-v1`. For the supported 1,025- and 4,097-point
+profiles, the per-interval half-angle is small enough that the explicit series
+
+```text
+sin(x) / x ≈ 1 - x²/6 + x⁴/120
+cos(x)     ≈ 1 - x²/2 + x⁴/24
+```
+
+has omitted terms far below the published residual gates. This avoids accumulating
+adapter-specific `sin`/`cos` approximation drift in thousands of local frame
+rotations. The shader also avoids renormalizing already-normalized input
+quaternions before every multiplication; it normalizes the newly composed result
+and the final emitted rotation instead.
+
+This accelerator arithmetic does not change the f64 contract, midpoint Rodrigues
+interval definition, scan policy, gates, or authority boundary. It is an f32
+implementation policy checked against the Rust/WASM f64 path.
 
 The initial f32 gates are deliberately separate from the sequential path gates:
 
@@ -136,7 +150,8 @@ The initial f32 gates are deliberately separate from the sequential path gates:
 These are research gates. They may be tightened only after observations from
 multiple adapters and toolchains. `scripts/test_parallel_quaternion.mjs` runs a
 deterministic 4,097-point f32 arithmetic mirror against the same f64 construction
-in portable CI. That regression is not a hardware-execution claim.
+in portable CI. That regression implements the same small-angle polynomial and
+normalization order, and is not a hardware-execution claim.
 
 ## Benchmark policy
 
