@@ -17,6 +17,13 @@ from typing import Any
 EXIT_ARGUMENT = 2
 EXIT_EVIDENCE = 31
 SOFTWARE_ADAPTER_MARKERS = ("swiftshader", "llvmpipe", "lavapipe", "software")
+PARALLEL_RESIDUAL_GATES = (
+    ("max_position_component_vs_parallel_wasm_f64", "position"),
+    ("max_frame_component_vs_parallel_wasm_f64", "frame"),
+    ("max_schedule_component_vs_parallel_wasm_f64", "schedule"),
+    ("max_frame_norm_error", "frameNorm"),
+    ("max_frame_orthogonality_error", "frameOrthogonality"),
+)
 
 
 def load_object(path: Path) -> dict[str, Any]:
@@ -60,17 +67,33 @@ def physical_adapter(value: Any, name: str, errors: list[str]) -> str | None:
 
 def validate_cuda(summary: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
     errors: list[str] = []
-    require(summary.get("schema") == "RSH-CUDA-HARDWARE-TEST-RESULT-V1", "CUDA summary schema mismatch", errors)
+    require(
+        summary.get("schema") == "RSH-CUDA-HARDWARE-TEST-RESULT-V1",
+        "CUDA summary schema mismatch",
+        errors,
+    )
     require(summary.get("status") == "PASS", "CUDA summary did not report PASS", errors)
-    require(summary.get("runs_completed") == 3, "CUDA workflow requires exactly three completed runs", errors)
+    require(
+        summary.get("runs_completed") == 3,
+        "CUDA workflow requires exactly three completed runs",
+        errors,
+    )
     require(summary.get("repeatable") is True, "CUDA repeatability did not pass", errors)
 
     sidecar = summary.get("sidecar")
     if not isinstance(sidecar, dict):
         errors.append("CUDA summary.sidecar is missing")
         sidecar = {}
-    require(sidecar.get("actual_cuda_execution") is True, "CUDA actual execution was not recorded", errors)
-    require(sidecar.get("geometry_receipt_authority") is False, "CUDA claimed geometry authority", errors)
+    require(
+        sidecar.get("actual_cuda_execution") is True,
+        "CUDA actual execution was not recorded",
+        errors,
+    )
+    require(
+        sidecar.get("geometry_receipt_authority") is False,
+        "CUDA claimed geometry authority",
+        errors,
+    )
     device = physical_adapter(sidecar.get("device"), "CUDA device", errors)
     compute_capability = sidecar.get("compute_capability")
     require(
@@ -131,13 +154,33 @@ def validate_cuda(summary: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
 
 def validate_schedule(evidence: dict[str, Any]) -> tuple[list[str], dict[str, Any]]:
     errors: list[str] = []
-    require(evidence.get("schema") == "RSH-TRUSTED-RTX-WEBGPU-SCHEDULE-V1", "schedule schema mismatch", errors)
+    require(
+        evidence.get("schema") == "RSH-TRUSTED-RTX-WEBGPU-SCHEDULE-V1",
+        "schedule schema mismatch",
+        errors,
+    )
     require(evidence.get("status") == "PASS", "schedule WebGPU did not report PASS", errors)
-    require(evidence.get("actual_gpu_execution") is True, "schedule actual GPU execution was not recorded", errors)
-    require(evidence.get("complete_field_readback") is True, "schedule complete readback was not recorded", errors)
+    require(
+        evidence.get("actual_gpu_execution") is True,
+        "schedule actual GPU execution was not recorded",
+        errors,
+    )
+    require(
+        evidence.get("complete_field_readback") is True,
+        "schedule complete readback was not recorded",
+        errors,
+    )
     require(evidence.get("speedup_claim") is False, "schedule emitted a speedup claim", errors)
-    require(evidence.get("universal_speedup_claim") is False, "schedule emitted a universal speedup claim", errors)
-    require(evidence.get("geometry_receipt_authority") is False, "schedule claimed geometry authority", errors)
+    require(
+        evidence.get("universal_speedup_claim") is False,
+        "schedule emitted a universal speedup claim",
+        errors,
+    )
+    require(
+        evidence.get("geometry_receipt_authority") is False,
+        "schedule claimed geometry authority",
+        errors,
+    )
     adapter = physical_adapter(evidence.get("adapter"), "schedule adapter", errors)
     maximum = finite(evidence.get("maximum_residual"), "schedule maximum residual", errors)
     threshold = finite(evidence.get("threshold"), "schedule threshold", errors)
@@ -199,22 +242,23 @@ def validate_parallel(evidence: dict[str, Any]) -> tuple[list[str], dict[str, An
     require(benchmark.get("measured_runs") == 7, "parallel measured count must be 7", errors)
     adapter = physical_adapter(metadata.get("adapter"), "parallel adapter", errors)
 
-    residual_pairs = (
-        ("max_position_component_vs_f64", "position_component_gate"),
-        ("max_frame_component_vs_f64", "frame_component_gate"),
-        ("max_schedule_component_vs_f64", "schedule_component_gate"),
-        ("max_frame_norm_error", "frame_norm_gate"),
-        ("max_frame_orthogonality_error", "frame_orthogonality_gate"),
-    )
     redacted_residuals: dict[str, float | None] = {}
-    for residual_name, gate_name in residual_pairs:
+    for residual_name, gate_name in PARALLEL_RESIDUAL_GATES:
         residual = finite(residuals.get(residual_name), f"parallel {residual_name}", errors)
         gate = finite(gates.get(gate_name), f"parallel {gate_name}", errors)
         if residual is not None and gate is not None:
-            require(residual <= gate, f"parallel {residual_name} exceeds its gate", errors)
+            require(
+                residual <= gate,
+                f"parallel {residual_name} exceeds {gate_name}",
+                errors,
+            )
         redacted_residuals[residual_name] = residual
 
-    observed_speedup = finite(benchmark.get("observed_speedup"), "parallel observed speedup", errors)
+    observed_speedup = finite(
+        benchmark.get("observed_speedup"),
+        "parallel observed speedup",
+        errors,
+    )
     speedup_claim = evidence.get("speedup_claim") is True
     if speedup_claim and observed_speedup is not None:
         require(observed_speedup > 1.0, "parallel speedup claim lacks an observed speedup", errors)
