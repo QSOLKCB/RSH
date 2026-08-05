@@ -113,7 +113,10 @@ fn command_run(arguments: impl Iterator<Item = String>) -> Result<i32, String> {
         if report.pass_all { "PASS" } else { "FAIL" }
     );
     println!("  contract             = {}", report.parallel_contract);
-    println!("  samples / intervals  = {} / {}", report.samples, report.intervals);
+    println!(
+        "  samples / intervals  = {} / {}",
+        report.samples, report.intervals
+    );
     println!("  scan passes          = {}", report.scan_passes);
     println!(
         "  scan residual        = {:.6e}",
