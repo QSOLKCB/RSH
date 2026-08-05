@@ -1,0 +1,16 @@
+[package]
+name = "rsh-parallel-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+rsh-core = { path = "../rsh-core" }
+rsh-parallel = { path = "../rsh-parallel" }
+serde.workspace = true
+serde_json.workspace = true
