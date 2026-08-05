@@ -22,6 +22,7 @@ assert.equal(dz.schema, "RSH-EXPLORATORY-DZHANIBEKOV-RIGID-V1");
 assert.equal(jb.schema, "RSH-EXPLORATORY-JITTERBUG-VARIABLE-INERTIA-V1");
 assert.equal(comparison.schema, "RSH-ATTITUDE-COMPARISON-EXPLORATORY-V1");
 assert.equal(comparison.verdict, profile.expected.verdict);
+assert.equal(comparison.comparison_sample_count, profile.comparison.sampleCount);
 assert.ok(
   dz.invariants.angular_momentum.relative_drift
     <= profile.expected.dzhanibekov_max_angular_momentum_relative_drift,
@@ -60,6 +61,7 @@ assert.ok(
   comparison.best_excursion_alignment.attitude_excursion_correlation
     <= profile.expected.maximum_excursion_correlation,
 );
+assert.deepEqual(comparison.verdict_alignment, comparison.best_excursion_alignment);
 
 const signInvariant = quaternionDistance([0, 0, 0, 1], [0, 0, 0, -1]);
 assert.ok(signInvariant <= Number.EPSILON);
@@ -89,6 +91,26 @@ assert.throws(
   () => integrateJitterbugAnalogue({ shapePeriod: 0, duration: 1, dt: 0.01 }),
   /positive/,
 );
+assert.throws(
+  () => integrateDzhanibekov({ duration: 2000, dt: 0.001, outputStride: 1 }),
+  /emitted sample count/,
+);
+assert.throws(
+  () => compareAttitudeTrajectories(dz, jb, { ...profile.comparison, sampleCount: 1e12 }),
+  /sampleCount/,
+);
+assert.throws(
+  () => compareAttitudeTrajectories(dz, jb, { ...profile.comparison, sampleCount: 800.5 }),
+  /sampleCount/,
+);
+assert.throws(
+  () => compareAttitudeTrajectories(dz, jb, {
+    timeScales: Array.from({ length: 17 }, (_value, index) => index + 1),
+    timeShifts: Array.from({ length: 17 }, (_value, index) => index),
+    sampleCount: 800,
+  }),
+  /alignment candidate count/,
+);
 
 console.log(JSON.stringify({
   schema: "RSH-ATTITUDE-EXPLORATORY-REGRESSION-V1",
@@ -108,7 +130,11 @@ console.log(JSON.stringify({
     generalized_energy_relative_drift: jb.invariants.energy.relative_drift,
     maximum_quaternion_normalization_error: jb.invariants.quaternion_normalization_error_max,
   },
-  comparison: comparison.best_alignment,
+  comparison: {
+    best_alignment: comparison.best_alignment,
+    best_excursion_alignment: comparison.best_excursion_alignment,
+    verdict_alignment: comparison.verdict_alignment,
+  },
   geometry_receipt_authority: false,
   physical_equivalence_claim: false,
   universal_scale_invariance_claim: false,
