@@ -1,0 +1,72 @@
+name: Trusted RTX workflow boundaries
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/rtx-hardware.yml"
+      - ".github/workflows/rtx-workflow-boundaries.yml"
+      - "scripts/test_rtx_webgpu.cjs"
+      - "scripts/verify_rtx_hardware.py"
+      - "tests/test_rtx_hardware_tools.py"
+      - "docs/PHASE13_TRUSTED_RTX_WORKFLOW.md"
+      - "docs/CUDA_VALIDATION.md"
+      - "ROADMAP.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portable-boundaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate scripts
+        run: |
+          node --check scripts/test_rtx_webgpu.cjs
+          python3 -m py_compile scripts/verify_rtx_hardware.py
+          python3 -m unittest tests.test_rtx_hardware_tools -v
+      - name: Validate privileged workflow trigger and checkout policy
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path(".github/workflows/rtx-hardware.yml")
+          source = path.read_text(encoding="utf-8")
+          trigger_match = re.search(r"(?ms)^on:\n(.*?)(?=^permissions:)", source)
+          if trigger_match is None:
+              raise SystemExit("RTX workflow trigger block is missing")
+          trigger = trigger_match.group(1)
+          trigger_keys = set(re.findall(r"(?m)^  ([A-Za-z_]+):", trigger))
+          if trigger_keys != {"workflow_dispatch"}:
+              raise SystemExit(f"RTX workflow must remain dispatch-only, found {sorted(trigger_keys)}")
+          required = (
+              "environment: rtx-hardware",
+              "runs-on: [self-hosted, linux, x64, nvidia, rtx, cuda, webgpu, rsh-trusted]",
+              "persist-credentials: false",
+              "git merge-base --is-ancestor",
+              "github.ref == 'refs/heads/main'",
+              "github.repository == 'QSOLKCB/RSH'",
+              "--sanitizers required",
+              "actual_multi_device_execution",
+              "geometry_receipt_authority",
+          )
+          missing = [value for value in required if value not in source]
+          if missing:
+              raise SystemExit(f"RTX workflow boundary text is missing: {missing}")
+          if "artifacts/rtx-private/" in re.search(
+              r"(?ms)- name: Upload redacted RTX evidence.*?(?=\n      - name:)",
+              source,
+          ).group(0):
+              raise SystemExit("private raw evidence must not be uploaded")
+          PY
+      - name: Validate privacy and authority boundaries
+        run: |
+          grep -q 'raw_device_uuid_published.*False' .github/workflows/rtx-hardware.yml
+          grep -q 'Stable device UUIDs.*excluded' scripts/verify_rtx_hardware.py
+          grep -q 'actual_rtx_hardware_execution' scripts/verify_rtx_hardware.py
+          grep -q 'universal_speedup_claim.*False' scripts/verify_rtx_hardware.py
+          grep -q 'geometry_receipt_authority.*False' scripts/verify_rtx_hardware.py
+          grep -q 'software WebGPU adapter is not accepted' scripts/test_rtx_webgpu.cjs
+          grep -q 'expected an NVIDIA adapter' scripts/test_rtx_webgpu.cjs
