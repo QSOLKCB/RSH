@@ -178,10 +178,9 @@ function vlq(value) {
   const output = [value & 0x7f];
   let remaining = value >> 7;
   while (remaining > 0) {
-    output.push((remaining & 0x7f) | 0x80);
+    output.unshift((remaining & 0x7f) | 0x80);
     remaining >>= 7;
   }
-  output.reverse();
   return output;
 }
 
