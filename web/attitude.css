@@ -1,0 +1,220 @@
+.attitude-hero {
+  min-height: 62vh;
+  padding: 0 5vw 4.5rem;
+  border-bottom: 1px solid var(--line);
+  background:
+    radial-gradient(circle at 78% 26%, rgba(101, 217, 192, 0.11), transparent 34%),
+    radial-gradient(circle at 24% 48%, rgba(226, 166, 91, 0.09), transparent 34%),
+    linear-gradient(180deg, #081014, #091217);
+}
+
+.attitude-intro {
+  max-width: 980px;
+  padding-top: 5.5rem;
+}
+
+.attitude-intro h1 {
+  margin: 0.25rem 0 1.6rem;
+  font-size: clamp(3.2rem, 8vw, 7.2rem);
+  line-height: 0.92;
+  letter-spacing: -0.06em;
+}
+
+.attitude-intro em {
+  color: var(--accent);
+  font-style: normal;
+}
+
+.claim-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 2rem;
+}
+
+.claim-strip span {
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #31414a;
+  background: rgba(8, 16, 20, 0.7);
+  color: #aebdc2;
+  font: 700 0.66rem ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.08em;
+}
+
+.attitude-main {
+  display: grid;
+  gap: 2rem;
+  padding: 3rem 0 5rem;
+}
+
+.attitude-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.9fr);
+  gap: 2.5rem;
+  align-items: end;
+}
+
+.attitude-controls > div > p:not(.eyebrow) {
+  color: var(--muted);
+}
+
+.attitude-controls form {
+  display: grid;
+  gap: 1rem;
+}
+
+.attitude-controls label,
+.playback-controls label,
+.scrubber {
+  display: grid;
+  gap: 0.5rem;
+  color: #d8e1e3;
+  font: 0.78rem ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.attitude-controls label span,
+.scrubber span {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.attitude-controls output,
+.scrubber output {
+  color: var(--accent);
+}
+
+.attitude-controls button,
+.attitude-results button,
+.playback-controls button,
+.playback-controls select {
+  min-height: 2.75rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid #36515a;
+  border-radius: 0.35rem;
+  background: #102129;
+  color: #e7f4f3;
+  font-weight: 750;
+}
+
+.attitude-controls button {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #06100e;
+}
+
+.attitude-message {
+  grid-column: 1 / -1;
+  min-height: 1.5rem;
+  margin: 0;
+  color: var(--muted);
+  font: 0.76rem ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.attitude-message[data-kind="pass"] { color: var(--accent); }
+.attitude-message[data-kind="fail"] { color: var(--danger); }
+
+.stage-heading,
+.result-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.2rem;
+}
+
+.playback-controls {
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+}
+
+#attitude-canvas {
+  width: 100%;
+  height: min(68vh, 760px);
+  min-height: 520px;
+  margin-top: 1.3rem;
+  border: 1px solid #263942;
+  background: #070e12;
+}
+
+.scrubber {
+  margin-top: 1rem;
+}
+
+.attitude-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.8rem;
+  margin-top: 1.5rem;
+}
+
+.attitude-metrics div {
+  padding: 1rem;
+  border: 1px solid #24353e;
+  background: #091116;
+}
+
+.attitude-metrics dt {
+  color: #879ba2;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.attitude-metrics dd {
+  margin: 0.45rem 0 0;
+  color: #edf4f3;
+  font: 0.92rem ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow-wrap: anywhere;
+}
+
+#verdict[data-kind="partial"] { color: var(--warm); }
+#verdict[data-kind="strong"] { color: var(--accent); }
+#verdict[data-kind="none"] { color: var(--danger); }
+
+.explanation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.explanation-grid article {
+  padding: 1.25rem;
+  border: 1px solid #24353e;
+  background: #091116;
+}
+
+.explanation-grid p {
+  margin-bottom: 0;
+  color: var(--muted);
+}
+
+@media (max-width: 800px) {
+  .attitude-hero {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+
+  .attitude-controls,
+  .explanation-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stage-heading,
+  .result-heading {
+    flex-direction: column;
+  }
+
+  .playback-controls,
+  .attitude-results button {
+    width: 100%;
+  }
+
+  .playback-controls > * {
+    flex: 1;
+  }
+
+  #attitude-canvas {
+    min-height: 460px;
+  }
+}
