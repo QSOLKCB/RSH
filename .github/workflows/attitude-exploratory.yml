@@ -31,6 +31,15 @@ jobs:
         run: |
           node scripts/test_attitude_exploratory.mjs \
             conformance/attitude_exploratory_v1.json
+      - name: Validate bounded evidence policy
+        run: |
+          grep -q 'MAX_OUTPUT_SAMPLES = 200_001' web/attitude-model.js
+          grep -q 'MAX_COMPARISON_SAMPLES = 10_000' web/attitude-model.js
+          grep -q 'alignment candidate count must not exceed' web/attitude-model.js
+          grep -q 'best_excursion_alignment: comparison.best_excursion_alignment' \
+            scripts/test_attitude_exploratory.mjs
+          grep -q 'mechanism_reference_integrity: true' \
+            scripts/test_attitude_exploratory.mjs
       - name: Validate browser and offline boundary
         run: |
           test -s web/attitude.html
@@ -39,6 +48,9 @@ jobs:
             web/attitude.html
           grep -q 'attitude.html' web/sw.js
           grep -q 'attitude-model.js' web/sw.js
+          grep -q 'document.body.append(anchor)' web/attitude.js
+          grep -q 'setTimeout(() => URL.revokeObjectURL(url), 0)' web/attitude.js
+          grep -q 'Offline cache registration failed.' web/attitude.js
           grep -q 'physical_equivalence_claim: false' web/attitude-model.js
           grep -q 'geometry_receipt_authority: false' web/attitude-model.js
           grep -q 'universal_scale_invariance_claim: false' web/attitude-model.js
