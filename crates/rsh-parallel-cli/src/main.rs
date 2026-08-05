@@ -157,8 +157,9 @@ fn command_shards(arguments: impl Iterator<Item = String>) -> Result<i32, String
         }
     }
     let config = config.validate()?;
+    let expected_intervals = config.samples - 1;
     let summaries = segment_summaries(config, interval_width)?;
-    let merged = merge_segment_summaries(&summaries)?;
+    let merged = merge_segment_summaries(&summaries, expected_intervals)?;
     let payload = json!({
         "schema": "RSH-FRENET-PARALLEL-SHARDS-V1",
         "parallel_contract": PARALLEL_CONTRACT,
@@ -170,13 +171,14 @@ fn command_shards(arguments: impl Iterator<Item = String>) -> Result<i32, String
             "tau_floor": config.tau_floor,
             "tau_amplitude": config.tau_amplitude
         },
+        "expected_intervals": expected_intervals,
         "interval_width": interval_width,
         "shard_count": summaries.len(),
         "summaries": summaries,
         "merged_transform": merged,
         "distributed_execution": false,
         "geometry_receipt_authority": false,
-        "evidence_note": "These deterministic local reductions define ordered shard composition only. They do not claim networked or multi-device execution."
+        "evidence_note": "These deterministic local reductions cover the declared interval range and define ordered shard composition only. They do not claim networked or multi-device execution."
     });
     let encoded = format!(
         "{}\n",
