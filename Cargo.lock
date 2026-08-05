@@ -60,7 +60,7 @@ dependencies = [
 name = "itoa"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
+checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d127d28c869c684d7777685682"
 
 [[package]]
 name = "libc"
@@ -140,6 +140,34 @@ version = "2.7.0"
 dependencies = [
  "rsh-core",
  "rsh-numerics",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "rsh-parallel"
+version = "2.7.0"
+dependencies = [
+ "rsh-core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "rsh-parallel-cli"
+version = "2.7.0"
+dependencies = [
+ "rsh-core",
+ "rsh-parallel",
+ "serde_json",
+]
+
+[[package]]
+name = "rsh-parallel-wasm"
+version = "2.7.0"
+dependencies = [
+ "rsh-core",
+ "rsh-parallel",
  "serde",
  "serde_json",
 ]
