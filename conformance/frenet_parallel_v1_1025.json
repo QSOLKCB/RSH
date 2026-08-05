@@ -1,0 +1,64 @@
+{
+  "schema": "RSH-FRENET-PARALLEL-CONFORMANCE-V1",
+  "software_version": "2.7.0",
+  "parallel_contract": "RSH-FRENET-PARALLEL-V1",
+  "interval_policy": "midpoint-rodrigues-se3-v1",
+  "scan_policy": "hillis-steele-inclusive-se3-v1",
+  "configuration": {
+    "samples": 1025,
+    "s0": 0.0,
+    "s1": 4.0,
+    "kappa_fraction": 0.85,
+    "tau_floor": 0.22,
+    "tau_amplitude": 0.13
+  },
+  "expected": {
+    "scan_passes": 11,
+    "intervals": 1024,
+    "centre_index": 512,
+    "centre_p": 0.5,
+    "maximum_centre_error": 1e-12,
+    "maximum_frame_error_f64": 1e-11,
+    "maximum_scan_vs_sequential_component_error": 1e-11,
+    "maximum_shard_merge_component_error": 1e-11,
+    "native_wasm_observable_tolerance": 1e-12
+  },
+  "webgpu": {
+    "workgroup_size": 64,
+    "transform_bytes": 64,
+    "point_floats": 16,
+    "position_component_gate": 0.0005,
+    "frame_component_gate": 0.0005,
+    "schedule_component_gate": 0.0001,
+    "frame_norm_gate": 0.00005,
+    "frame_orthogonality_gate": 0.00005,
+    "actual_gpu_execution_required_for_sidecar": true,
+    "geometry_receipt_authority": false
+  },
+  "benchmark": {
+    "warmup_runs": 2,
+    "measured_runs": 7,
+    "minimum_samples_for_speedup_statement": 4097,
+    "statistic": "median-end-to-end-milliseconds",
+    "gpu_timing_includes_readback": true,
+    "speedup_claim_scope": "observed-device-and-browser-only",
+    "universal_speedup_claim": false
+  },
+  "distributed": {
+    "segment_schema": "RSH-FRENET-PARALLEL-SEGMENT-V1",
+    "ordered_merge_required": true,
+    "complete_interval_coverage_required": true,
+    "actual_multi_device_execution": false,
+    "actual_distributed_execution": false
+  },
+  "requirements": {
+    "pass_finite": true,
+    "pass_centre": true,
+    "pass_frame": true,
+    "pass_schedule_bounds": true,
+    "pass_scan_equivalence": true,
+    "pass_shard_merge": true,
+    "speedup_claim": false,
+    "geometry_receipt_authority": false
+  }
+}
