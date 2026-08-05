@@ -7,11 +7,14 @@ members = [
   "crates/rsh-numerics",
   "crates/rsh-numerics-cli",
   "crates/rsh-numerics-wasm",
+  "crates/rsh-tissue",
+  "crates/rsh-tissue-cli",
+  "crates/rsh-tissue-wasm",
 ]
 resolver = "2"
 
 [workspace.package]
-version = "2.6.0"
+version = "2.7.0"
 edition = "2021"
 license = "MPL-2.0"
 repository = "https://github.com/QSOLKCB/RSH"
