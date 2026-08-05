@@ -333,12 +333,7 @@ fn inclusive_doubling_scan(transforms: &[Se3]) -> (Vec<Se3>, usize) {
 }
 
 fn max_transform_component_error(left: Se3, right: Se3) -> f64 {
-    let left = [
-        left.tangent,
-        left.normal,
-        left.binormal,
-        left.translation,
-    ];
+    let left = [left.tangent, left.normal, left.binormal, left.translation];
     let right = [
         right.tangent,
         right.normal,
@@ -347,13 +342,7 @@ fn max_transform_component_error(left: Se3, right: Se3) -> f64 {
     ];
     left.into_iter()
         .zip(right)
-        .flat_map(|(a, b)| {
-            [
-                (a.x - b.x).abs(),
-                (a.y - b.y).abs(),
-                (a.z - b.z).abs(),
-            ]
-        })
+        .flat_map(|(a, b)| [(a.x - b.x).abs(), (a.y - b.y).abs(), (a.z - b.z).abs()])
         .fold(0.0_f64, f64::max)
 }
 
@@ -406,8 +395,7 @@ pub fn merge_segment_summaries(summaries: &[SegmentSummary]) -> Result<Transform
             return Err("unexpected parallel segment schema".into());
         }
         if summary.start_interval != expected_start
-            || summary.end_interval_exclusive
-                != summary.start_interval + summary.interval_count
+            || summary.end_interval_exclusive != summary.start_interval + summary.interval_count
         {
             return Err("parallel segment summaries are missing, overlapping, or unordered".into());
         }
@@ -466,10 +454,7 @@ fn frame_errors(points: &[ParallelPoint]) -> Result<(f64, f64), String> {
     let mut max_norm_error = 0.0_f64;
     let mut max_orthogonality_error = 0.0_f64;
     for point in points {
-        if !point.position().is_finite()
-            || !point.kappa.is_finite()
-            || !point.tau.is_finite()
-        {
+        if !point.position().is_finite() || !point.kappa.is_finite() || !point.tau.is_finite() {
             return Err(format!(
                 "parallel point {} contains a non-finite value",
                 point.index
@@ -536,8 +521,7 @@ pub fn build_parallel_path(
     });
     let pass_scan_equivalence =
         max_scan_vs_sequential_component_error <= SCAN_EQUIVALENCE_TOLERANCE_F64;
-    let pass_shard_merge =
-        max_shard_merge_component_error <= SCAN_EQUIVALENCE_TOLERANCE_F64;
+    let pass_shard_merge = max_shard_merge_component_error <= SCAN_EQUIVALENCE_TOLERANCE_F64;
     let pass_all = pass_finite
         && pass_centre
         && pass_frame
