@@ -122,7 +122,10 @@ fn command_run(arguments: impl Iterator<Item = String>) -> Result<i32, String> {
             .map_err(|error| format!("{}: {error}", path.display()))?;
     }
 
-    println!("RSH Rust tissue [{}]", if report.pass_all { "PASS" } else { "FAIL" });
+    println!(
+        "RSH Rust tissue [{}]",
+        if report.pass_all { "PASS" } else { "FAIL" }
+    );
     println!("  tissue contract      = {}", report.tissue_contract);
     println!("  cells                = {}", report.config.cells);
     println!("  ticks                = {}", report.config.ticks);
