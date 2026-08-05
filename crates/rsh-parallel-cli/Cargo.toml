@@ -1,0 +1,16 @@
+[package]
+name = "rsh-parallel-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "rsh-parallel"
+path = "src/main.rs"
+
+[dependencies]
+rsh-core = { path = "../rsh-core" }
+rsh-parallel = { path = "../rsh-parallel" }
+serde_json.workspace = true
