@@ -1,4 +1,4 @@
-const CACHE_NAME = "rsh-browser-lab-v2.7.0";
+const CACHE_NAME = "rsh-browser-lab-v2.7.0-parallel-v1";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -10,13 +10,19 @@ const CORE_ASSETS = [
   "./frenet.css",
   "./frenet.js",
   "./path-gpu.js",
+  "./parallel.html",
+  "./parallel.css",
+  "./parallel.js",
+  "./parallel-gpu.js",
   "./tissue.html",
   "./tissue.css",
   "./tissue.js",
   "./wgsl/kappa_tau_field.wgsl",
   "./wgsl/frenet_path.wgsl",
+  "./wgsl/frenet_parallel_scan.wgsl",
   "./pkg/rsh_wasm.wasm",
   "./pkg/rsh_numerics_wasm.wasm",
+  "./pkg/rsh_parallel_wasm.wasm",
   "./pkg/rsh_tissue_wasm.wasm",
 ];
 
