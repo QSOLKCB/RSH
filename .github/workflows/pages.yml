@@ -9,12 +9,16 @@ on:
       - "crates/rsh-wasm/**"
       - "crates/rsh-numerics/**"
       - "crates/rsh-numerics-wasm/**"
+      - "crates/rsh-parallel/**"
+      - "crates/rsh-parallel-cli/**"
+      - "crates/rsh-parallel-wasm/**"
       - "crates/rsh-tissue/**"
       - "crates/rsh-tissue-cli/**"
       - "crates/rsh-tissue-wasm/**"
       - "conformance/**"
       - "scripts/test_wasm.mjs"
       - "scripts/test_frenet_path.mjs"
+      - "scripts/test_parallel_frenet.mjs"
       - "scripts/test_tissue_wasm.mjs"
       - "Cargo.toml"
       - "Cargo.lock"
@@ -41,11 +45,19 @@ jobs:
           rustup default stable
           rustup target add wasm32-unknown-unknown
       - name: Test WASM bridges
-        run: cargo test --locked -p rsh-wasm -p rsh-numerics-wasm -p rsh-tissue-wasm
+        run: |
+          cargo test --locked \
+            -p rsh-wasm \
+            -p rsh-numerics-wasm \
+            -p rsh-parallel-wasm \
+            -p rsh-tissue-wasm
       - name: Build browser modules
         run: |
           cargo build --locked --release --target wasm32-unknown-unknown \
-            -p rsh-wasm -p rsh-numerics-wasm -p rsh-tissue-wasm
+            -p rsh-wasm \
+            -p rsh-numerics-wasm \
+            -p rsh-parallel-wasm \
+            -p rsh-tissue-wasm
       - name: Execute browser conformance profiles
         run: |
           wasm=target/wasm32-unknown-unknown/release/rsh_wasm.wasm
@@ -54,6 +66,13 @@ jobs:
           node scripts/test_frenet_path.mjs \
             "$numerical_wasm" \
             conformance/frenet_path_v1_1025.json
+          cargo run --locked -p rsh-parallel-cli -- \
+            run --samples 1025 --json /tmp/rsh_parallel_native.json
+          parallel_wasm=target/wasm32-unknown-unknown/release/rsh_parallel_wasm.wasm
+          node scripts/test_parallel_frenet.mjs \
+            "$parallel_wasm" \
+            conformance/frenet_parallel_v1_1025.json \
+            /tmp/rsh_parallel_native.json
           python3 rsh_runner.py tissue --json /tmp/rsh_tissue_python.json
           cargo run --locked -p rsh-tissue-cli -- \
             run --json /tmp/rsh_tissue_rust.json
@@ -69,6 +88,8 @@ jobs:
           cp target/wasm32-unknown-unknown/release/rsh_wasm.wasm web/pkg/rsh_wasm.wasm
           cp target/wasm32-unknown-unknown/release/rsh_numerics_wasm.wasm \
             web/pkg/rsh_numerics_wasm.wasm
+          cp target/wasm32-unknown-unknown/release/rsh_parallel_wasm.wasm \
+            web/pkg/rsh_parallel_wasm.wasm
           cp target/wasm32-unknown-unknown/release/rsh_tissue_wasm.wasm \
             web/pkg/rsh_tissue_wasm.wasm
       - name: Validate Pages artifact
@@ -82,41 +103,56 @@ jobs:
           test -s web/frenet.css
           test -s web/frenet.js
           test -s web/path-gpu.js
+          test -s web/parallel.html
+          test -s web/parallel.css
+          test -s web/parallel.js
+          test -s web/parallel-gpu.js
           test -s web/tissue.html
           test -s web/tissue.css
           test -s web/tissue.js
           test -s web/sw.js
           test -s web/wgsl/kappa_tau_field.wgsl
           test -s web/wgsl/frenet_path.wgsl
+          test -s web/wgsl/frenet_parallel_scan.wgsl
           test -s web/pkg/rsh_wasm.wasm
           test -s web/pkg/rsh_numerics_wasm.wasm
+          test -s web/pkg/rsh_parallel_wasm.wasm
           test -s web/pkg/rsh_tissue_wasm.wasm
           test -s conformance/wasm_v2_129.json
           test -s conformance/wgsl_v1_4096.json
           test -s conformance/frenet_path_v1_1025.json
+          test -s conformance/frenet_parallel_v1_1025.json
           test -s conformance/tissue_v1_8x20.json
           test -s scripts/test_wasm.mjs
           test -s scripts/test_frenet_path.mjs
+          test -s scripts/test_parallel_frenet.mjs
           test -s scripts/test_tissue_wasm.mjs
           test -f web/.nojekyll
           node --check web/app.js
           node --check web/gpu.js
           node --check web/frenet.js
           node --check web/path-gpu.js
+          node --check web/parallel.js
+          node --check web/parallel-gpu.js
           node --check web/tissue.js
           node --check web/sw.js
           grep -q '<title>RSH' web/index.html
           grep -q '<title>RSH Full Frenet Path Research</title>' web/frenet.html
+          grep -q '<title>RSH Parallel Frenet Research</title>' web/parallel.html
           grep -q '<title>RSH Rust/WASM Tissue Laboratory</title>' web/tissue.html
           grep -q 'VERIFIED RUST/WASM SAMPLES' web/index.html
           grep -q 'PHASE 4 · WEBGPU RESIDUAL HARNESS' web/index.html
           grep -q 'pkg/rsh_wasm.wasm' web/app.js
           grep -q 'pkg/rsh_numerics_wasm.wasm' web/frenet.js
+          grep -q 'pkg/rsh_parallel_wasm.wasm' web/parallel.js
           grep -q 'pkg/rsh_tissue_wasm.wasm' web/tissue.js
           grep -q 'wgsl/kappa_tau_field.wgsl' web/sw.js
           grep -q 'wgsl/frenet_path.wgsl' web/sw.js
+          grep -q 'wgsl/frenet_parallel_scan.wgsl' web/sw.js
+          grep -q 'pkg/rsh_parallel_wasm.wasm' web/sw.js
           test "$(od -An -t x1 -N4 web/pkg/rsh_wasm.wasm | tr -d ' \n')" = "0061736d"
           test "$(od -An -t x1 -N4 web/pkg/rsh_numerics_wasm.wasm | tr -d ' \n')" = "0061736d"
+          test "$(od -An -t x1 -N4 web/pkg/rsh_parallel_wasm.wasm | tr -d ' \n')" = "0061736d"
           test "$(od -An -t x1 -N4 web/pkg/rsh_tissue_wasm.wasm | tr -d ' \n')" = "0061736d"
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
