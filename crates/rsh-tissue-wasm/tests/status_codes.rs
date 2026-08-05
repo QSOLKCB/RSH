@@ -45,7 +45,10 @@ fn status_two_reports_invalid_input_without_stale_output() {
     assert!(error["message"]
         .as_str()
         .is_some_and(|message| message.contains("backend code")));
-    assert_ne!(error, previous, "error output must replace the previous payload");
+    assert_ne!(
+        error, previous,
+        "error output must replace the previous payload"
+    );
 }
 
 #[test]
