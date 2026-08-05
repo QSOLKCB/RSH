@@ -13,8 +13,8 @@ mod shard_prefix;
 
 pub use shard_prefix::{
     build_shard_work_units, reconstruct_shard_prefixes, shard_bundle_json, shard_report_json,
-    ShardBundle, ShardConfigSnapshot, ShardPrefixReconstruction, ShardPrefixReport,
-    ShardTransform, ShardWorkUnit, LOCAL_PREFIX_POLICY, MAX_SHARD_COUNT, SHARD_ASSEMBLY_POLICY,
+    ShardBundle, ShardConfigSnapshot, ShardPrefixReconstruction, ShardPrefixReport, ShardTransform,
+    ShardWorkUnit, LOCAL_PREFIX_POLICY, MAX_SHARD_COUNT, SHARD_ASSEMBLY_POLICY,
     SHARD_BUNDLE_SCHEMA, SHARD_FINGERPRINT_POLICY, SHARD_PREFIX_CONTRACT, SHARD_PREFIX_POLICY,
     SHARD_PREFIX_SCHEMA, SHARD_WORK_SCHEMA,
 };
@@ -106,7 +106,10 @@ mod tests {
 
     #[test]
     fn path_length_uses_overflow_safe_norms() {
-        let points = [point(0, 0.0, 0.0, 0.0), point(1, 1.0e155, 1.0e155, 0.0)];
+        let points = [
+            point(0, 0.0, 0.0, 0.0),
+            point(1, 1.0e155, 1.0e155, 0.0),
+        ];
         let length = overflow_safe_path_length(&points);
         assert!(length.is_finite());
         assert_eq!(length, 1.0e155_f64.hypot(1.0e155));
