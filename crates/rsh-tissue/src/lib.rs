@@ -202,6 +202,8 @@ impl CellState {
     }
 }
 
+type InitialState = (Vec<CellState>, Vec<[usize; 2]>, String);
+
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct CellSnapshot {
     pub id: String,
@@ -422,9 +424,7 @@ fn snapshot(cell: &CellState) -> CellSnapshot {
     }
 }
 
-fn initial_state(
-    config: TissueConfig,
-) -> Result<(Vec<CellState>, Vec<[usize; 2]>, String), String> {
+fn initial_state(config: TissueConfig) -> Result<InitialState, String> {
     let model = ModelConfig {
         samples: config.geometry_samples,
         ..ModelConfig::default()
