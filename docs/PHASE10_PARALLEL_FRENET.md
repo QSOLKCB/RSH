@@ -166,8 +166,16 @@ summaries. A summary contains:
 - its local SE(3) reduction;
 - a non-authoritative evidence boundary.
 
-The merge function rejects missing, overlapping, or unordered summaries and
-checks that their ordered reduction reproduces the full final transform.
+`merge_segment_summaries` receives the expected full interval count. It rejects
+empty lists, missing prefixes or tails, zero-width ranges, overlapping ranges,
+unordered ranges, arithmetic overflow, and non-finite transforms. This establishes
+complete ordered coverage for the declared interval range.
+
+The complete path builder performs a separate numerical check after the coverage
+check: it compares the merged reduction with the final transform from the
+sequential fold of the same local intervals. The shard CLI records
+`expected_intervals` in its output so the coverage claim is explicit and
+machine-readable.
 
 This is groundwork, not a distributed runtime. A future implementation will
 need:
