@@ -205,14 +205,15 @@ async function runBenchmark() {
   output.status.dataset.kind = "";
   output.message.textContent = "Validating controls and warming the f64 Rust/WASM parallel reference…";
 
-  let config = null;
+  let rejectionConfig = null;
   let oracle = null;
   const wasmTimings = [];
   const gpuTimings = [];
   let wasmMedian = null;
 
   try {
-    config = currentConfig();
+    const config = currentConfig();
+    rejectionConfig = config;
     for (let index = 0; index < WARMUP_RUNS; index += 1) {
       oracle = runWasm(config).payload;
     }
@@ -305,7 +306,7 @@ async function runBenchmark() {
   } catch (error) {
     if (
       error instanceof ParallelResidualGateError
-      && config
+      && rejectionConfig
       && oracle
       && Number.isFinite(wasmMedian)
     ) {
@@ -317,7 +318,7 @@ async function runBenchmark() {
       output.claim.textContent = "REJECTED · NO CLAIM";
       state.sidecar = createRejectedParallelSidecar({
         oracle,
-        config,
+        config: rejectionConfig,
         error,
         gates: GATES,
         warmupRuns: WARMUP_RUNS,
