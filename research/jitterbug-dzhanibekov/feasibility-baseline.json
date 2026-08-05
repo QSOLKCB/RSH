@@ -1,0 +1,42 @@
+{
+  "schema": "RSH-JITTERBUG-DZHANIBEKOV-FEASIBILITY-BASELINE-V1",
+  "source": "independent exploratory run supplied before PR #13",
+  "verdict": "PARTIAL TRAJECTORY RESEMBLANCE",
+  "model_summary": {
+    "dzhanibekov": {
+      "principal_moments": [1.0, 2.0, 3.0],
+      "initial_omega": [0.05, 1.0, 0.02],
+      "approximate_180_degree_reversals": 7,
+      "angular_momentum_relative_drift": 1.109377446575965e-14,
+      "energy_relative_drift": 1.9503843123624158e-14
+    },
+    "jitterbug_variable_inertia_analogue": {
+      "closed_principal_moments": [1.0, 1.2, 2.8],
+      "open_principal_moments": [1.0, 2.6, 2.9],
+      "axis_tilt_amplitude_rad": 0.4,
+      "shape_period": 8.0,
+      "initial_omega": [0.08, 0.95, 0.05],
+      "approximate_180_degree_reversals": 6,
+      "angular_momentum_relative_drift": 1.7708634436640997e-7,
+      "generalized_energy_relative_drift": 0.8127462134761557
+    }
+  },
+  "best_alignment": {
+    "time_scale_factor": 1.0,
+    "time_shift": 0.0,
+    "overlap_samples": 800,
+    "quaternion_rms_degrees": 100.3121866528369,
+    "attitude_excursion_correlation": 0.3965600540320617,
+    "maximum_dzhanibekov_excursion_degrees": 179.99419439192664,
+    "maximum_jitterbug_excursion_degrees": 179.67335125637038
+  },
+  "claims": {
+    "jitterbug_is_dzhanibekov": false,
+    "proves_quantized_spacetime": false,
+    "visual_similarity_establishes_identical_dynamics": false,
+    "rsh_contains_validated_jitterbug_dynamics": false,
+    "geometry_receipt_authority": false,
+    "universal_scale_invariance_claim": false,
+    "physical_equivalence_claim": false
+  }
+}
