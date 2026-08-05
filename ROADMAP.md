@@ -197,16 +197,35 @@ Candidate work:
 
 Optimization must preserve contract output within its declared tolerance.
 
-## 12. CI/CD and hardware automation
+## 12. CI/CD and trusted RTX hardware automation
 
-**Status: Queued**
+**Status: Active — workflow implemented, first protected dispatch pending**
 
-- maintain trusted self-hosted GPU runners for manual or protected-branch CUDA
-  and WebGPU validation;
-- add automated browser execution through a controlled hardware environment;
-- upload conformance and performance sidecars as immutable workflow artifacts;
-- detect performance regressions only on pinned hardware and toolchains;
-- never expose privileged hardware runners to arbitrary public pull-request code.
+`.github/workflows/rtx-hardware.yml` provides the trusted self-hosted RTX path:
+
+- manual `workflow_dispatch` only;
+- exact repository and `main` branch restriction;
+- `admin` or `maintain` actor verification;
+- protected `rtx-hardware` environment approval;
+- dedicated `rsh-trusted` CUDA/WebGPU runner labels;
+- optional replay only for full commit SHAs already contained in `main`;
+- pinned-container CUDA build, three-run repeatability, f64 comparison, memcheck,
+  and racecheck;
+- automated physical NVIDIA schedule WebGPU and 4,097-point parallel WebGPU;
+- immutable deterministic redacted artifacts;
+- stable CUDA device UUID excluded from uploaded artifacts and public logs;
+- no public pull-request execution on privileged hardware.
+
+Portable pull-request validation is performed by
+`.github/workflows/rtx-workflow-boundaries.yml`; it checks trigger, checkout,
+privacy, adapter, sanitizer, and authority policies without claiming hardware
+execution.
+
+The first dispatch after merge will move this item to **Complete** when the
+protected workflow produces a passing redacted
+`RSH-TRUSTED-RTX-HARDWARE-AUDIT-V1` artifact.
+
+See [`docs/PHASE13_TRUSTED_RTX_WORKFLOW.md`](docs/PHASE13_TRUSTED_RTX_WORKFLOW.md).
 
 ## 13. Cross-language contract testing
 
@@ -224,8 +243,9 @@ Optimization must preserve contract output within its declared tolerance.
 
 The current priority sequence is:
 
-1. fuzz and harden the accepted shard-prefix evidence boundary;
-2. build a trusted self-hosted RTX workflow for protected hardware validation;
+1. merge the trusted RTX workflow and complete its first protected `main`
+   dispatch on the labelled RTX 5060 Ti runner;
+2. fuzz and harden the accepted shard-prefix evidence boundary;
 3. implement a separately versioned multi-device CUDA path experiment using the
    accepted local shard contract;
 4. expand full-path browser inspection and residual-debugging tools;
