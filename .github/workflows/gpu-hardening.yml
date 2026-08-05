@@ -1,0 +1,64 @@
+name: GPU hardening boundaries
+
+on:
+  pull_request:
+    paths:
+      - "native/cuda/**"
+      - "web/parallel*.js"
+      - "web/wgsl/frenet_parallel_scan.wgsl"
+      - "web/sw.js"
+      - "scripts/test_parallel_*.mjs"
+      - "conformance/frenet_parallel_v1_1025.json"
+      - "docs/PHASE10_PARALLEL_FRENET.md"
+      - ".github/workflows/gpu-hardening.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-and-numerics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Validate JavaScript source
+        run: |
+          node --check web/parallel-gpu.js
+          node --check web/parallel-evidence.js
+          node --check web/parallel.js
+          node --check scripts/test_parallel_quaternion.mjs
+          node --check scripts/test_parallel_rejection.mjs
+      - name: Run deterministic GPU arithmetic regressions
+        run: |
+          node scripts/test_parallel_quaternion.mjs \
+            conformance/frenet_parallel_v1_1025.json
+          node scripts/test_parallel_rejection.mjs
+      - name: Validate CUDA 13 UUID source boundary
+        run: |
+          grep -q 'const cudaUUID_t uuid = properties.uuid;' \
+            native/cuda/rsh_schedule_cuda.cu
+          if grep -q 'cudaDeviceGetUuid' native/cuda/rsh_schedule_cuda.cu; then
+            echo 'cudaDeviceGetUuid is not a CUDA Runtime API and must not return.' >&2
+            exit 1
+          fi
+      - name: Validate quaternion WebGPU contract
+        run: |
+          grep -q 'rotation_representation' \
+            conformance/frenet_parallel_v1_1025.json
+          grep -q 'normalized-quaternion-xyzw-f32-v1' \
+            conformance/frenet_parallel_v1_1025.json
+          grep -q '"transform_bytes": 32' \
+            conformance/frenet_parallel_v1_1025.json
+          grep -q 'fn normalize_quaternion' \
+            web/wgsl/frenet_parallel_scan.wgsl
+          grep -q 'fn quaternion_multiply' \
+            web/wgsl/frenet_parallel_scan.wgsl
+          grep -q 'fn rotate_quaternion' \
+            web/wgsl/frenet_parallel_scan.wgsl
+          grep -q 'parallel-evidence.js' web/sw.js
+      - name: Preserve evidence authority boundaries
+        run: |
+          grep -q 'speedup_claim: false' web/parallel-evidence.js
+          grep -q 'universal_speedup_claim: false' web/parallel-evidence.js
+          grep -q 'geometry_receipt_authority: false' web/parallel-evidence.js
+          grep -q 'complete_path_readback: true' web/parallel-evidence.js
