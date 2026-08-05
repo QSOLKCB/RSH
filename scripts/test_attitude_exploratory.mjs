@@ -13,6 +13,10 @@ import {
 
 const profilePath = process.argv[2] ?? "conformance/attitude_exploratory_v1.json";
 const profile = JSON.parse(await readFile(profilePath, "utf8"));
+const mechanism = JSON.parse(await readFile(
+  new URL("../research/jitterbug-dzhanibekov/vertex-schema.example.json", import.meta.url),
+  "utf8",
+));
 
 const dz = integrateDzhanibekov(profile.dzhanibekov);
 const jb = integrateJitterbugAnalogue(profile.jitterbug);
@@ -72,6 +76,20 @@ for (const time of [0, 1, 2, 4, 8, 17.5]) {
   assert.ok(state.principal_moments.every((value) => Number.isFinite(value) && value > 0));
   assert.ok(state.inertia.flat().every(Number.isFinite));
   assert.ok(state.inertia_rate.flat().every(Number.isFinite));
+}
+
+const vertexIds = new Set(mechanism.vertices.map((vertex) => vertex.id));
+const memberIds = new Set(mechanism.members.map((member) => member.id));
+assert.equal(vertexIds.size, mechanism.vertices.length, "vertex IDs must be unique");
+assert.equal(memberIds.size, mechanism.members.length, "member IDs must be unique");
+for (const member of mechanism.members) {
+  assert.ok(vertexIds.has(member.vertex_a), `${member.id}.vertex_a must exist`);
+  assert.ok(vertexIds.has(member.vertex_b), `${member.id}.vertex_b must exist`);
+}
+for (const hinge of mechanism.hinges) {
+  for (const memberId of hinge.members) {
+    assert.ok(memberIds.has(memberId), `${hinge.id} member ${memberId} must exist`);
+  }
 }
 
 for (const [name, value] of Object.entries(CLAIM_BOUNDARIES)) {
@@ -135,6 +153,7 @@ console.log(JSON.stringify({
     best_excursion_alignment: comparison.best_excursion_alignment,
     verdict_alignment: comparison.verdict_alignment,
   },
+  mechanism_reference_integrity: true,
   geometry_receipt_authority: false,
   physical_equivalence_claim: false,
   universal_scale_invariance_claim: false,
