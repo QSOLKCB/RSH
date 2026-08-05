@@ -27,6 +27,8 @@
     "workgroup_size": 64,
     "transform_bytes": 32,
     "rotation_representation": "normalized-quaternion-xyzw-f32-v1",
+    "rotation_construction": "small-angle-sinc-polynomial-f32-v1",
+    "normalization_policy": "normalize-after-compose-and-before-emission-v1",
     "point_floats": 16,
     "position_component_gate": 0.0005,
     "frame_component_gate": 0.0005,
