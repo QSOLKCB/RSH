@@ -7,16 +7,16 @@ inside explicit Robitaille bounds, integrating the Frenet–Serret frame, and
 translating the exact discrete midpoint to the coordinate origin.
 
 **Authors:** J. Robitaille (DeltaKingZero) and Trent Slade / QSOL-IMC  
-**Release:** 2.6.0  
+**Release:** 2.7.0  
 **Geometry model contract:** 2.0.0  
 **Tissue contract:** 1.0.0  
 **Frenet numerical research contract:** 1.0.0  
-**Implementations:** Python geometry oracle and tissue reference + Rust core/CLI + canonical WASM bridge + WGSL schedule field + versioned C ABI/C++ adapter + optional CUDA schedule kernel + Tier 2 NPU evidence profile + separate Rust/WASM/WGSL full-path research stack
+**Implementations:** Python geometry oracle and tissue reference + Rust geometry and tissue cores/CLIs + canonical geometry and tissue WASM bridges + WGSL schedule field + versioned C ABI/C++ adapter + optional CUDA schedule kernel + Tier 2 NPU evidence profile + separate Rust/WASM/WGSL full-path research stack
 
 ## Browser laboratories
 
-The main project site runs the verified Rust core directly in WebAssembly and
-adds an optional WebGPU schedule-field layer:
+The main project site runs the verified Rust geometry core directly in
+WebAssembly and adds an optional WebGPU schedule-field layer:
 
 **https://qsolkcb.github.io/RSH/**
 
@@ -26,15 +26,21 @@ and download JSON and CSV evidence. A second panel evaluates a 4096-point f32
 κ/τ field with WGSL, reads the GPU buffer back, and compares every point against
 an f64 schedule supplied by `rsh-core` through WASM.
 
-The v2.6.0 research laboratory executes the complete path recurrence on WebGPU
-and compares it with a separately versioned f64 Rust/WASM numerical path:
+The full-path research laboratory executes the complete path recurrence on
+WebGPU and compares it with a separately versioned f64 Rust/WASM numerical path:
 
 **https://qsolkcb.github.io/RSH/frenet.html**
 
-The rotating paths are projections of returned numerical samples. The visuals do
-not create a physical interpretation. After the first successful load, a service
-worker caches both laboratories, both WASM modules, and both WGSL shaders for
-offline reuse.
+The v2.7.0 tissue laboratory executes the shared Rust tissue runtime directly in
+WebAssembly, visualizes the final ring/chord graph and Q_f trace, and exports its
+chained evidence report:
+
+**https://qsolkcb.github.io/RSH/tissue.html**
+
+The visualizations are projections of returned runtime data. They do not create
+a physical, biological, or subjective interpretation. After the first successful
+load, a service worker caches all three laboratories, all three WASM modules, and
+both WGSL shaders for offline reuse.
 
 ## Implementation authority
 
@@ -42,17 +48,25 @@ The Python geometry implementation remains the readable scientific oracle. It
 defines the equations, validation rules, canonical report schema, golden
 coordinates, and reference receipt.
 
-The Python tissue implementation composes accepted geometry evidence into a
-bounded deterministic graph simulation. It creates separate tick and tissue
-receipt domains and does not alter the geometry contract or geometry receipt.
+The Python tissue implementation remains the readable tissue reference. It
+composes accepted geometry evidence into a bounded deterministic graph
+simulation, creates separate tick and tissue receipt domains, and does not alter
+the geometry contract or geometry receipt.
 
-The Rust implementation reproduces the geometry and verification contract as a
-native core and command-line runner. It is accepted through the checked-in
-cross-runtime conformance record.
+The canonical Rust geometry implementation reproduces the geometry and
+verification contract as a native core and command-line runner. It is accepted
+through the checked-in cross-runtime conformance record.
 
-The canonical WASM bridge calls `rsh-core`; it is not a third geometry
+The `rsh-tissue` crate ports the sealed tissue algorithm into Rust. Its native
+CLI and raw WASM bridge are accepted through complete portable-observable
+comparison with fresh Python reports under `tissue_v1_8x20.json`. Receipts remain
+runtime-specific identities rather than being falsely required to match across
+Python, native Rust, and WASM.
+
+The canonical geometry WASM bridge calls `rsh-core`; it is not a third geometry
 implementation. Its raw ABI supplies geometry reports, centreline samples, and
-f64 schedule grids to the browser.
+f64 schedule grids to the browser. The tissue WASM bridge similarly calls the
+shared `rsh-tissue` crate rather than containing another tissue simulation.
 
 The native `rsh-ffi` crate is another adapter over `rsh-core`. Its C ABI exposes a
 fixed-layout summary, optional JSON report, and schedule arrays. C++ does not
@@ -81,8 +95,9 @@ canonical geometry receipt remains an oracle artifact.
 | Python geometry evidence | canonical domain-separated SHA-256 receipt |
 | Tissue evidence | seed geometry receipt + chained tick receipts + final tissue receipt |
 | Q_f | functional cohesion metric only; no biological, awareness, or qualia claim |
-| Rust acceptance | contract checks plus golden-coordinate conformance |
-| WASM acceptance | actual compiled module executed against `wasm_v2_129.json` |
+| Rust geometry acceptance | contract checks plus golden-coordinate conformance |
+| Geometry WASM acceptance | actual compiled module executed against `wasm_v2_129.json` |
+| Rust/WASM tissue acceptance | complete non-receipt observables compared with fresh Python reports under `tissue_v1_8x20.json` at `1e-12` |
 | WGSL schedule acceptance | 4096-point f32 field residual ≤ `1e-4` against WASM f64 schedule |
 | Native ABI acceptance | layout, ownership, JSON receipt, and coordinates checked against `ffi_v1_129.json` |
 | CUDA acceptance | optional f32 schedule residual ≤ `1e-4` against Rust FFI f64 schedule |
@@ -118,7 +133,10 @@ rsh verify
 
 The v2.5.0 Python reference seeds deterministic geometric cells from a verified
 129-sample RSH path, connects them through ring and chord edges, and runs bounded
-phase, binding, prediction, centering, and functional-cohesion updates.
+phase, binding, prediction, centering, and functional-cohesion updates. RSH
+v2.7.0 adds a shared Rust implementation, native CLI, raw WASM ABI, executable
+cross-runtime conformance harness, and offline browser laboratory without
+changing tissue contract 1.0.0.
 
 Inspect the machine-checkable constitution:
 
@@ -126,7 +144,7 @@ Inspect the machine-checkable constitution:
 rsh constitution --json rsh_constitution.json
 ```
 
-Run the sealed default tissue profile:
+Run the sealed Python reference profile:
 
 ```bash
 rsh tissue \
@@ -136,7 +154,17 @@ rsh tissue \
   --trace rsh_tissue.csv
 ```
 
-The default reference result is:
+Run the native Rust port:
+
+```bash
+cargo run --locked -p rsh-tissue-cli -- info
+cargo run --locked -p rsh-tissue-cli -- \
+  run --json rsh_tissue_rust.json --csv rsh_tissue_rust.csv
+cargo run --locked -p rsh-tissue-cli -- \
+  conformance --json rsh_tissue_rust_conformance.json
+```
+
+The default Python reference result is:
 
 ```text
 seed geometry receipt  f33042335100b7a2bca8c5c97724782ecb820cd8f6704f8e7eb074c1ed9e9a00
@@ -172,7 +200,8 @@ commit configuration or launch an autonomous self-modification loop. Changes to
 geometry sample policy, residual gates, or Q_f floors require declared contract
 escalation and explicit human acknowledgement.
 
-See [Phase 6](docs/PHASE6_TISSUE.md) and the
+See [Phase 6](docs/PHASE6_TISSUE.md),
+[Phase 9 Rust/WASM tissue conformance](docs/PHASE9_TISSUE_CONFORMANCE.md), and the
 [operational-awareness boundary](docs/OPERATIONAL_AWARENESS.md).
 
 ## Rust native implementation
@@ -185,7 +214,7 @@ cargo clippy --locked --workspace --all-targets -- -D warnings
 cargo test --locked --workspace
 ```
 
-Run the canonical native CLI:
+Run the canonical native geometry CLI:
 
 ```bash
 cargo run --locked -p rsh-cli -- info
@@ -195,8 +224,16 @@ cargo run --locked -p rsh-cli -- trace -n 129 -o rsh_trace_rust.csv
 cargo run --locked -p rsh-cli -- sample 16777216 12
 ```
 
-The canonical Rust CLI implements the geometry contract. Tissue conformance is a
-future separately tested Rust/WASM phase.
+Run the native tissue CLI:
+
+```bash
+cargo run --locked -p rsh-tissue-cli -- info
+cargo run --locked -p rsh-tissue-cli -- run
+cargo run --locked -p rsh-tissue-cli -- conformance
+```
+
+The geometry and tissue runtimes retain separate report schemas and receipt
+domains. Neither tissue runtime replaces the canonical geometry report.
 
 ## Full-path Frenet numerical research
 
@@ -234,16 +271,18 @@ See [Phase 8 Frenet numerical research](docs/PHASE8_FRENET_NUMERICS.md).
 
 ## WebAssembly and WGSL conformance
 
-Build both browser modules:
+Build all browser modules:
 
 ```bash
 rustup target add wasm32-unknown-unknown
-cargo test --locked -p rsh-wasm -p rsh-numerics-wasm
+cargo test --locked \
+  -p rsh-wasm -p rsh-numerics-wasm -p rsh-tissue-wasm
 cargo build --locked --release --target wasm32-unknown-unknown \
-  -p rsh-wasm -p rsh-numerics-wasm
+  -p rsh-wasm -p rsh-numerics-wasm -p rsh-tissue-wasm
 mkdir -p web/pkg
 cp target/wasm32-unknown-unknown/release/rsh_wasm.wasm web/pkg/
 cp target/wasm32-unknown-unknown/release/rsh_numerics_wasm.wasm web/pkg/
+cp target/wasm32-unknown-unknown/release/rsh_tissue_wasm.wasm web/pkg/
 ```
 
 Run the executable conformance harnesses:
@@ -258,6 +297,15 @@ node scripts/test_wasm.mjs \
 node scripts/test_frenet_path.mjs \
   target/wasm32-unknown-unknown/release/rsh_numerics_wasm.wasm \
   conformance/frenet_path_v1_1025.json
+
+python3 rsh_runner.py tissue --json /tmp/rsh_tissue_python.json
+cargo run --locked -p rsh-tissue-cli -- \
+  run --json /tmp/rsh_tissue_rust.json
+node scripts/test_tissue_wasm.mjs \
+  target/wasm32-unknown-unknown/release/rsh_tissue_wasm.wasm \
+  conformance/tissue_v1_8x20.json \
+  /tmp/rsh_tissue_python.json \
+  /tmp/rsh_tissue_rust.json
 ```
 
 No `wasm-bindgen`, `wasm-pack`, npm, bundler, CDN, or runtime server is required.
@@ -422,7 +470,9 @@ can modify a numerical contract.
 | Python geometry 3.10 / 3.12 / 3.14 | yes | reference tests and evidence smoke suite |
 | Python tissue 3.10 / 3.12 / 3.14 | yes | constitution, default receipt chain, Q_f vectors, fallback, dry-run policy |
 | Rust canonical geometry | yes | formatting, Clippy, tests, conformance, canonical Rust receipt |
-| Canonical WASM | yes | actual compiled module executed against sealed geometry vectors |
+| Geometry WASM | yes | actual compiled module executed against sealed geometry vectors |
+| Rust tissue | yes | full port, constitution hash, deterministic replay, audit chain, Python observable gates |
+| Tissue WASM | yes | actual compiled module executed and compared with fresh Python and native Rust reports |
 | WGSL schedule field | browser-specific | f32 residual sidecar with CPU/WASM fallback |
 | Rust f64 Frenet numerical path | yes | named policy, sealed path vectors, deterministic stress corpus |
 | Numerical WASM | yes | actual compiled module executed against the 1,025-point profile |
@@ -472,12 +522,15 @@ src/rsh/tissue.py                   Deterministic geometric tissue reference
 src/rsh/refinement.py               Sealed bounded proposal dry-run policy
 src/rsh/cli.py                      Geometry, tissue, and governance CLI
 crates/rsh-core/                    Canonical Rust geometry and evidence library
-crates/rsh-cli/                     Canonical native command-line runner
-crates/rsh-wasm/                    Canonical raw WASM ABI over `rsh-core`
+crates/rsh-cli/                     Canonical native geometry runner
+crates/rsh-wasm/                    Canonical raw geometry WASM ABI
 crates/rsh-ffi/                     Versioned C ABI over `rsh-core`
 crates/rsh-numerics/                Separately versioned f64 Frenet path research
 crates/rsh-numerics-cli/            Numerical path runner and benchmark
 crates/rsh-numerics-wasm/           Separate numerical path WASM ABI
+crates/rsh-tissue/                  Shared Rust tissue runtime
+crates/rsh-tissue-cli/              Native tissue runner and conformance CLI
+crates/rsh-tissue-wasm/             Raw tissue WASM ABI over `rsh-tissue`
 include/rsh_ffi.h                   Public ABI-v1 C/C++ header
 native/cpp/                         Dependency-free C++17 consumer and CMake build
 native/cuda/                        Optional CUDA schedule residual executable
@@ -486,11 +539,12 @@ conformance/wgsl_v1_4096.json       WebGPU schedule-field profile
 conformance/frenet_path_v1_1025.json Full-path numerical and accelerator profile
 conformance/ffi_v1_129.json         Native ABI profile
 conformance/cuda_schedule_v1_4096.json Optional CUDA schedule profile
-conformance/tissue_v1_8x20.json     Python tissue profile
+conformance/tissue_v1_8x20.json     Python/Rust/WASM tissue profile
 conformance/npu_tier2_v1.json       Tier 2 NPU evidence profile
 conformance/observed/               Noncanonical hardware observations
-scripts/test_wasm.mjs               Canonical WASM and f32 schedule harness
+scripts/test_wasm.mjs               Canonical geometry WASM and schedule harness
 scripts/test_frenet_path.mjs        Numerical WASM and f32 full-path harness
+scripts/test_tissue_wasm.mjs        Python/Rust/WASM tissue harness
 scripts/test_cpp_ffi.py             C++ ABI and CUDA-reference harness
 scripts/test_cuda.py                Actual CUDA sidecar/repeatability/sanitizer harness
 scripts/cuda_preflight.sh           Non-mutating CUDA host readiness report
@@ -503,6 +557,7 @@ docs/PHASE4_WGSL.md                 WebGPU schedule residual boundary
 docs/PHASE5_NATIVE.md               C ABI, C++, and optional CUDA boundary
 docs/PHASE6_TISSUE.md               Constitutional tissue contract
 docs/PHASE8_FRENET_NUMERICS.md      Full-path numerical research contract
+docs/PHASE9_TISSUE_CONFORMANCE.md   Rust/WASM tissue conformance
 docs/OPERATIONAL_AWARENESS.md       Instrumentation and no-qualia boundary
 docs/CUDA_VALIDATION.md             Hardware evidence and toolchain guidance
 docs/SCIENTIFIC_BOUNDARY.md         Claims the evidence does and does not support
@@ -516,11 +571,12 @@ translated there as an explicit coordinate convention. Tissue states use a
 separately declared shared-centroid convention. These checks confirm
 implementation behaviour; they are not empirical discoveries.
 
-Receipts prove identity of canonical reports under declared runtime and encoding
-contracts. Accelerator residuals prove numerical agreement within published
-gates. Q_f compares functional factors inside one simulation. None of these
-establishes a physical theory, biological organism, consciousness, or subjective
-experience.
+Receipts prove identity of reports under declared runtime and encoding contracts.
+Cross-runtime tissue acceptance is based on explicit portable observables and
+tolerances, not automatic receipt equality. Accelerator residuals prove numerical
+agreement within published gates. Q_f compares functional factors inside one
+simulation. None of these establishes a physical theory, biological organism,
+consciousness, or subjective experience.
 
 ## Planned sequence
 
@@ -530,7 +586,7 @@ experience.
 4. **WGSL schedule field and residual conformance** — implemented in v2.3.0.
 5. **Native C ABI, C++17 consumer, and optional CUDA schedule adapter** — implemented in v2.4.0 and hardware-validation hardened in v2.4.1.
 6. **Constitutional geometric tissue Python reference** — implemented in v2.5.0.
-7. **Rust/WASM tissue conformance** — planned from the sealed Python vectors.
+7. **Rust/WASM tissue conformance** — implemented in v2.7.0 from the sealed Python vectors.
 8. **Full-path Frenet numerical research** — implemented in v2.6.0 as a separate f64/WASM/WGSL correctness surface; parallel acceleration remains future research.
 
 Performance, compositional complexity, or anthropomorphic language never promotes
