@@ -1,0 +1,29 @@
+{
+  "schema": "RSH-ETQ-DNA-MIDI-CONFORMANCE-V1",
+  "contract": "RSH-ETQ-DNA-MIDI-EXPLORATORY-V1",
+  "sequence": "ATGGCCAAAGCGTTCGACGGCTAG",
+  "expected_record_count": 24,
+  "expected_hashes": {
+    "sequence_sha256": "d0c4ee6529ab75a91dbb114a233c72f630a16c4d2e62bd092c2e9364d9fdf34c",
+    "report_canonical_sha256": "e247ff6d720c138ed9fdb58172dc0a8c3a760dfa3bb34f841ea752c4e12b1b22",
+    "csv_sha256": "e8c7403f8ee9398ee47a5389941603174c65f0536725db5a239a5afc27967c78",
+    "midi_sha256": "48f67155607cf2156e051dcc1dfa0fe97acdbf570410760f18c4d11fa8da5128"
+  },
+  "source_lineage": {
+    "archive_name": "QSOL-IMC-DNA-SPEC.zip",
+    "archive_sha256": "7455215f006c6dd60b1aa0a9067b9e9d48196e93b43f1d4117b8b839eefab7b1",
+    "prototype_python_sha256": "aa8a243193ae8b907d0bb88ac92dabb1900f591fd49f36e088a89ebd96b3ad66",
+    "prototype_csv_sha256": "11ebb94246fbcdf7e94c94b00fe629135877c93a37dfa16abf12c8a3177929e6",
+    "prototype_midi_sha256": "de56a7d10178379da0c64ed75b6366939aabc7096adfdf2b64a81799bc4fec24",
+    "integration_policy": "conceptual-seed-only-no-prototype-gpu-code-imported"
+  },
+  "expected_claims": {
+    "physical_dna_storage_demonstrated": false,
+    "biological_error_correction_demonstrated": false,
+    "sierpinski_embedding_is_physical_geometry": false,
+    "etq_canonical_dna_mapping": false,
+    "actual_multi_device_execution": false,
+    "distributed_execution": false,
+    "geometry_receipt_authority": false
+  }
+}
