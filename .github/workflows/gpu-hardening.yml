@@ -37,8 +37,13 @@ jobs:
         run: |
           grep -q 'const cudaUUID_t uuid = properties.uuid;' \
             native/cuda/rsh_schedule_cuda.cu
+          grep -q '^  return output;$' native/cuda/rsh_schedule_cuda.cu
           if grep -q 'cudaDeviceGetUuid' native/cuda/rsh_schedule_cuda.cu; then
             echo 'cudaDeviceGetUuid is not a CUDA Runtime API and must not return.' >&2
+            exit 1
+          fi
+          if grep -q 'return output\.str();' native/cuda/rsh_schedule_cuda.cu; then
+            echo 'format_uuid returns std::string directly; output.str() must not return.' >&2
             exit 1
           fi
       - name: Validate quaternion WebGPU contract
@@ -47,13 +52,21 @@ jobs:
             conformance/frenet_parallel_v1_1025.json
           grep -q 'normalized-quaternion-xyzw-f32-v1' \
             conformance/frenet_parallel_v1_1025.json
+          grep -q 'small-angle-sinc-polynomial-f32-v1' \
+            conformance/frenet_parallel_v1_1025.json
+          grep -q 'normalize-after-compose-and-before-emission-v1' \
+            conformance/frenet_parallel_v1_1025.json
           grep -q '"transform_bytes": 32' \
             conformance/frenet_parallel_v1_1025.json
           grep -q 'fn normalize_quaternion' \
             web/wgsl/frenet_parallel_scan.wgsl
           grep -q 'fn quaternion_multiply' \
             web/wgsl/frenet_parallel_scan.wgsl
-          grep -q 'fn rotate_quaternion' \
+          grep -q 'fn rotate_unit_quaternion' \
+            web/wgsl/frenet_parallel_scan.wgsl
+          grep -q 'half_angle_squared' \
+            web/wgsl/frenet_parallel_scan.wgsl
+          grep -q 'half_angle_fourth / 120.0' \
             web/wgsl/frenet_parallel_scan.wgsl
           grep -q 'parallel-evidence.js' web/sw.js
       - name: Preserve evidence authority boundaries
