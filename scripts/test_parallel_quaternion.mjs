@@ -14,6 +14,11 @@ const kappaBound = Math.sqrt(2) - 1;
 assert.equal(profile.parallel_contract, "RSH-FRENET-PARALLEL-V1");
 assert.equal(gates.transform_bytes, 32);
 assert.equal(gates.rotation_representation, "normalized-quaternion-xyzw-f32-v1");
+assert.equal(gates.rotation_construction, "small-angle-sinc-polynomial-f32-v1");
+assert.equal(
+  gates.normalization_policy,
+  "normalize-after-compose-and-before-emission-v1",
+);
 
 function cross(left, right) {
   return [
@@ -90,7 +95,10 @@ function compose64(left, right) {
 }
 
 function normalizeQuaternion32(value) {
-  const magnitudeSquared = f(value.reduce((sum, component) => f(sum + f(component * component)), f(0)));
+  const magnitudeSquared = f(value.reduce(
+    (sum, component) => f(sum + f(component * component)),
+    f(0),
+  ));
   if (magnitudeSquared <= f(1e-12)) return [f(0), f(0), f(0), f(1)];
   const inverse = f(1 / Math.sqrt(magnitudeSquared));
   return value.map((component) => f(component * inverse));
@@ -115,34 +123,47 @@ function cross32(left, right) {
   ];
 }
 
-function rotateQuaternion32(rotation, vector) {
-  const unit = normalizeQuaternion32(rotation);
-  const doubled = cross32(unit.slice(0, 3), vector).map((value) => f(f(2) * value));
-  const second = cross32(unit.slice(0, 3), doubled);
-  return vector.map((value, index) => f(f(value + f(unit[3] * doubled[index])) + second[index]));
+function rotateUnitQuaternion32(rotation, vector) {
+  const doubled = cross32(rotation.slice(0, 3), vector)
+    .map((value) => f(f(2) * value));
+  const second = cross32(rotation.slice(0, 3), doubled);
+  return vector.map((value, index) => (
+    f(f(value + f(rotation[3] * doubled[index])) + second[index])
+  ));
 }
 
 function quaternionFromOmega32(omega, step) {
-  const magnitude = f(Math.hypot(...omega));
-  if (magnitude <= f(1e-8)) return [f(0), f(0), f(0), f(1)];
-  const halfAngle = f(f(f(0.5) * magnitude) * f(step));
-  const sine = f(Math.sin(halfAngle));
-  const inverseMagnitude = f(1 / magnitude);
+  const halfStep = f(f(0.5) * f(step));
+  const halfStepSquared = f(halfStep * halfStep);
+  const omegaSquared = f(omega.reduce(
+    (sum, component) => f(sum + f(component * component)),
+    f(0),
+  ));
+  const halfAngleSquared = f(omegaSquared * halfStepSquared);
+  const halfAngleFourth = f(halfAngleSquared * halfAngleSquared);
+  const sinc = f(
+    f(f(1) - f(halfAngleSquared / f(6)))
+      + f(halfAngleFourth / f(120)),
+  );
+  const cosine = f(
+    f(f(1) - f(halfAngleSquared / f(2)))
+      + f(halfAngleFourth / f(24)),
+  );
   return normalizeQuaternion32([
-    f(f(omega[0] * inverseMagnitude) * sine),
-    f(f(omega[1] * inverseMagnitude) * sine),
-    f(f(omega[2] * inverseMagnitude) * sine),
-    f(Math.cos(halfAngle)),
+    f(omega[0] * f(halfStep * sinc)),
+    f(omega[1] * f(halfStep * sinc)),
+    f(omega[2] * f(halfStep * sinc)),
+    cosine,
   ]);
 }
 
 function compose32(left, right) {
-  const leftRotation = normalizeQuaternion32(left.rotation);
-  const rightRotation = normalizeQuaternion32(right.rotation);
-  const rotatedTranslation = rotateQuaternion32(leftRotation, right.translation);
+  const rotatedTranslation = rotateUnitQuaternion32(left.rotation, right.translation);
   return {
-    rotation: normalizeQuaternion32(quaternionMultiply32(leftRotation, rightRotation)),
-    translation: left.translation.map((value, index) => f(value + rotatedTranslation[index])),
+    rotation: normalizeQuaternion32(quaternionMultiply32(left.rotation, right.rotation)),
+    translation: left.translation.map((value, index) => (
+      f(value + rotatedTranslation[index])
+    )),
   };
 }
 
@@ -184,7 +205,7 @@ function build32() {
     const halfRotation = quaternionFromOmega32(omega, f(f(0.5) * ds));
     return {
       rotation: quaternionFromOmega32(omega, ds),
-      translation: rotateQuaternion32(halfRotation, [f(1), f(0), f(0)])
+      translation: rotateUnitQuaternion32(halfRotation, [f(1), f(0), f(0)])
         .map((value) => f(value * ds)),
     };
   });
@@ -209,10 +230,11 @@ for (let index = 0; index < config.samples; index += 1) {
     ...actualPosition.map((value, axis) => Math.abs(value - expectedPosition[axis])),
   );
 
+  const rotation = normalizeQuaternion32(candidate[index].rotation);
   const actualFrame = [
-    rotateQuaternion32(candidate[index].rotation, [f(1), f(0), f(0)]),
-    rotateQuaternion32(candidate[index].rotation, [f(0), f(1), f(0)]),
-    rotateQuaternion32(candidate[index].rotation, [f(0), f(0), f(1)]),
+    rotateUnitQuaternion32(rotation, [f(1), f(0), f(0)]),
+    rotateUnitQuaternion32(rotation, [f(0), f(1), f(0)]),
+    rotateUnitQuaternion32(rotation, [f(0), f(0), f(1)]),
   ];
   const expectedFrame = reference[index].rotation;
   maxFrame = Math.max(
@@ -260,6 +282,8 @@ console.log(JSON.stringify({
   samples: config.samples,
   scan_passes: Math.ceil(Math.log2(config.samples)),
   rotation_representation: gates.rotation_representation,
+  rotation_construction: gates.rotation_construction,
+  normalization_policy: gates.normalization_policy,
   transform_bytes: gates.transform_bytes,
   residuals: {
     max_position_component_vs_f64: maxPosition,
