@@ -1,7 +1,6 @@
 use crate::{
-    build_parallel_path, ParallelPoint, CENTRE_TOLERANCE_F64, FRAME_TOLERANCE_F64,
-    INTERVAL_POLICY, MAX_PARALLEL_SAMPLES, PARALLEL_CONTRACT,
-    SCAN_EQUIVALENCE_TOLERANCE_F64,
+    build_parallel_path, ParallelPoint, CENTRE_TOLERANCE_F64, FRAME_TOLERANCE_F64, INTERVAL_POLICY,
+    MAX_PARALLEL_SAMPLES, PARALLEL_CONTRACT, SCAN_EQUIVALENCE_TOLERANCE_F64,
 };
 use rsh_core::{
     kappa_max, kappa_schedule, tau_schedule, ModelConfig, MODEL_NAME, MODEL_VERSION,
@@ -484,10 +483,15 @@ fn validate_shard_work_units(
             || shard.end_interval_exclusive != declared_end
             || shard.local_prefixes.len() != shard.interval_count
         {
-            return Err("shard work units are missing, overlapping, malformed, or unordered".into());
+            return Err(
+                "shard work units are missing, overlapping, malformed, or unordered".into(),
+            );
         }
         if !shard.reduction.is_finite()
-            || !shard.local_prefixes.iter().all(|transform| transform.is_finite())
+            || !shard
+                .local_prefixes
+                .iter()
+                .all(|transform| transform.is_finite())
         {
             return Err("shard work unit contains a non-finite transform".into());
         }
@@ -550,7 +554,12 @@ pub fn reconstruct_shard_prefixes(
 
     let mut bases = Vec::with_capacity(shards.len());
     bases.push(Se3::identity());
-    bases.extend(inclusive.iter().copied().take(shards.len().saturating_sub(1)));
+    bases.extend(
+        inclusive
+            .iter()
+            .copied()
+            .take(shards.len().saturating_sub(1)),
+    );
 
     let mut prefixes = Vec::with_capacity(expected_intervals + 1);
     prefixes.push(Se3::identity().snapshot());

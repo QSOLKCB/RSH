@@ -131,11 +131,10 @@ fn parse_reconstruct(arguments: impl Iterator<Item = String>) -> Result<Reconstr
                 ));
             }
             "--shards-json" => {
-                shards_json = Some(PathBuf::from(
-                    arguments
-                        .next()
-                        .ok_or_else(|| "missing value for shards-json".to_string())?,
-                ));
+                shards_json =
+                    Some(PathBuf::from(arguments.next().ok_or_else(|| {
+                        "missing value for shards-json".to_string()
+                    })?));
             }
             "-h" | "--help" => return Err(usage().into()),
             _ => return Err(format!("unknown argument: {argument}")),
@@ -285,9 +284,16 @@ fn command_reconstruct(arguments: impl Iterator<Item = String>) -> Result<i32, S
 
     println!(
         "RSH shard-prefix reconstruction [{}]",
-        if result.report.pass_all { "PASS" } else { "FAIL" }
+        if result.report.pass_all {
+            "PASS"
+        } else {
+            "FAIL"
+        }
     );
-    println!("  contract             = {}", result.report.shard_prefix_contract);
+    println!(
+        "  contract             = {}",
+        result.report.shard_prefix_contract
+    );
     println!(
         "  samples / intervals  = {} / {}",
         result.report.samples, result.report.intervals
