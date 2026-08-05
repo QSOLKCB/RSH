@@ -31,7 +31,11 @@ fn valid_overrides_execute_the_runtime() {
         ])
         .output()
         .expect("run tissue CLI");
-    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     let stdout = String::from_utf8(output.stdout).expect("UTF-8 run output");
     assert!(stdout.contains("RSH Rust tissue [PASS]"));
     assert!(stdout.contains("cells                = 6"));
