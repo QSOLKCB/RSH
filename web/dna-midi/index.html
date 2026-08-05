@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="RSH exploratory DNA-ETQ-MIDI codec with exact round-trip metadata and a global tetrahedral Sierpinski projection.">
+  <meta name="theme-color" content="#091216">
+  <title>RSH DNA-ETQ-MIDI Exploratory Laboratory</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a class="brand" href="../">RSH<span>⁹</span></a>
+      <div>
+        <a href="#codec">Codec</a>
+        <a href="#evidence">Evidence</a>
+        <a href="https://github.com/QSOLKCB/RSH/tree/main/research/dna-midi-etq">Specification</a>
+        <a href="https://github.com/QSOLKCB/RSH">Source</a>
+      </div>
+    </nav>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">RSH-ETQ-DNA-MIDI-EXPLORATORY-V1</p>
+        <h1>Encode a DNA sequence.<br><em>Hear the exact address path.</em></h1>
+        <p class="lede">Each codon is assigned an alphabetic site index, each position inside the codon is the independent ETQ qutrit fibre, and the complete sequence is projected through a global tetrahedral iterated-function system. MIDI metadata preserves an exact DNA → MIDI → DNA round trip.</p>
+      </div>
+      <aside class="boundary">
+        <strong>Exploratory boundary</strong>
+        <p>This is a deterministic codec and visual-sonification laboratory. It does not demonstrate physical DNA storage, biological error correction, or physical fractal geometry.</p>
+      </aside>
+    </section>
+  </header>
+
+  <main>
+    <section id="codec" class="panel codec-grid">
+      <form id="codec-form" class="controls">
+        <div class="section-title">
+          <p class="eyebrow">INPUT</p>
+          <h2>DNA sequence</h2>
+        </div>
+        <label for="sequence">A, C, G, and T only; incomplete codons are rejected.</label>
+        <textarea id="sequence" spellcheck="false" rows="8">ATGGCCAAAGCGTTCGACGGCTAG</textarea>
+        <div class="button-row">
+          <button class="primary" type="submit">Encode and verify</button>
+          <button id="play" type="button" disabled>Play</button>
+          <button id="stop" type="button" disabled>Stop</button>
+        </div>
+        <p id="status" class="status" role="status">Ready.</p>
+        <div class="downloads">
+          <button id="download-report" type="button" disabled>Report JSON</button>
+          <button id="download-csv" type="button" disabled>Mapping CSV</button>
+          <button id="download-midi" type="button" disabled>MIDI</button>
+          <button id="download-manifest" type="button" disabled>Manifest</button>
+        </div>
+      </form>
+
+      <section class="visual-panel">
+        <div class="visual-heading">
+          <div>
+            <p class="eyebrow">GLOBAL TETRAHEDRAL IFS</p>
+            <h2>Sequence address path</h2>
+          </div>
+          <span id="visual-count" class="badge">0 BASES</span>
+        </div>
+        <canvas id="lattice" width="900" height="620" aria-label="Rotating 3D tetrahedral DNA address path"></canvas>
+        <p class="caption">Drag horizontally to rotate. The display is a projection of deterministic coordinates and creates no physical claim.</p>
+      </section>
+    </section>
+
+    <section id="evidence" class="panel evidence">
+      <div class="section-title">
+        <p class="eyebrow">ROUND-TRIP EVIDENCE</p>
+        <h2>Exact metadata, bounded claims.</h2>
+      </div>
+      <dl class="metrics">
+        <div><dt>Bases</dt><dd id="metric-bases">—</dd></div>
+        <div><dt>Codons</dt><dd id="metric-codons">—</dd></div>
+        <div><dt>ETQ events</dt><dd id="metric-events">—</dd></div>
+        <div><dt>MIDI round trip</dt><dd id="metric-roundtrip">—</dd></div>
+        <div class="wide"><dt>Report SHA-256</dt><dd><code id="metric-report-hash">—</code></dd></div>
+        <div class="wide"><dt>MIDI SHA-256</dt><dd><code id="metric-midi-hash">—</code></dd></div>
+      </dl>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Codon</th><th>Base</th><th>Site</th><th>Fibre</th><th>Event</th><th>Pitch</th><th>Coordinate</th></tr>
+          </thead>
+          <tbody id="records"></tbody>
+        </table>
+      </div>
+
+      <section class="claims">
+        <h3>Mandatory non-claims</h3>
+        <div id="claims-grid"></div>
+      </section>
+    </section>
+  </main>
+
+  <footer>
+    <p>J. Robitaille / DeltaKingZero · Trent Slade / QSOL-IMC</p>
+    <p>Offline, dependency-free, MPL-2.0</p>
+  </footer>
+
+  <noscript><p class="noscript">This laboratory requires JavaScript.</p></noscript>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
