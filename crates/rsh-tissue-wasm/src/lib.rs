@@ -135,7 +135,11 @@ pub extern "C" fn rsh_tissue_run(
     match encode_report(config) {
         Ok((bytes, pass_all)) => {
             set_output(bytes);
-            if pass_all { 0 } else { 1 }
+            if pass_all {
+                0
+            } else {
+                1
+            }
         }
         Err(error) => {
             set_output(encode_error(&error));
@@ -174,7 +178,10 @@ mod tests {
         assert_eq!(payload["schema"], PAYLOAD_SCHEMA);
         assert_eq!(payload["abi_version"], ABI_VERSION);
         assert_eq!(payload["report"]["tissue_contract"], "1.0.0");
-        assert_eq!(payload["report"]["ticks"].as_array().map(Vec::len), Some(20));
+        assert_eq!(
+            payload["report"]["ticks"].as_array().map(Vec::len),
+            Some(20)
+        );
         assert_eq!(payload["report"]["pass_all"], true);
         assert_eq!(payload["geometry_receipt_authority"], false);
         assert_eq!(payload["subjective_awareness_claim"], false);
