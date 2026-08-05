@@ -6,8 +6,8 @@
 
 use rsh_core::{ModelConfig, MODEL_NAME, MODEL_VERSION};
 use rsh_parallel::{
-    build_parallel_path, ParallelPathReport, ParallelPoint, INTERVAL_POLICY,
-    MAX_PARALLEL_SAMPLES, PARALLEL_CONTRACT, PARALLEL_SCHEMA, SCAN_POLICY,
+    build_parallel_path, ParallelPathReport, ParallelPoint, INTERVAL_POLICY, MAX_PARALLEL_SAMPLES,
+    PARALLEL_CONTRACT, PARALLEL_SCHEMA, SCAN_POLICY,
 };
 use serde::Serialize;
 use std::cell::RefCell;
