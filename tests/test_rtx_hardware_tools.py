@@ -60,18 +60,18 @@ class TrustedRtxValidationTests(unittest.TestCase):
                 "transform_bytes": 32,
             },
             "residuals": {
-                "max_position_component_vs_f64": 5e-7,
-                "max_frame_component_vs_f64": 4.5e-7,
-                "max_schedule_component_vs_f64": 6.3e-8,
+                "max_position_component_vs_parallel_wasm_f64": 5e-7,
+                "max_frame_component_vs_parallel_wasm_f64": 4.5e-7,
+                "max_schedule_component_vs_parallel_wasm_f64": 6.3e-8,
                 "max_frame_norm_error": 3.8e-7,
                 "max_frame_orthogonality_error": 4.9e-7,
             },
             "gates": {
-                "position_component_gate": 5e-4,
-                "frame_component_gate": 5e-4,
-                "schedule_component_gate": 1e-4,
-                "frame_norm_gate": 5e-5,
-                "frame_orthogonality_gate": 5e-5,
+                "position": 5e-4,
+                "frame": 5e-4,
+                "schedule": 1e-4,
+                "frameNorm": 5e-5,
+                "frameOrthogonality": 5e-5,
             },
             "benchmark": {
                 "warmup_runs": 2,
@@ -92,11 +92,15 @@ class TrustedRtxValidationTests(unittest.TestCase):
     def test_passing_evidence_is_accepted_and_redacted(self) -> None:
         cuda_errors, redacted = MODULE.validate_cuda(self.cuda_summary())
         schedule_errors, _ = MODULE.validate_schedule(self.schedule())
-        parallel_errors, _ = MODULE.validate_parallel(self.parallel())
+        parallel_errors, parallel_redacted = MODULE.validate_parallel(self.parallel())
         self.assertEqual(cuda_errors, [])
         self.assertEqual(schedule_errors, [])
         self.assertEqual(parallel_errors, [])
         self.assertNotIn("device_uuid", redacted)
+        self.assertIn(
+            "max_position_component_vs_parallel_wasm_f64",
+            parallel_redacted["residuals"],
+        )
 
     def test_software_webgpu_adapter_is_rejected(self) -> None:
         schedule = self.schedule()
@@ -114,10 +118,25 @@ class TrustedRtxValidationTests(unittest.TestCase):
 
     def test_parallel_gate_failure_is_rejected(self) -> None:
         parallel = self.parallel()
-        parallel["residuals"]["max_frame_component_vs_f64"] = 6e-4
+        parallel["residuals"]["max_frame_component_vs_parallel_wasm_f64"] = 6e-4
         errors, _ = MODULE.validate_parallel(parallel)
         self.assertIn(
-            "parallel max_frame_component_vs_f64 exceeds its gate",
+            "parallel max_frame_component_vs_parallel_wasm_f64 exceeds frame",
+            errors,
+        )
+
+    def test_stale_parallel_residual_keys_are_rejected(self) -> None:
+        parallel = self.parallel()
+        parallel["residuals"] = {
+            "max_position_component_vs_f64": 5e-7,
+            "max_frame_component_vs_f64": 4.5e-7,
+            "max_schedule_component_vs_f64": 6.3e-8,
+            "max_frame_norm_error": 3.8e-7,
+            "max_frame_orthogonality_error": 4.9e-7,
+        }
+        errors, _ = MODULE.validate_parallel(parallel)
+        self.assertIn(
+            "parallel max_position_component_vs_parallel_wasm_f64 is missing or invalid",
             errors,
         )
 
