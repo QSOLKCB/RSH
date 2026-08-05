@@ -166,6 +166,9 @@ jobs:
           test -s web/frenet.css
           test -s web/frenet.js
           test -s web/path-gpu.js
+          test -s web/tissue.html
+          test -s web/tissue.css
+          test -s web/tissue.js
           test -s web/sw.js
           test -s web/wgsl/kappa_tau_field.wgsl
           test -s web/wgsl/frenet_path.wgsl
@@ -205,6 +208,7 @@ jobs:
           node --check web/gpu.js
           node --check web/frenet.js
           node --check web/path-gpu.js
+          node --check web/tissue.js
           node --check web/sw.js
           node --check scripts/test_frenet_path.mjs
           node --check scripts/test_tissue_wasm.mjs
@@ -216,19 +220,24 @@ jobs:
           sh -n scripts/cuda_preflight.sh
           grep -q '<title>RSH' web/index.html
           grep -q '<title>RSH Full Frenet Path Research</title>' web/frenet.html
+          grep -q '<title>RSH Rust/WASM Tissue Laboratory</title>' web/tissue.html
           grep -q 'VERIFIED RUST/WASM SAMPLES' web/index.html
           grep -q 'PHASE 4 · WEBGPU RESIDUAL HARNESS' web/index.html
           grep -q 'C++ ABI · CUDA OPTIONAL' web/index.html
           grep -q 'WebAssembly.instantiate' web/app.js
           grep -q 'WebAssembly.instantiate' web/frenet.js
+          grep -q 'WebAssembly.instantiate' web/tissue.js
           grep -q 'navigator.gpu' web/gpu.js
           grep -q 'navigator.gpu' web/path-gpu.js
           grep -q 'rsh_schedule' web/app.js
           grep -q 'rsh_frenet_run' web/frenet.js
+          grep -q 'rsh_tissue_run' web/tissue.js
           grep -q '@workgroup_size(64)' web/wgsl/kappa_tau_field.wgsl
           grep -q '@workgroup_size(1)' web/wgsl/frenet_path.wgsl
           grep -q 'pkg/rsh_wasm.wasm' web/app.js
           grep -q 'pkg/rsh_numerics_wasm.wasm' web/frenet.js
+          grep -q 'pkg/rsh_tissue_wasm.wasm' web/tissue.js
+          grep -q 'pkg/rsh_tissue_wasm.wasm' web/sw.js
           grep -q 'wgsl/kappa_tau_field.wgsl' web/sw.js
           grep -q 'wgsl/frenet_path.wgsl' web/sw.js
           grep -q '^  workflow_dispatch:' .github/workflows/cuda-hardware.yml
