@@ -1,0 +1,70 @@
+name: DNA MIDI ETQ exploratory
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/dna_midi_etq.py"
+      - "scripts/test_dna_midi_etq.mjs"
+      - "tests/test_dna_midi_etq.py"
+      - "conformance/dna_midi_etq_exploratory_v1.json"
+      - "research/dna-midi-etq/**"
+      - "docs/PHASE14_DNA_MIDI_ETQ_EXPLORATORY.md"
+      - "web/dna-midi/**"
+      - ".github/workflows/dna-midi-exploratory.yml"
+  pull_request:
+    paths:
+      - "scripts/dna_midi_etq.py"
+      - "scripts/test_dna_midi_etq.mjs"
+      - "tests/test_dna_midi_etq.py"
+      - "conformance/dna_midi_etq_exploratory_v1.json"
+      - "research/dna-midi-etq/**"
+      - "docs/PHASE14_DNA_MIDI_ETQ_EXPLORATORY.md"
+      - "web/dna-midi/**"
+      - ".github/workflows/dna-midi-exploratory.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python codec and tamper regressions
+        run: python3 -m unittest tests.test_dna_midi_etq -v
+      - name: Generate and verify deterministic artifacts
+        run: |
+          OUT="${RUNNER_TEMP:-$PWD/target/dna-midi}"
+          python3 scripts/dna_midi_etq.py \
+            --sequence ATGGCCAAAGCGTTCGACGGCTAG \
+            --output "$OUT"
+          python3 scripts/dna_midi_etq.py \
+            --verify-profile conformance/dna_midi_etq_exploratory_v1.json
+          test -s "$OUT/report.json"
+          test -s "$OUT/mapping.csv"
+          test -s "$OUT/sequence.mid"
+          test -s "$OUT/manifest.json"
+      - name: JavaScript cross-runtime conformance
+        run: node scripts/test_dna_midi_etq.mjs
+      - name: Offline laboratory source boundary
+        run: |
+          test -s web/dna-midi/index.html
+          test -s web/dna-midi/style.css
+          test -s web/dna-midi/app.js
+          test -s web/dna-midi/model.js
+          test -s web/dna-midi/sw.js
+          node --check web/dna-midi/model.js
+          node --check web/dna-midi/app.js
+          node --check web/dna-midi/sw.js
+          node --check scripts/test_dna_midi_etq.mjs
+          python3 -m py_compile scripts/dna_midi_etq.py tests/test_dna_midi_etq.py
+          python3 -m json.tool conformance/dna_midi_etq_exploratory_v1.json >/dev/null
+          grep -q '<title>RSH DNA-ETQ-MIDI Exploratory Laboratory</title>' web/dna-midi/index.html
+          grep -q 'navigator.serviceWorker.register' web/dna-midi/app.js
+          grep -q 'physical_dna_storage_demonstrated: false' research/dna-midi-etq/README.md
+          grep -q 'geometry_receipt_authority: false' research/dna-midi-etq/README.md
+          ! grep -R -q 'frenet_parallel_scan.wgsl\|parallel-gpu.js' web/dna-midi scripts/dna_midi_etq.py
