@@ -6,7 +6,7 @@ Phase 6 turns the supplied Geometric System culmination package into an
 executable, testable RSH subsystem without promoting metaphor into a scientific
 claim.
 
-The new Python reference layer composes bounded RSH geometry into a deterministic
+The Python reference layer composes bounded RSH geometry into a deterministic
 network of geometric cells. It records functional cohesion, prediction,
 continuity, sidecar pressure, coordinate normalization, and a chained audit
 receipt across repeated ticks.
@@ -76,7 +76,7 @@ geometry contract.
 
 Each cell is seeded from an exact representative of a verified RSH path. The
 initial position, curvature, torsion, and tangent-derived phase therefore come
-from the established Python reference rather than a second geometry model.
+from the established reference rather than a second geometry model.
 
 Cell roles cycle through:
 
@@ -136,8 +136,8 @@ sidecar residual. The sidecar is accepted only when:
 residual <= residual_gate
 ```
 
-A failed sidecar activates the recorded fallback path. The Python f64 geometry
-and tissue report continue, so failed acceleration does not become a geometry
+A failed sidecar activates the recorded fallback path. The f64 geometry and
+tissue report continue, so failed acceleration does not become a geometry
 failure and never gains receipt authority.
 
 `conformance/npu_tier2_v1.json` defines initial evidence gates for INT8, BF16,
@@ -190,6 +190,8 @@ Example proposal:
 
 ## Commands
 
+Python reference:
+
 ```bash
 rsh constitution
 
@@ -203,10 +205,26 @@ rsh refine-dry-run proposal.json \
   --json refinement_decision.json
 ```
 
+Native Rust conformance runtime:
+
+```bash
+cargo run --locked -p rsh-tissue-cli -- info
+cargo run --locked -p rsh-tissue-cli -- \
+  run --json rsh_tissue_rust.json --csv rsh_tissue_rust.csv
+cargo run --locked -p rsh-tissue-cli -- \
+  conformance --json rsh_tissue_rust_conformance.json
+```
+
+The browser runs the shared Rust runtime through WebAssembly at:
+
+```text
+https://qsolkcb.github.io/RSH/tissue.html
+```
+
 ## Default conformance profile
 
 `conformance/tissue_v1_8x20.json` fixes the default configuration and observable
-reference values. Exact tissue receipts are scoped to CPython 3.12:
+reference values. Exact Python tissue receipts are scoped to CPython 3.12:
 
 ```text
 reference runtime        CPython 3.12
@@ -225,11 +243,19 @@ an absolute `1e-12` tolerance. Byte-identical tissue tick or report receipts are
 not claimed across Python minor versions because floating-point library details
 may change the canonical report bytes.
 
-## Next implementation boundary
+## Rust and WASM conformance
 
-A Rust or WASM tissue implementation should begin with the sealed Python
-observables and reproduce the report within declared tolerances. Receipt byte
-identity must be treated as a separate serialization contract rather than
-assumed across runtimes. No accelerator should be allowed to skip the f64 seed
-receipt, tick chain, functional-metric definition, or explicit no-qualia
-boundary.
+RSH v2.7.0 implements the planned second runtime:
+
+- `rsh-tissue` contains the shared Rust simulation;
+- `rsh-tissue-cli` executes the native runtime;
+- `rsh-tissue-wasm` exposes the same implementation through a raw WASM ABI;
+- `scripts/test_tissue_wasm.mjs` executes fresh Python, native Rust, and WASM
+  reports and compares all portable tick and final-cell observables.
+
+The sealed cross-runtime tolerance is `1e-12`. Receipt byte identity is not
+assumed across Python, native Rust, or WASM because their geometry seed receipts,
+math libraries, and serialization paths can differ. Same-runtime replay and
+receipt-chain integrity remain mandatory.
+
+See [Phase 9 Rust/WASM tissue conformance](PHASE9_TISSUE_CONFORMANCE.md).
