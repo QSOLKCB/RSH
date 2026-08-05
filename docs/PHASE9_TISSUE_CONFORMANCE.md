@@ -57,14 +57,16 @@ computed value must match the Python reference hash:
 
 Receipts prove deterministic report identity within a runtime and serialization
 contract. Python, native Rust, and Rust/WASM may use different geometry seed or
-report receipts even when their portable numerical observables agree.
+report receipts even when their portable numerical observables agree. Native and
+WASM execution can also differ at the final floating-point bits because their
+math implementations are distinct compilation targets.
 
 The conformance profile therefore requires:
 
 - deterministic replay inside each runtime;
-- native Rust and WASM report identity for the sealed profile;
-- Python-to-Rust/WASM observable agreement within `1e-12`;
-- no Python receipt identity claim across runtimes.
+- native Rust-to-WASM portable-observable agreement within `1e-12`;
+- Python-to-Rust/WASM portable-observable agreement within `1e-12`;
+- no receipt-identity claim across Python, native Rust, or WASM.
 
 The canonical Python tissue receipt remains recorded in the profile. A Rust or
 WASM receipt does not replace it.
@@ -96,9 +98,10 @@ contract so browser reports remain bounded.
 
 - executes the compiled WASM module;
 - validates the ABI and memory span;
-- compares the complete WASM report with the native Rust report;
-- compares every non-receipt numeric observable against Python;
+- compares every portable WASM observable with the native Rust report;
+- compares every portable native and WASM observable against Python;
 - verifies the sealed Python Q_f values and receipts;
+- reports runtime receipts without requiring cross-runtime identity;
 - checks authority and terminology boundaries.
 
 CI generates fresh Python and native Rust reports before running the harness. No
