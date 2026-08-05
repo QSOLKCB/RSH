@@ -196,14 +196,15 @@ async function runBenchmark() {
     output.message.textContent = "The parallel WASM module is still loading.";
     return;
   }
-  const config = currentConfig();
+
   clearEvidence();
   runButton.disabled = true;
   output.status.textContent = "RUNNING";
   output.status.dataset.kind = "";
-  output.message.textContent = "Warming the f64 Rust/WASM parallel reference…";
+  output.message.textContent = "Validating controls and warming the f64 Rust/WASM parallel reference…";
 
   try {
+    const config = currentConfig();
     let oracle = null;
     for (let index = 0; index < WARMUP_RUNS; index += 1) {
       oracle = runWasm(config).payload;
