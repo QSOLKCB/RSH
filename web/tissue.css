@@ -1,0 +1,40 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  background: #080b0f;
+  color: #d8dde7;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: radial-gradient(circle at top, #15202a 0, #080b0f 45%); }
+main { width: min(1120px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 48px; }
+a { color: #7ad8cf; }
+nav { margin-bottom: 36px; font-family: ui-monospace, monospace; }
+header { margin-bottom: 28px; }
+.eyebrow { color: #f4b860; font-family: ui-monospace, monospace; letter-spacing: .12em; }
+h1 { margin: 0; font-size: clamp(2.3rem, 6vw, 5.2rem); line-height: .95; max-width: 850px; }
+.lede { max-width: 780px; font-size: 1.15rem; line-height: 1.65; color: #aeb7c4; }
+.boundary { border-left: 4px solid #f4b860; background: #101820; padding: 16px 18px; max-width: 820px; }
+.workspace, .evidence { background: rgba(11, 16, 22, .9); border: 1px solid #26323e; border-radius: 14px; padding: 20px; margin-top: 22px; }
+form { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 16px; align-items: end; }
+label { display: grid; gap: 8px; font-family: ui-monospace, monospace; color: #b7c0cd; }
+input { width: 100%; accent-color: #f4b860; background: #0a0f14; border: 1px solid #344250; color: #e8edf5; padding: 10px; }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; }
+button { border: 1px solid #506274; background: #17212b; color: #f2f5f9; padding: 11px 14px; font-weight: 700; cursor: pointer; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 20px 0; }
+.status-grid article { background: #0c1218; border: 1px solid #26323e; padding: 14px; }
+.status-grid span { display: block; color: #7f8b99; font: .78rem ui-monospace, monospace; }
+.status-grid strong { display: block; margin-top: 7px; color: #f4b860; overflow-wrap: anywhere; }
+canvas { width: 100%; height: auto; border: 1px solid #26323e; background: #080b0f; touch-action: none; }
+#message { color: #aeb7c4; }
+dl { display: grid; gap: 12px; }
+dl div { display: grid; grid-template-columns: minmax(150px, .35fr) 1fr; gap: 14px; border-top: 1px solid #26323e; padding-top: 12px; }
+dt { color: #8995a3; }
+dd { margin: 0; font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+footer { color: #7f8b99; margin-top: 30px; font-family: ui-monospace, monospace; }
+
+@media (max-width: 620px) {
+  main { width: min(100% - 20px, 1120px); }
+  dl div { grid-template-columns: 1fr; }
+}
