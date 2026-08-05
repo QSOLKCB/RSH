@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use RSH, please cite this software."
 title: "RSH: Robitaille–Slade Helix Geometry and Evidence Runner"
-version: 2.6.0
+version: 2.7.0
 type: software
 authors:
   - family-names: Robitaille
@@ -19,6 +19,9 @@ keywords:
   - geometric tissue
   - functional cohesion
   - constitutional governance
+  - Rust tissue runtime
+  - tissue WebAssembly
+  - tissue conformance
   - dry-run refinement
   - NPU residual profile
   - Lie group integration

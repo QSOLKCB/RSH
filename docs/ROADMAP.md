@@ -129,21 +129,28 @@ receipt domains are separate from the geometry midpoint law and geometry receipt
 
 ## Phase 7 — Rust/WASM tissue conformance
 
-Status: **planned, not implemented**
+Status: **implemented in v2.7.0**
 
-A second tissue runtime should begin from the sealed Python vectors and must
-reproduce:
+- `rsh-tissue` ports the sealed Python tissue algorithm into a shared Rust crate;
+- the port reproduces cell seeding, edge ordering, bound projection, phase
+  coupling, binding diffusion, neighbour prediction, centroid normalization,
+  Q_f metrics, sidecar fallback, and the complete audit chain;
+- `rsh-tissue-cli` emits native reports, CSV traces, and a Python-observable
+  conformance result;
+- `rsh-tissue-wasm` exposes a raw browser ABI over the shared Rust crate rather
+  than implementing another simulation;
+- the Rust implementation reconstructs and verifies the canonical constitution
+  hash;
+- `scripts/test_tissue_wasm.mjs` executes fresh Python, native Rust, and compiled
+  WASM reports and compares all portable tick and final-cell observables;
+- the sealed cross-runtime tolerance is `1e-12`;
+- receipts remain runtime-specific identities and are not required to match
+  across Python, native Rust, and WASM;
+- same-runtime deterministic replay and audit-chain integrity remain mandatory;
+- the offline browser laboratory executes the Rust tissue runtime directly in
+  WASM and exports its bounded evidence report.
 
-- cell seeding indices and initial state;
-- edge ordering;
-- phase, diffusion, prediction, and Q_f calculations;
-- shared-centroid residuals;
-- sidecar/fallback metadata;
-- every tick-chain receipt input and final report observables within declared
-  cross-runtime tolerances.
-
-Receipt byte identity must not be promised across runtimes unless serialization,
-float formatting, and domain contracts are deliberately unified.
+See [Phase 9 tissue conformance](PHASE9_TISSUE_CONFORMANCE.md).
 
 ## Phase 8 — separately versioned full-path Frenet numerical research
 
@@ -177,14 +184,14 @@ See [Phase 8 numerical research](PHASE8_FRENET_NUMERICS.md).
 ## GitHub Pages
 
 The `web/` source is assembled by `.github/workflows/pages.yml`. The workflow
-builds the canonical and numerical WASM modules, executes both conformance
-harnesses, places the modules under `web/pkg/`, validates the shaders and browser
-assets, and only then uploads the artifact for deployment.
+builds the canonical geometry, numerical path, and tissue WASM modules; executes
+all three conformance harnesses; places the modules under `web/pkg/`; validates
+the shaders and browser assets; and only then uploads the artifact for deployment.
 
-Native C++, FFI, CUDA, and the Python tissue runtime are intentionally not
-executed by Pages. Native adapters are built through CI, CUDA hardware validation
-uses the manual trusted-runner workflow, and tissue evidence is currently
-produced by the Python CLI.
+Native C++, FFI, and CUDA are intentionally not executed by Pages. Native
+adapters are built through CI, CUDA hardware validation uses the manual
+trusted-runner workflow, and the tissue page executes only the bounded shared
+Rust/WASM runtime.
 
 ## Governance rule
 

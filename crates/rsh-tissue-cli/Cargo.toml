@@ -1,0 +1,15 @@
+[package]
+name = "rsh-tissue-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "rsh-tissue"
+path = "src/main.rs"
+
+[dependencies]
+rsh-tissue = { path = "../rsh-tissue" }
+serde_json.workspace = true
