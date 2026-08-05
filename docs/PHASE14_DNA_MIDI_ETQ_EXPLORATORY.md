@@ -15,7 +15,7 @@ feature receives a new name, new conformance profile, and mandatory non-claims.
 - strict validation replaces silent deletion of unsupported characters;
 - incomplete codons are rejected rather than truncated;
 - codon offset is the independent qutrit fibre, preserving all four DNA bases;
-- MIDI contains enough metadata for exact reverse decoding;
+- MIDI contains enough metadata for exact recovery decoding;
 - the Sierpinski recurrence is global rather than reset for each codon;
 - four tetrahedral vertices replace the planar three-direction `x=z` map;
 - Python and JavaScript reproduce the same report, CSV, and MIDI hashes;
