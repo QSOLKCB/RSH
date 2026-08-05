@@ -1,5 +1,5 @@
 const PARAM_BYTES = 64;
-const TRANSFORM_BYTES = 64;
+const TRANSFORM_BYTES = 32;
 const FLOATS_PER_POINT = 16;
 const WORKGROUP_SIZE = 64;
 
@@ -201,7 +201,10 @@ export async function createParallelFrenetGpuRunner(shaderUrl, onDeviceLost = ()
     backend: "webgpu",
     adapter: adapterDescription(info),
     device: device.label || "WebGPU logical device",
+    browser: navigator.userAgent,
     workgroup_size: WORKGROUP_SIZE,
+    transform_bytes: TRANSFORM_BYTES,
+    rotation_representation: "normalized-quaternion-xyzw-f32-v1",
     execution_model: "multi-pass inclusive SE(3) prefix scan",
     parallel_contract: "RSH-FRENET-PARALLEL-V1",
     scan_policy: "hillis-steele-inclusive-se3-v1",
