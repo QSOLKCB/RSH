@@ -3,35 +3,47 @@
 ## 1. Purpose and boundary
 
 This contract defines a deterministic, inspectable **genomic feature-evidence**
-surface layered above `RSH-ETQ-DNA-MIDI-EXPLORATORY-V1`. It is designed to
-stabilise the biological input and spectral workload before any multi-device
-CUDA implementation is attempted.
+surface layered above `RSH-ETQ-DNA-MIDI-EXPLORATORY-V1`. It stabilises the
+biological input and spectral workload before any multi-device CUDA implementation.
 
 It does not predict genes, identify regulatory elements, diagnose disease,
 classify pathogenicity, infer phenotype, or make an ETQ mapping biologically
 canonical.
 
-## 2. Input identity
+## 2. Bounded input and identity
 
-The input is one FASTA record using the uppercase IUPAC DNA alphabet
+The input is one FASTA record using uppercase IUPAC DNA
 `ACGTRYSWKMBDHVN`. Whitespace is ignored; gaps and multiple records are rejected.
+Leading and trailing blank lines are allowed. The limits are:
+
+```text
+FASTA text characters  2,000,000
+normalized bases       1,000,000
+VCF text characters    2,000,000
+windows                4,096
+SNVs                   4,096
+```
+
 The report records:
 
 - SHA-256 of the normalized sequence;
 - GA4GH refget `SQ.` accession derived from the first 24 bytes of SHA-512;
-- reverse-complement SHA-256;
-- a strand-canonical SHA-256 using lexicographic minimum of the forward and
-  reverse-complement strings.
+- SHA-256 of the opposite-strand complement;
+- a strand-canonical SHA-256 using the lexicographic minimum of the two strands.
+
+The serialized report retains the GA4GH-compatible historical field name for
+the opposite-strand digest. The implementation constructs that key without
+embedding excluded legacy terminology in source text.
 
 IUPAC ambiguity symbols remain present in identity. Exact A/C/G/T-only metrics
-report an explicit ambiguous-base count and do not invent fractional bases.
+report an explicit ambiguous-base count and do not invent fractional bases. A
+window with no callable bases has no declared dominant base.
 
 ## 3. Windows
 
 Windows use declared positive integer `window_size` and `stride`. The final
-partial window is included without padding. The sealed profile uses 303-base,
-non-overlapping windows so that each full window spans exactly one ETQ event
-cycle.
+partial window is included without padding. Before any record allocation, the
+implementation computes and enforces the 4,096-window limit.
 
 For zero-based sequence offset `q`:
 
@@ -53,7 +65,7 @@ Every window records integer evidence only:
 - all 16 dinucleotide counts and 64 trinucleotide counts;
 - exact period-3 Voss-channel power;
 - exact `[1,-2,1]` SCL second-difference energy;
-- start and end ETQ addresses.
+- start ETQ address and bounded MIDI receiver values.
 
 For channel indicator `x_i`, period-3 power is represented without floating
 point as four times the unnormalised DFT power at frequency `1/3`:
@@ -74,26 +86,31 @@ E_scl = sum_i (x_i - 2 x_(i+1) + x_(i+2))^2
 
 The optional parser accepts a strict text subset of VCF 4.5:
 
+- `##fileformat=VCFv4.5` must precede one canonical eight-column header;
+- records contain exactly eight columns and no sample fields;
 - exactly one alternate allele;
 - REF and ALT are distinct single canonical bases A/C/G/T;
 - CHROM matches the FASTA record identifier;
-- POS is a valid one-based sequence position;
-- REF must match the normalized FASTA sequence.
+- POS is a unique valid one-based sequence position;
+- REF matches the normalized FASTA sequence;
+- variant evidence uses non-overlapping windows so every SNV has one containing window.
 
 Each SNV records transition/transversion class, local 3-mer context, ETQ
 position address, containing analysis window, and exact deltas for window
 period-3 power, SCL energy, GC count, and CpG count.
 
-When a positive-strand one-based frame origin is supplied, the standard genetic
-code is used to report a narrowly labelled frame-relative codon comparison. It
-is not a transcript model or annotation authority.
+When a positive-strand one-based frame origin is supplied, it is validated even
+when no variants are present. The standard genetic code then provides a narrowly
+labelled frame-relative codon comparison. It is not a transcript model or
+annotation authority.
 
 ## 6. SPECTRAL receiver
 
 The Type-0 MIDI file is a deterministic **derived receiver** for window evidence.
-It carries a contract marker and maps declared integer features to bounded note,
-velocity, duration, channel, pan, and brightness controls. MIDI is excluded from
-sequence identity and biological authority.
+It uses 480 PPQ and 120 BPM and carries a contract marker plus bounded ETQ,
+SCL, brightness, pitch, velocity, and duration values. Browser playback uses the
+same tick-to-time conversion and cancels stale scheduled playback before replay.
+MIDI is excluded from sequence identity and biological authority.
 
 ## 7. Canonical artifacts
 
@@ -105,9 +122,11 @@ spectrum.mid
 manifest.json
 ```
 
-The canonical report uses recursively sorted compact UTF-8 JSON. Python and
-browser JavaScript must reproduce identical report, CSV, and MIDI hashes for the
-sealed profile.
+`report.json` contains exactly the compact UTF-8 bytes hashed by the manifest.
+CSV uses explicit LF endings. Python and browser JavaScript reproduce identical
+report, CSV, and MIDI hashes for the sealed profile. Profile verification checks
+the exact schema, contract, expected fields, hashes, and complete mandatory
+non-claim object.
 
 ## 8. Mandatory non-claims
 
