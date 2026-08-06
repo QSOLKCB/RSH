@@ -46,7 +46,9 @@ jobs:
         run: node scripts/test_f32_sierpinski_inversive_witness.mjs
       - name: CLI canonical artifact replay
         run: |
-          OUT="${RUNNER_TEMP:-$PWD/target/inversive-witness.json}"
+          OUT_ROOT="${RUNNER_TEMP:-$PWD/target}"
+          OUT="$OUT_ROOT/inversive-witness.json"
+          mkdir -p "$OUT_ROOT"
           python3 scripts/f32_sierpinski_inversive_witness.py \
             --word 0x5f3759df --fibre 0 --output "$OUT"
           test -s "$OUT"
