@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - "scripts/f32_sierpinski_cell.py"
       - "scripts/f32_sierpinski_inversive_witness.py"
       - "scripts/test_f32_sierpinski_inversive_witness.mjs"
       - "tests/test_f32_sierpinski_inversive_witness.py"
@@ -15,6 +16,7 @@ on:
       - ".github/workflows/f32-inversive-witness.yml"
   pull_request:
     paths:
+      - "scripts/f32_sierpinski_cell.py"
       - "scripts/f32_sierpinski_inversive_witness.py"
       - "scripts/test_f32_sierpinski_inversive_witness.mjs"
       - "tests/test_f32_sierpinski_inversive_witness.py"
@@ -69,8 +71,10 @@ jobs:
       - name: Source, offline, and authority boundaries
         run: |
           python3 -m py_compile \
+            scripts/f32_sierpinski_cell.py \
             scripts/f32_sierpinski_inversive_witness.py \
             tests/test_f32_sierpinski_inversive_witness.py
+          node --check web/inversive-witness/f32-cell.js
           node --check web/inversive-witness/model.js
           node --check web/inversive-witness/app.js
           node --check web/inversive-witness/sw.js
@@ -78,9 +82,12 @@ jobs:
           python3 -m json.tool conformance/f32_sierpinski_inversive_witness_v1.json >/dev/null
           test -s web/inversive-witness/index.html
           test -s web/inversive-witness/style.css
+          cmp -s web/genomic-spectrum/f32-cell.js web/inversive-witness/f32-cell.js
           grep -q '<title>RSH f32 Sierpiński Inversive Witness Laboratory</title>' web/inversive-witness/index.html
           grep -q 'MAX_WITNESS_COUNT = 4_096' scripts/f32_sierpinski_inversive_witness.py
           grep -q 'MAX_WITNESS_COUNT = 4_096' web/inversive-witness/model.js
+          grep -q 'runGeneration' web/inversive-witness/app.js
+          grep -q 'clearRenderedWitness' web/inversive-witness/app.js
           grep -q 'squared_radius_product' scripts/f32_sierpinski_inversive_witness.py
           grep -q 'double_conjugation_verified' web/inversive-witness/model.js
           grep -q 'clawson_quadrilateral_constructed: false' research/f32-sierpinski-inversive-witness/SPEC.md
