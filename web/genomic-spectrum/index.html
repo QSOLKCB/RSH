@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#151515">
+  <meta name="description" content="Offline deterministic FASTA, genomic-window, SNV, ETQ-address, spectral, and MIDI evidence laboratory.">
   <title>RSH Genomic Spectral Laboratory</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -21,9 +22,9 @@
     <section class="panel inputs">
       <div class="section-head"><div><p class="kicker">01 / SOURCE</p><h2>Sequence and variants</h2></div><button id="loadFixture" class="ghost">Load sealed fixture</button></div>
       <div class="input-grid">
-        <label>Single-record FASTA<textarea id="fasta" spellcheck="false" aria-label="FASTA sequence">&gt;example
+        <label>Single-record FASTA · up to 1,000,000 normalized bases<textarea id="fasta" spellcheck="false" aria-label="FASTA sequence">&gt;example
 ATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAG</textarea></label>
-        <label>Optional VCF 4.5 biallelic SNVs<textarea id="vcf" spellcheck="false" aria-label="VCF variants">##fileformat=VCFv4.5
+        <label>Optional VCF 4.5 · exact eight-column biallelic SNVs<textarea id="vcf" spellcheck="false" aria-label="VCF variants">##fileformat=VCFv4.5
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
 example	4	stop_gain	G	T	.	PASS	.</textarea></label>
       </div>
@@ -33,6 +34,7 @@ example	4	stop_gain	G	T	.	PASS	.</textarea></label>
         <label>Frame origin <input id="frameOrigin" type="number" min="1" placeholder="optional" value="1"></label>
         <button id="analyze" class="primary">Analyze deterministically</button>
       </div>
+      <p class="input-note">Maximum 4,096 windows and 4,096 SNVs. Variant evidence requires non-overlapping windows.</p>
       <p id="status" class="status" role="status">Ready. Processing remains local to this browser.</p>
     </section>
 
@@ -55,7 +57,10 @@ example	4	stop_gain	G	T	.	PASS	.</textarea></label>
     </section>
 
     <section class="panel outputs">
-      <div class="section-head"><div><p class="kicker">04 / RECEIPTS</p><h2>Replay and export</h2></div><button id="play" class="ghost" disabled>Play SPECTRAL receiver</button></div>
+      <div class="section-head">
+        <div><p class="kicker">04 / RECEIPTS</p><h2>Replay and export</h2></div>
+        <div class="transport"><button id="play" class="ghost" disabled>Play SPECTRAL receiver</button><button id="stop" class="ghost" disabled>Stop</button></div>
+      </div>
       <div class="downloads">
         <button data-download="report" disabled>report.json</button>
         <button data-download="windows" disabled>windows.csv</button>
