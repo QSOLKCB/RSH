@@ -48,6 +48,23 @@ jobs:
           test -s "$OUT/mapping.csv"
           test -s "$OUT/sequence.mid"
           test -s "$OUT/manifest.json"
+          python3 - "$OUT" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+
+          out = Path(sys.argv[1])
+          manifest = json.loads((out / "manifest.json").read_text(encoding="utf-8"))
+          for filename, key in (
+              ("report.json", "report_canonical_sha256"),
+              ("mapping.csv", "csv_sha256"),
+              ("sequence.mid", "midi_sha256"),
+          ):
+              digest = hashlib.sha256((out / filename).read_bytes()).hexdigest()
+              if digest != manifest[key]:
+                  raise SystemExit(f"{filename} digest {digest} != {manifest[key]}")
+          PY
       - name: JavaScript cross-runtime conformance
         run: node scripts/test_dna_midi_etq.mjs
       - name: Offline laboratory source boundary
@@ -64,7 +81,13 @@ jobs:
           python3 -m py_compile scripts/dna_midi_etq.py tests/test_dna_midi_etq.py
           python3 -m json.tool conformance/dna_midi_etq_exploratory_v1.json >/dev/null
           grep -q '<title>RSH DNA-ETQ-MIDI Exploratory Laboratory</title>' web/dna-midi/index.html
+          grep -q 'maximum 12,000 normalized bases' web/dna-midi/index.html
           grep -q 'navigator.serviceWorker.register' web/dna-midi/app.js
+          grep -q 'artifacts.reportCanonical' web/dna-midi/app.js
+          grep -q 'secondsPerTick' web/dna-midi/app.js
+          grep -q 'MAX_SEQUENCE_BASES = 12_000' scripts/dna_midi_etq.py
+          grep -q 'MAX_SEQUENCE_BASES = 12_000' web/dna-midi/model.js
           grep -q 'physical_dna_storage_demonstrated: false' research/dna-midi-etq/README.md
           grep -q 'geometry_receipt_authority: false' research/dna-midi-etq/README.md
+          grep -q 'min(calc(100% - 22px), 1400px)' web/dna-midi/style.css
           ! grep -R -q 'frenet_parallel_scan.wgsl\|parallel-gpu.js' web/dna-midi scripts/dna_midi_etq.py
