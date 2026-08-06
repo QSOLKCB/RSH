@@ -22,11 +22,14 @@ BASE_TO_DIGIT = {base: index for index, base in enumerate(BASES)}
 CODONS = tuple(a + b + c for a in BASES for b in BASES for c in BASES)
 CODON_TO_INDEX = {codon: index for index, codon in enumerate(CODONS)}
 ETQ_SITE_COUNT, FIBRE_COUNT, EVENT_COUNT = 101, 3, 303
+MAX_SEQUENCE_BASES = 12_000
+MAX_INPUT_CHARACTERS = MAX_SEQUENCE_BASES * 4
 SCL_STENCIL = (1, -2, 1)
 PHASE_GAUSSIAN_EXPONENTS = (3, 2, 3)
 REGISTER_NAMES = ("Low", "Mid", "High")
 REGISTER_BASES = (36, 60, 84)
 C_MAJOR = (0, 2, 4, 5, 7, 9, 11)
+MIDI_METADATA_CONTROLS = (20, 21, 22, 23, 24, 74)
 TETRAHEDRON_VERTICES = {
     "A": (0.0, 0.0, 0.0),
     "C": (1.0, 0.0, 0.0),
@@ -76,7 +79,15 @@ def event_address(event_index: int) -> tuple[int, int]:
 def normalize_sequence(sequence: str) -> str:
     if not isinstance(sequence, str):
         raise TypeError("DNA sequence must be text")
+    if len(sequence) > MAX_INPUT_CHARACTERS:
+        raise ValueError(
+            f"DNA input text exceeds the {MAX_INPUT_CHARACTERS}-character safety limit"
+        )
     compact = "".join(character for character in sequence.upper() if not character.isspace())
+    if len(compact) > MAX_SEQUENCE_BASES:
+        raise ValueError(
+            f"DNA sequence exceeds the {MAX_SEQUENCE_BASES}-base safety limit"
+        )
     invalid = sorted(set(compact) - set(BASES))
     if invalid:
         raise ValueError(f"DNA sequence contains invalid symbols: {''.join(invalid)}")
@@ -139,17 +150,31 @@ def decode_records(records: Sequence[dict[str, object]]) -> str:
     if not records or len(records) % 3:
         raise ValueError("record count must contain complete codons")
     decoded = []
+    codon_site: int | None = None
     for index, record in enumerate(records):
         base = str(record["base"])
         site = int(record["site_index"])
         fibre = int(record["fibre_label"])
         event = int(record["event_index"])
+        expected_codon_index = index // 3
         if base not in BASES:
             raise ValueError("record contains an invalid base")
         if int(record["base_index"]) != index:
             raise ValueError("record ordering is not canonical")
+        if int(record.get("codon_index", -1)) != expected_codon_index:
+            raise ValueError("record codon index is not canonical")
+        if int(record.get("codon_offset", -1)) != fibre:
+            raise ValueError("record codon offset disagrees with fibre label")
         if fibre != index % 3:
             raise ValueError("record fibre label does not match codon offset")
+        if not 0 <= site < len(CODONS):
+            raise ValueError("record codon site is out of range")
+        if fibre == 0:
+            codon_site = site
+        elif site != codon_site:
+            raise ValueError("records within a codon must use one site index")
+        if str(record.get("codon", "")) != CODONS[site]:
+            raise ValueError("record codon text disagrees with site index")
         if event_index_from_address(site, fibre) != event:
             raise ValueError("record ETQ event index is inconsistent")
         if CODONS[site][fibre] != base:
@@ -191,12 +216,15 @@ def create_midi(records: Sequence[dict[str, object]]) -> bytes:
         start = int(record["base_index"]) * 120
         channel = int(record["midi_channel"])
         site = int(record["site_index"])
+        base = str(record["base"])
+        if base not in BASE_TO_DIGIT:
+            raise ValueError("record contains an invalid base")
         event = int(record["event_index"])
         phase = int(record["phase_gaussian_exponent"])
         pitch = int(record["midi_pitch"])
         scl = int(record["scl_value"])
         controls = (
-            (20, site), (21, BASE_TO_DIGIT[str(record["base"])]),
+            (20, site), (21, BASE_TO_DIGIT[base]),
             (22, event // 128), (23, event % 128), (24, phase),
             (74, 64 if phase == 2 else 96),
         )
@@ -223,7 +251,7 @@ def decode_midi(midi: bytes) -> str:
     if int.from_bytes(midi[10:12], "big") != 1 or int.from_bytes(midi[12:14], "big") != 480:
         raise ValueError("MIDI must contain one 480-PPQ track")
     offset = 8 + header_length
-    if midi[offset:offset + 4] != b"MTrk":
+    if offset + 8 > len(midi) or midi[offset:offset + 4] != b"MTrk":
         raise ValueError("MIDI track chunk is missing")
     length = int.from_bytes(midi[offset + 4:offset + 8], "big")
     track = midi[offset + 8:offset + 8 + length]
@@ -231,12 +259,14 @@ def decode_midi(midi: bytes) -> str:
         raise ValueError("truncated MIDI track")
     offset = tick = 0
     running = None
-    controls = [dict() for _ in range(16)]
+    controls = [{"order": [], "values": {}} for _ in range(16)]
     notes = []
     schema_seen = False
     while offset < len(track):
         delta, offset = _read_vlq(track, offset)
         tick += delta
+        if offset >= len(track):
+            raise ValueError("truncated MIDI event")
         status = track[offset]
         if status < 0x80:
             if running is None:
@@ -247,6 +277,8 @@ def decode_midi(midi: bytes) -> str:
             if status < 0xF0:
                 running = status
         if status == 0xFF:
+            if offset >= len(track):
+                raise ValueError("truncated MIDI meta event")
             meta_type = track[offset]
             offset += 1
             size, offset = _read_vlq(track, offset)
@@ -265,17 +297,28 @@ def decode_midi(midi: bytes) -> str:
         first, second = track[offset], track[offset + 1] if size == 2 else 0
         offset += size
         if kind == 0xB0:
-            controls[channel][first] = second
+            state = controls[channel]
+            expected_index = len(state["order"])
+            if expected_index >= len(MIDI_METADATA_CONTROLS):
+                raise ValueError("MIDI note has excess metadata controls")
+            expected_control = MIDI_METADATA_CONTROLS[expected_index]
+            if first != expected_control:
+                raise ValueError("MIDI metadata controls are missing or reordered")
+            state["order"].append(first)
+            state["values"][first] = second
         elif kind == 0x90 and second > 0:
             state = controls[channel]
-            if any(control not in state for control in (20, 21, 22, 23)):
-                raise ValueError("MIDI note is missing DNA metadata controls")
-            notes.append((tick, channel, state[20], state[21], state[22] * 128 + state[23]))
+            if tuple(state["order"]) != MIDI_METADATA_CONTROLS:
+                raise ValueError("MIDI note is missing fresh DNA metadata controls")
+            values = state["values"]
+            notes.append((tick, channel, values[20], values[21], values[22] * 128 + values[23]))
+            controls[channel] = {"order": [], "values": {}}
     if not schema_seen:
         raise ValueError("MIDI schema marker is missing")
     if not notes or len(notes) % 3:
         raise ValueError("MIDI note count does not contain complete codons")
     decoded, previous = [], -1
+    codon_site: int | None = None
     for index, (tick, fibre, site, digit, event) in enumerate(notes):
         if tick <= previous:
             raise ValueError("MIDI DNA note ordering is not strictly increasing")
@@ -284,6 +327,10 @@ def decode_midi(midi: bytes) -> str:
             raise ValueError("MIDI channel does not match codon offset")
         if not 0 <= site < len(CODONS) or not 0 <= digit < len(BASES):
             raise ValueError("MIDI DNA metadata is out of range")
+        if fibre == 0:
+            codon_site = site
+        elif site != codon_site:
+            raise ValueError("MIDI notes within a codon must use one site index")
         if event_index_from_address(site, fibre) != event:
             raise ValueError("MIDI ETQ event index is inconsistent")
         base = BASES[digit]
@@ -358,8 +405,8 @@ def build_artifacts(sequence: str) -> dict[str, object]:
     manifest = {
         "schema": MANIFEST_SCHEMA, "contract": SCHEMA,
         "sequence_sha256": sha256_hex(sequence.encode("ascii")),
-        "report_canonical_sha256": sha256_hex(canonical.encode()),
-        "csv_sha256": sha256_hex(csv_payload.encode()),
+        "report_canonical_sha256": sha256_hex(canonical.encode("utf-8")),
+        "csv_sha256": sha256_hex(csv_payload.encode("utf-8")),
         "midi_sha256": sha256_hex(midi),
         "record_count": len(records), "round_trip_verified": True,
         "claims": dict(CLAIMS),
@@ -370,18 +417,25 @@ def build_artifacts(sequence: str) -> dict[str, object]:
 def write_artifacts(sequence: str, output_directory: Path) -> dict[str, object]:
     artifacts = build_artifacts(sequence)
     output_directory.mkdir(parents=True, exist_ok=True)
-    (output_directory / "report.json").write_text(json.dumps(artifacts["report"], indent=2, sort_keys=True) + "\n")
-    (output_directory / "mapping.csv").write_text(str(artifacts["csv"]))
+    (output_directory / "report.json").write_bytes(str(artifacts["report_canonical"]).encode("utf-8"))
+    (output_directory / "mapping.csv").write_bytes(str(artifacts["csv"]).encode("utf-8"))
     (output_directory / "sequence.mid").write_bytes(bytes(artifacts["midi"]))
-    (output_directory / "manifest.json").write_text(json.dumps(artifacts["manifest"], indent=2, sort_keys=True) + "\n")
+    manifest_bytes = (json.dumps(artifacts["manifest"], indent=2, sort_keys=True) + "\n").encode("utf-8")
+    (output_directory / "manifest.json").write_bytes(manifest_bytes)
     return artifacts
 
 
 def verify_profile(profile_path: Path) -> dict[str, object]:
-    profile = json.loads(profile_path.read_text())
+    profile = json.loads(profile_path.read_text(encoding="utf-8"))
     if profile.get("schema") != "RSH-ETQ-DNA-MIDI-CONFORMANCE-V1":
         raise ValueError("unexpected conformance profile schema")
+    if profile.get("contract") != SCHEMA:
+        raise ValueError("conformance profile contract does not match codec contract")
+    if profile.get("expected_claims") != CLAIMS:
+        raise ValueError("conformance profile expected_claims do not match mandatory boundaries")
     manifest = build_artifacts(profile["sequence"])["manifest"]
+    if manifest["contract"] != profile["contract"] or manifest["claims"] != profile["expected_claims"]:
+        raise AssertionError("generated manifest disagrees with profile contract or claims")
     for key, expected in profile["expected_hashes"].items():
         if manifest[key] != expected:
             raise AssertionError(f"{key} mismatch: {manifest[key]} != {expected}")
@@ -402,7 +456,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     if bool(args.sequence) == bool(args.sequence_file):
         raise SystemExit("provide exactly one of --sequence or --sequence-file")
-    sequence = args.sequence if args.sequence is not None else args.sequence_file.read_text()
+    sequence = args.sequence if args.sequence is not None else args.sequence_file.read_text(encoding="utf-8")
     artifacts = write_artifacts(sequence, args.output) if args.output else build_artifacts(sequence)
     print(json.dumps(artifacts["manifest"], indent=2, sort_keys=True))
     return 0
