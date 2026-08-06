@@ -19,11 +19,14 @@ const BASE_TO_DIGIT = new Map([...BASES].map((base, index) => [base, index]));
 export const ETQ_SITE_COUNT = 101;
 export const FIBRE_COUNT = 3;
 export const EVENT_COUNT = 303;
+export const MAX_SEQUENCE_BASES = 12_000;
+export const MAX_INPUT_CHARACTERS = MAX_SEQUENCE_BASES * 4;
 export const SCL_STENCIL = Object.freeze([1, -2, 1]);
 export const PHASE_GAUSSIAN_EXPONENTS = Object.freeze([3, 2, 3]);
 export const REGISTER_NAMES = Object.freeze(["Low", "Mid", "High"]);
 const REGISTER_BASES = Object.freeze([36, 60, 84]);
 const C_MAJOR = Object.freeze([0, 2, 4, 5, 7, 9, 11]);
+const MIDI_METADATA_CONTROLS = Object.freeze([20, 21, 22, 23, 24, 74]);
 
 const SQRT3 = Math.sqrt(3);
 const SQRT_TWO_THIRDS = Math.sqrt(2 / 3);
@@ -83,7 +86,13 @@ export function eventAddress(eventIndex) {
 
 export function normalizeSequence(sequence) {
   if (typeof sequence !== "string") throw new TypeError("DNA sequence must be text");
+  if (sequence.length > MAX_INPUT_CHARACTERS) {
+    throw new Error(`DNA input text exceeds the ${MAX_INPUT_CHARACTERS}-character safety limit`);
+  }
   const compact = sequence.toUpperCase().replace(/\s/g, "");
+  if (compact.length > MAX_SEQUENCE_BASES) {
+    throw new Error(`DNA sequence exceeds the ${MAX_SEQUENCE_BASES}-base safety limit`);
+  }
   const invalid = [...new Set([...compact].filter((base) => !BASES.includes(base)))].sort();
   if (invalid.length > 0) throw new Error(`DNA sequence contains invalid symbols: ${invalid.join("")}`);
   if (compact.length === 0) throw new Error("DNA sequence must contain at least one codon");
@@ -155,18 +164,34 @@ export function decodeRecords(records) {
   if (!Array.isArray(records) || records.length === 0 || records.length % 3 !== 0) {
     throw new Error("record count must contain complete codons");
   }
+  let codonSite = null;
   return records.map((record, expectedIndex) => {
     const base = String(record.base);
     if (!BASES.includes(base)) throw new Error("record contains an invalid base");
     if (Number(record.base_index) !== expectedIndex) throw new Error("record ordering is not canonical");
+    const expectedCodonIndex = Math.floor(expectedIndex / 3);
+    if (Number(record.codon_index) !== expectedCodonIndex) {
+      throw new Error("record codon index is not canonical");
+    }
     const siteIndex = Number(record.site_index);
     const fibreLabel = Number(record.fibre_label);
     const eventIndex = Number(record.event_index);
+    if (Number(record.codon_offset) !== fibreLabel) {
+      throw new Error("record codon offset disagrees with fibre label");
+    }
     if (fibreLabel !== expectedIndex % 3) throw new Error("record fibre label does not match codon offset");
+    if (!Number.isSafeInteger(siteIndex) || siteIndex < 0 || siteIndex >= CODONS.length) {
+      throw new Error("record codon site is out of range");
+    }
+    if (fibreLabel === 0) codonSite = siteIndex;
+    else if (siteIndex !== codonSite) throw new Error("records within a codon must use one site index");
+    if (String(record.codon) !== CODONS[siteIndex]) {
+      throw new Error("record codon text disagrees with site index");
+    }
     if (eventIndexFromAddress(siteIndex, fibreLabel) !== eventIndex) {
       throw new Error("record ETQ event index is inconsistent");
     }
-    if (CODONS[siteIndex]?.[fibreLabel] !== base) {
+    if (CODONS[siteIndex][fibreLabel] !== base) {
       throw new Error("record base does not match codon site and fibre");
     }
     return base;
@@ -231,6 +256,7 @@ export function createMidi(records) {
     const channel = Number(record.midi_channel);
     const siteIndex = Number(record.site_index);
     const baseDigit = BASE_TO_DIGIT.get(String(record.base));
+    if (baseDigit === undefined) throw new Error("record contains an invalid base");
     const eventIndex = Number(record.event_index);
     const phase = Number(record.phase_gaussian_exponent);
     const pitch = Number(record.midi_pitch);
@@ -295,7 +321,9 @@ export function decodeMidi(input) {
   if (readUint16be(midi, 10) !== 1) throw new Error("MIDI must contain exactly one track");
   if (readUint16be(midi, 12) !== 480) throw new Error("MIDI division must be 480 PPQ");
   const trackOffset = 8 + headerLength;
-  if (asciiString(midi.slice(trackOffset, trackOffset + 4)) !== "MTrk") throw new Error("MIDI track chunk is missing");
+  if (trackOffset + 8 > midi.length || asciiString(midi.slice(trackOffset, trackOffset + 4)) !== "MTrk") {
+    throw new Error("MIDI track chunk is missing");
+  }
   const trackLength = readUint32be(midi, trackOffset + 4);
   const track = midi.slice(trackOffset + 8, trackOffset + 8 + trackLength);
   if (track.length !== trackLength) throw new Error("truncated MIDI track");
@@ -303,7 +331,7 @@ export function decodeMidi(input) {
   let offset = 0;
   let absoluteTick = 0;
   let runningStatus = null;
-  const controls = Array.from({ length: 16 }, () => new Map());
+  const controls = Array.from({ length: 16 }, () => ({ order: [], values: new Map() }));
   const decoded = [];
   let schemaSeen = false;
 
@@ -342,25 +370,35 @@ export function decodeMidi(input) {
     const data1 = track[offset];
     const data2 = dataLength === 2 ? track[offset + 1] : 0;
     offset += dataLength;
-    if (messageType === 0xb0) controls[channel].set(data1, data2);
+    if (messageType === 0xb0) {
+      const state = controls[channel];
+      const expectedControl = MIDI_METADATA_CONTROLS[state.order.length];
+      if (expectedControl === undefined) throw new Error("MIDI note has excess metadata controls");
+      if (data1 !== expectedControl) throw new Error("MIDI metadata controls are missing or reordered");
+      state.order.push(data1);
+      state.values.set(data1, data2);
+    }
     if (messageType === 0x90 && data2 > 0) {
       const state = controls[channel];
-      for (const control of [20, 21, 22, 23]) {
-        if (!state.has(control)) throw new Error("MIDI note is missing DNA metadata controls");
+      if (state.order.length !== MIDI_METADATA_CONTROLS.length
+          || state.order.some((control, index) => control !== MIDI_METADATA_CONTROLS[index])) {
+        throw new Error("MIDI note is missing fresh DNA metadata controls");
       }
       decoded.push({
         tick: absoluteTick,
         fibreLabel: channel,
-        siteIndex: state.get(20),
-        baseDigit: state.get(21),
-        eventIndex: state.get(22) * 128 + state.get(23),
+        siteIndex: state.values.get(20),
+        baseDigit: state.values.get(21),
+        eventIndex: state.values.get(22) * 128 + state.values.get(23),
       });
+      controls[channel] = { order: [], values: new Map() };
     }
   }
 
   if (!schemaSeen) throw new Error("MIDI schema marker is missing");
   if (decoded.length === 0 || decoded.length % 3 !== 0) throw new Error("MIDI note count does not contain complete codons");
   let previousTick = -1;
+  let codonSite = null;
   return decoded.map((record, recordIndex) => {
     if (record.tick <= previousTick) throw new Error("MIDI DNA note ordering is not strictly increasing");
     previousTick = record.tick;
@@ -370,6 +408,10 @@ export function decodeMidi(input) {
     }
     if (!Number.isSafeInteger(record.baseDigit) || record.baseDigit < 0 || record.baseDigit >= BASES.length) {
       throw new Error("MIDI base digit is out of range");
+    }
+    if (record.fibreLabel === 0) codonSite = record.siteIndex;
+    else if (record.siteIndex !== codonSite) {
+      throw new Error("MIDI notes within a codon must use one site index");
     }
     if (eventIndexFromAddress(record.siteIndex, record.fibreLabel) !== record.eventIndex) {
       throw new Error("MIDI ETQ event index is inconsistent");
