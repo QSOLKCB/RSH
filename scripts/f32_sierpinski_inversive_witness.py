@@ -12,14 +12,24 @@ import re
 from pathlib import Path
 from typing import Iterable, Sequence
 
-from scripts.f32_sierpinski_cell import (
-    CONTRACT as CELL_CONTRACT,
-    canonical_json_bytes,
-    exact_cell_centroid,
-    validate_word,
-    word_to_cell,
-    word_to_trits,
-)
+if __package__:
+    from scripts.f32_sierpinski_cell import (
+        CONTRACT as CELL_CONTRACT,
+        canonical_json_bytes,
+        exact_cell_centroid,
+        validate_word,
+        word_to_cell,
+        word_to_trits,
+    )
+else:
+    from f32_sierpinski_cell import (
+        CONTRACT as CELL_CONTRACT,
+        canonical_json_bytes,
+        exact_cell_centroid,
+        validate_word,
+        word_to_cell,
+        word_to_trits,
+    )
 
 CONTRACT = "RSH-F32-SIERPINSKI-INVERSIVE-WITNESS-V1"
 WITNESS_SCHEMA = "RSH-F32-SIERPINSKI-INVERSIVE-WITNESS-RECORD-V1"
