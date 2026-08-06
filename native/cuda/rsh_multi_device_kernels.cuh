@@ -148,7 +148,7 @@ __host__ __device__ inline Transform local_interval(
       make_float4(translation.x, translation.y, translation.z, 0.0F)};
 }
 
-__global__ inline void build_local_prefixes(
+__global__ void build_local_prefixes(
     Parameters parameters,
     std::uint32_t start_interval,
     std::uint32_t interval_count,
@@ -167,7 +167,7 @@ __global__ inline void build_local_prefixes(
   reduction[0] = current;
 }
 
-__global__ inline void emit_identity(Parameters parameters, PathPoint* output) {
+__global__ void emit_identity(Parameters parameters, PathPoint* output) {
   if (blockIdx.x != 0U || threadIdx.x != 0U) {
     return;
   }
@@ -178,7 +178,7 @@ __global__ inline void emit_identity(Parameters parameters, PathPoint* output) {
       make_float4(0.0F, 0.0F, 1.0F, parameters.s0)};
 }
 
-__global__ inline void apply_base_and_emit(
+__global__ void apply_base_and_emit(
     Parameters parameters,
     std::uint32_t start_interval,
     std::uint32_t interval_count,
