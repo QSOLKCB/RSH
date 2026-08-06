@@ -5,7 +5,7 @@ import {
   validateWord,
   wordToCell,
   wordToTrits,
-} from "../genomic-spectrum/f32-cell.js";
+} from "./f32-cell.js";
 
 export const CONTRACT = "RSH-F32-SIERPINSKI-INVERSIVE-WITNESS-V1";
 export const WITNESS_SCHEMA = "RSH-F32-SIERPINSKI-INVERSIVE-WITNESS-RECORD-V1";
