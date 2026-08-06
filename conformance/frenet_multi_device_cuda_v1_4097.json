@@ -38,7 +38,9 @@
     "max_frame_vs_f64_shard_reference": 0.0005,
     "max_schedule_vs_f64": 0.0001,
     "max_frame_norm_error": 0.00005,
-    "max_frame_orthogonality_error": 0.00005
+    "max_frame_orthogonality_error": 0.00005,
+    "max_tail_vs_reduction_component_error": 0.00001,
+    "centre_error": 0.000001
   },
   "expected": {
     "intervals": 4096,
