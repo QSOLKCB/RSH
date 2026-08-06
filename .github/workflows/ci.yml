@@ -337,7 +337,13 @@ jobs:
         shell: bash
         run: |
           set +e
-          grep -RinE --exclude-dir=.git --exclude-dir=target --exclude='*.svg' --exclude='ci.yml' '(verschoor|dave mode|knot|everse|anus)' .
+          grep -RinE \
+            --exclude-dir=.git \
+            --exclude-dir=target \
+            --exclude='*.svg' \
+            --exclude='ci.yml' \
+            '(^|[^[:alnum:]_])(verschoor|dave[[:space:]]+mode|knot|everse|anus)([^[:alnum:]_]|$)' \
+            .
           status=$?
           set -e
 
