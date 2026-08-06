@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0b1014">
+  <meta name="description" content="Offline exact inversion-reflection witnesses for IEEE-754 f32 Sierpiński cells.">
+  <title>RSH f32 Sierpiński Inversive Witness Laboratory</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a class="brand" href="../">RSH<span>⁹</span></a>
+      <div><a href="../genomic-spectrum/">Genomic spectrum</a><a href="#evidence">Evidence</a></div>
+    </nav>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">RSH-F32-SIERPINSKI-INVERSIVE-WITNESS-V1</p>
+        <h1>The float cell<br><em>finds its way home.</em></h1>
+        <p class="lede">A raw IEEE-754 word becomes an exact depth-21 Sierpiński cell. Its centroid is inverted through the unit triangle’s circumcircle, reflected across an ETQ-fibre-selected median, and transformed again to recover the source exactly.</p>
+      </div>
+      <aside>
+        <strong>Exact sidecar, not physical geometry</strong>
+        <p>The identity is the raw word and trit address. Rational barycentric evidence proves the involution. The canvas is only a projection.</p>
+      </aside>
+    </section>
+  </header>
+
+  <main>
+    <section class="panel workbench">
+      <form id="witness-form" class="controls">
+        <p class="eyebrow">01 / INPUT</p>
+        <h2>Build a witness</h2>
+        <label for="word">IEEE-754 word · hexadecimal</label>
+        <input id="word" value="5f3759df" maxlength="10" spellcheck="false" autocomplete="off">
+        <label for="fibre">ETQ fibre / reflection median</label>
+        <select id="fibre">
+          <option value="0">0 · median through left</option>
+          <option value="1">1 · median through right</option>
+          <option value="2">2 · median through apex</option>
+        </select>
+        <div class="buttons">
+          <button class="primary" type="submit">Compute exact witness</button>
+          <button id="download" type="button" disabled>Download JSON</button>
+        </div>
+        <p id="status" role="status">Ready.</p>
+        <dl class="summary">
+          <div><dt>Word</dt><dd id="metric-word">—</dd></div>
+          <div><dt>Axis</dt><dd id="metric-axis">—</dd></div>
+          <div><dt>Radius² product</dt><dd id="metric-product">—</dd></div>
+          <div><dt>Double application</dt><dd id="metric-double">—</dd></div>
+        </dl>
+      </form>
+
+      <section class="visual">
+        <div class="visual-head">
+          <div><p class="eyebrow">02 / EXACT INVOLUTION</p><h2>Inversion + median reflection</h2></div>
+          <span id="badge">NOT RUN</span>
+        </div>
+        <canvas id="diagram" width="900" height="650" aria-label="Projected Sierpiński cell inversive witness"></canvas>
+        <div class="legend"><i class="source"></i>source <i class="conjugate"></i>conjugate <i class="recovered"></i>recovered</div>
+      </section>
+    </section>
+
+    <section id="evidence" class="panel evidence">
+      <div><p class="eyebrow">03 / CANONICAL EVIDENCE</p><h2>Integers first. Picture second.</h2></div>
+      <div class="hash"><span>Source cell SHA-256</span><code id="cell-hash">—</code></div>
+      <div class="evidence-grid">
+        <article><h3>Source centroid</h3><code id="source-rational">—</code></article>
+        <article><h3>Conjugate</h3><code id="conjugate-rational">—</code></article>
+        <article><h3>Second application</h3><code id="recovered-rational">—</code></article>
+      </div>
+      <pre id="receipt">No witness generated.</pre>
+      <div id="claims" class="claims"></div>
+    </section>
+  </main>
+
+  <footer>Inversion constant c² = 1/3 · exact squared-radius product = 1/9 · physical multi-device CUDA deferred to PR #21.</footer>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

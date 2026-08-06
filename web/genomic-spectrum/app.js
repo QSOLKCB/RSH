@@ -10,7 +10,7 @@ import {
 } from "./model.js";
 
 const $ = id => document.getElementById(id);
-const state = { artifacts: null, audio: null, nodes: [], timeout: null };
+const state = { artifacts: null, audio: null, nodes: [], timeout: null, analysisGeneration: 0 };
 const unit = "ATGGAACTGCCTGGCTTTAACGCGTAG";
 const fixtureSequence = (unit.repeat(11) + "ACGTNN").repeat(2);
 const fixtureFasta = `>synthetic_chr sealed genomic spectral fixture\n${fixtureSequence}\n`;
@@ -149,7 +149,9 @@ function clearArtifacts() {
   $("receipt").textContent = "No receipt generated.";
 }
 async function analyze() {
+  const generation = ++state.analysisGeneration;
   clearArtifacts();
+  $("analyze").disabled = true;
   try {
     setStatus("Normalizing FASTA and computing exact evidence…");
     const windowSize = Number($("windowSize").value);
@@ -157,8 +159,10 @@ async function analyze() {
     const frameText = $("frameOrigin").value.trim();
     const frame = frameText ? Number(frameText) : null;
     const result = await buildReport($("fasta").value, $("vcf").value || null, windowSize, stride, frame);
+    if (generation !== state.analysisGeneration) return;
     const reportBytes = utf8(canonicalJson(result.report));
     const manifest = await manifestFor(reportBytes, result.windowsCsv, result.variantsCsv, result.midi);
+    if (generation !== state.analysisGeneration) return;
     state.artifacts = {
       report: reportBytes,
       windows: result.windowsCsv,
@@ -172,8 +176,11 @@ async function analyze() {
     setOutputEnabled(true);
     setStatus(`PASS · ${result.report.window_count} window(s), ${result.report.variant_count} SNV(s), canonical artifacts ready.`);
   } catch (error) {
+    if (generation !== state.analysisGeneration) return;
     console.error(error);
     setStatus(`REJECTED · ${error instanceof Error ? error.message : String(error)}`, true);
+  } finally {
+    if (generation === state.analysisGeneration) $("analyze").disabled = false;
   }
 }
 function download(name, bytes, type) {
@@ -218,6 +225,9 @@ $("fasta").maxLength = MAX_FASTA_CHARACTERS;
 $("vcf").maxLength = MAX_VCF_CHARACTERS;
 $("analyze").addEventListener("click", analyze);
 $("loadFixture").addEventListener("click", () => {
+  state.analysisGeneration += 1;
+  clearArtifacts();
+  $("analyze").disabled = false;
   $("fasta").value = fixtureFasta;
   $("vcf").value = fixtureVcf;
   $("windowSize").value = 303;

@@ -18,6 +18,8 @@ PROFILE_SCHEMA = "RSH-F32-SIERPINSKI-CELL-CONFORMANCE-V1"
 DEPTH = 21
 WORD_LIMIT = 1 << 32
 TRIT_CAPACITY = 3**DEPTH
+MAX_BUNDLE_CELLS = 16_384
+MAX_FIELD_CHARACTERS = 128
 VERTEX_LABELS = ("left", "right", "apex")
 CLAIMS = {
     "actual_multi_device_execution": False,
@@ -45,10 +47,28 @@ def sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _claims_are_exact(value: object) -> bool:
+    if not isinstance(value, dict) or set(value) != set(CLAIMS):
+        return False
+    return all(type(value[key]) is bool and value[key] is expected for key, expected in CLAIMS.items())
+
+
 def validate_word(word: int) -> int:
     if isinstance(word, bool) or not isinstance(word, int) or not 0 <= word < WORD_LIMIT:
         raise ValueError("binary32 word must be an integer in [0, 2^32)")
     return word
+
+
+def validate_field(field: str | None) -> str | None:
+    if field is None:
+        return None
+    if not isinstance(field, str) or not field:
+        raise ValueError("field must be nonempty text")
+    if len(field) > MAX_FIELD_CHARACTERS:
+        raise ValueError(f"field exceeds the {MAX_FIELD_CHARACTERS}-character safety limit")
+    if any(ord(character) < 0x20 or ord(character) > 0x7E for character in field):
+        raise ValueError("field must contain printable ASCII only for cross-runtime canonicalization")
+    return field
 
 
 def word_to_trits(word: int) -> str:
@@ -122,8 +142,7 @@ def word_to_cell(word: int, *, cell_index: int | None = None, field: str | None 
     word = validate_word(word)
     if cell_index is not None and (isinstance(cell_index, bool) or not isinstance(cell_index, int) or cell_index < 0):
         raise ValueError("cell_index must be a nonnegative integer")
-    if field is not None and (not isinstance(field, str) or not field):
-        raise ValueError("field must be nonempty text")
+    field = validate_field(field)
     trits = word_to_trits(word)
     vertices, vertex_denominator = exact_cell_vertices(trits)
     centroid, centroid_denominator = exact_cell_centroid(trits)
@@ -158,7 +177,7 @@ def validate_cell(cell: dict[str, object]) -> int:
         raise TypeError("cell must be an object")
     if cell.get("schema") != CELL_SCHEMA or cell.get("contract") != CONTRACT:
         raise ValueError("unexpected Sierpinski cell schema or contract")
-    if cell.get("claims") != CLAIMS:
+    if not _claims_are_exact(cell.get("claims")):
         raise ValueError("Sierpinski cell claim boundary mismatch")
     trits = cell.get("address_trits")
     word = trits_to_word(trits if isinstance(trits, str) else "")
@@ -174,6 +193,8 @@ def validate_cell(cell: dict[str, object]) -> int:
         raise ValueError("binary32 fraction bits mismatch")
     if cell.get("classification") != classify_word(word):
         raise ValueError("binary32 classification mismatch")
+    if "field" in cell:
+        validate_field(cell.get("field"))
     vertices, vertex_denominator = exact_cell_vertices(trits)
     centroid, centroid_denominator = exact_cell_centroid(trits)
     if cell.get("cell_vertex_barycentric_numerators") != vertices:
@@ -188,13 +209,23 @@ def validate_cell(cell: dict[str, object]) -> int:
 
 
 def cells_for_words(words: Iterable[int], fields: Sequence[str] | None = None) -> list[dict[str, object]]:
-    materialized = list(words)
-    if fields is not None and len(fields) != len(materialized):
+    if fields is not None:
+        if isinstance(fields, (str, bytes)) or not isinstance(fields, Sequence):
+            raise TypeError("fields must be a sequence of text labels")
+        if len(fields) > MAX_BUNDLE_CELLS:
+            raise ValueError(f"field count exceeds the {MAX_BUNDLE_CELLS}-cell bundle limit")
+    cells: list[dict[str, object]] = []
+    for index, word in enumerate(words):
+        if index >= MAX_BUNDLE_CELLS:
+            raise ValueError(f"word iterable exceeds the {MAX_BUNDLE_CELLS}-cell bundle limit")
+        if fields is not None and index >= len(fields):
+            raise ValueError("field count must equal word count")
+        cells.append(
+            word_to_cell(word, cell_index=index, field=None if fields is None else fields[index])
+        )
+    if fields is not None and len(fields) != len(cells):
         raise ValueError("field count must equal word count")
-    return [
-        word_to_cell(word, cell_index=index, field=None if fields is None else fields[index])
-        for index, word in enumerate(materialized)
-    ]
+    return cells
 
 
 def build_bundle(words: Iterable[int], fields: Sequence[str] | None = None) -> dict[str, object]:
@@ -219,10 +250,17 @@ def build_bundle(words: Iterable[int], fields: Sequence[str] | None = None) -> d
 def verify_bundle(bundle: dict[str, object]) -> list[int]:
     if bundle.get("schema") != BUNDLE_SCHEMA or bundle.get("contract") != CONTRACT:
         raise ValueError("unexpected Sierpinski bundle schema or contract")
-    if bundle.get("claims") != CLAIMS:
+    if not _claims_are_exact(bundle.get("claims")):
         raise ValueError("Sierpinski bundle claim boundary mismatch")
     cells = bundle.get("cells")
-    if not isinstance(cells, list) or bundle.get("cell_count") != len(cells):
+    cell_count = bundle.get("cell_count")
+    if (
+        not isinstance(cells, list)
+        or isinstance(cell_count, bool)
+        or not isinstance(cell_count, int)
+        or cell_count != len(cells)
+        or cell_count > MAX_BUNDLE_CELLS
+    ):
         raise ValueError("Sierpinski bundle cell count mismatch")
     words = [validate_cell(cell) for cell in cells]
     unsigned = dict(bundle)
@@ -238,7 +276,7 @@ def verify_profile(path: Path) -> dict[str, object]:
     profile = json.loads(path.read_text(encoding="utf-8"))
     if profile.get("schema") != PROFILE_SCHEMA or profile.get("contract") != CONTRACT:
         raise ValueError("unexpected Sierpinski conformance profile")
-    if profile.get("expected_claims") != CLAIMS:
+    if not _claims_are_exact(profile.get("expected_claims")):
         raise ValueError("Sierpinski conformance claim boundary mismatch")
     words = [int(text, 16) for text in profile["words_hex"]]
     bundle = build_bundle(words, profile.get("fields"))

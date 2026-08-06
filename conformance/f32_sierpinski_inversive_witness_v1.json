@@ -1,0 +1,48 @@
+{
+  "schema": "RSH-F32-SIERPINSKI-INVERSIVE-WITNESS-CONFORMANCE-V1",
+  "contract": "RSH-F32-SIERPINSKI-INVERSIVE-WITNESS-V1",
+  "words_hex": [
+    "00000000",
+    "80000000",
+    "00000001",
+    "007fffff",
+    "00800000",
+    "3f800000",
+    "bf800000",
+    "40490fdb",
+    "5f3759df",
+    "7f7fffff",
+    "7f800000",
+    "ff800000",
+    "7fc00001",
+    "7fa00001",
+    "ffffffff"
+  ],
+  "fibre_labels": [
+    0,
+    2,
+    1,
+    1,
+    2,
+    2,
+    1,
+    2,
+    0,
+    2,
+    0,
+    2,
+    2,
+    0,
+    0
+  ],
+  "expected_bundle_sha256": "c356948f6967d89c3dbb248bfb0e66e557a6d5a753502ecfd844cfe4e383dc99",
+  "expected_claims": {
+    "actual_multi_device_execution": false,
+    "clawson_quadrilateral_constructed": false,
+    "compression_claim": false,
+    "coordinates_are_identity": false,
+    "distributed_execution": false,
+    "geometry_receipt_authority": false,
+    "physical_storage_demonstrated": false
+  }
+}

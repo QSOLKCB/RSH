@@ -1,0 +1,97 @@
+name: F32 Sierpinski inversive witnesses
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/f32_sierpinski_cell.py"
+      - "scripts/f32_sierpinski_inversive_witness.py"
+      - "scripts/test_f32_sierpinski_inversive_witness.mjs"
+      - "tests/test_f32_sierpinski_inversive_witness.py"
+      - "conformance/f32_sierpinski_inversive_witness_v1.json"
+      - "research/f32-sierpinski-inversive-witness/**"
+      - "docs/PHASE16_F32_SIERPINSKI_INVERSIVE_WITNESS.md"
+      - "web/inversive-witness/**"
+      - "web/genomic-spectrum/f32-cell.js"
+      - ".github/workflows/f32-inversive-witness.yml"
+  pull_request:
+    paths:
+      - "scripts/f32_sierpinski_cell.py"
+      - "scripts/f32_sierpinski_inversive_witness.py"
+      - "scripts/test_f32_sierpinski_inversive_witness.mjs"
+      - "tests/test_f32_sierpinski_inversive_witness.py"
+      - "conformance/f32_sierpinski_inversive_witness_v1.json"
+      - "research/f32-sierpinski-inversive-witness/**"
+      - "docs/PHASE16_F32_SIERPINSKI_INVERSIVE_WITNESS.md"
+      - "web/inversive-witness/**"
+      - "web/genomic-spectrum/f32-cell.js"
+      - ".github/workflows/f32-inversive-witness.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python exact-rational and tamper regressions
+        run: python3 -m unittest tests.test_f32_sierpinski_inversive_witness -v
+      - name: Verify sealed Python profile
+        run: |
+          python3 scripts/f32_sierpinski_inversive_witness.py \
+            --verify-profile conformance/f32_sierpinski_inversive_witness_v1.json
+      - name: JavaScript cross-runtime conformance
+        run: node scripts/test_f32_sierpinski_inversive_witness.mjs
+      - name: CLI canonical artifact replay
+        run: |
+          OUT_ROOT="${RUNNER_TEMP:-$PWD/target}"
+          OUT="$OUT_ROOT/inversive-witness.json"
+          mkdir -p "$OUT_ROOT"
+          python3 scripts/f32_sierpinski_inversive_witness.py \
+            --word 0x5f3759df --fibre 0 --output "$OUT"
+          test -s "$OUT"
+          python3 - "$OUT" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          payload = Path(sys.argv[1]).read_bytes()
+          assert payload.endswith(b"\n")
+          witness_bundle = json.loads(payload)
+          assert witness_bundle["round_trip_verified"] is True
+          assert witness_bundle["product_invariant_verified"] is True
+          assert witness_bundle["witnesses"][0]["squared_radius_product"] == {
+              "numerator": "1", "denominator": "9"
+          }
+          PY
+      - name: Source, offline, and authority boundaries
+        run: |
+          python3 -m py_compile \
+            scripts/f32_sierpinski_cell.py \
+            scripts/f32_sierpinski_inversive_witness.py \
+            tests/test_f32_sierpinski_inversive_witness.py
+          node --check web/inversive-witness/f32-cell.js
+          node --check web/inversive-witness/model.js
+          node --check web/inversive-witness/app.js
+          node --check web/inversive-witness/sw.js
+          node --check scripts/test_f32_sierpinski_inversive_witness.mjs
+          python3 -m json.tool conformance/f32_sierpinski_inversive_witness_v1.json >/dev/null
+          test -s web/inversive-witness/index.html
+          test -s web/inversive-witness/style.css
+          cmp -s web/genomic-spectrum/f32-cell.js web/inversive-witness/f32-cell.js
+          grep -q '<title>RSH f32 Sierpiński Inversive Witness Laboratory</title>' web/inversive-witness/index.html
+          grep -q 'MAX_WITNESS_COUNT = 4_096' scripts/f32_sierpinski_inversive_witness.py
+          grep -q 'MAX_WITNESS_COUNT = 4_096' web/inversive-witness/model.js
+          grep -q 'runGeneration' web/inversive-witness/app.js
+          grep -q 'clearRenderedWitness' web/inversive-witness/app.js
+          grep -q 'squared_radius_product' scripts/f32_sierpinski_inversive_witness.py
+          grep -q 'double_conjugation_verified' web/inversive-witness/model.js
+          grep -q 'clawson_quadrilateral_constructed: false' research/f32-sierpinski-inversive-witness/SPEC.md
+          grep -q 'geometry_receipt_authority: false' research/f32-sierpinski-inversive-witness/SPEC.md
+          grep -q 'physical_storage_demonstrated: false' research/f32-sierpinski-inversive-witness/SPEC.md
+          ! grep -R -E -q 'https?://|from "https?://' web/inversive-witness
+          ! grep -R -q 'navigator.gpu\|cuda' web/inversive-witness
