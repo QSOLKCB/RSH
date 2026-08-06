@@ -1,4 +1,9 @@
-import { CLAIMS, TETRAHEDRON_VERTICES, buildArtifacts } from "./model.js";
+import {
+  CLAIMS,
+  MAX_SEQUENCE_BASES,
+  TETRAHEDRON_VERTICES,
+  buildArtifacts,
+} from "./model.js";
 
 const form = document.querySelector("#codec-form");
 const sequenceInput = document.querySelector("#sequence");
@@ -22,6 +27,7 @@ let dragging = false;
 let dragX = 0;
 let audioContext = null;
 let activeNodes = [];
+let playbackTimeout = null;
 
 function setStatus(message, kind = "") {
   status.textContent = message;
@@ -156,6 +162,10 @@ function draw() {
 }
 
 function stopAudio() {
+  if (playbackTimeout !== null) {
+    window.clearTimeout(playbackTimeout);
+    playbackTimeout = null;
+  }
   for (const node of activeNodes) {
     try { node.stop(); } catch { /* already stopped */ }
   }
@@ -169,27 +179,38 @@ async function play() {
   audioContext ??= new AudioContext();
   await audioContext.resume();
   const now = audioContext.currentTime + 0.05;
+  const ppq = Number(artifacts.report.midi.ppq);
+  const tempoBpm = Number(artifacts.report.midi.tempo_bpm);
+  const secondsPerTick = 60 / (tempoBpm * ppq);
+  let playbackEnd = now;
   for (const record of artifacts.records) {
-    const start = now + record.base_index * 0.12;
-    const duration = record.scl_value < 0 ? 0.24 : 0.18;
+    const startTick = record.base_index * 120;
+    const durationTicks = record.scl_value < 0 ? 240 : 180;
+    const start = now + startTick * secondsPerTick;
+    const duration = durationTicks * secondsPerTick;
     const oscillator = audioContext.createOscillator();
     const gain = audioContext.createGain();
     oscillator.type = ["sine", "triangle", "sawtooth"][record.fibre_label];
     oscillator.frequency.value = 440 * (2 ** ((record.midi_pitch - 69) / 12));
     gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(0.11, start + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.11, start + Math.min(0.012, duration / 4));
     gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
     oscillator.connect(gain).connect(audioContext.destination);
     oscillator.start(start);
     oscillator.stop(start + duration + 0.02);
     activeNodes.push(oscillator);
+    playbackEnd = Math.max(playbackEnd, start + duration + 0.02);
   }
   stopButton.disabled = false;
-  window.setTimeout(stopAudio, artifacts.records.length * 120 + 500);
+  playbackTimeout = window.setTimeout(
+    stopAudio,
+    Math.ceil((playbackEnd - audioContext.currentTime + 0.1) * 1000),
+  );
 }
 
 async function run(event) {
   event?.preventDefault();
+  stopAudio();
   setStatus("Encoding, hashing, and verifying the MIDI round trip…");
   try {
     artifacts = await buildArtifacts(sequenceInput.value);
@@ -207,7 +228,11 @@ async function run(event) {
 form.addEventListener("submit", run);
 playButton.addEventListener("click", play);
 stopButton.addEventListener("click", stopAudio);
-downloads.report.addEventListener("click", () => download("rsh-dna-midi-report.json", `${JSON.stringify(artifacts.report, null, 2)}\n`, "application/json"));
+downloads.report.addEventListener("click", () => download(
+  "rsh-dna-midi-report.json",
+  artifacts.reportCanonical,
+  "application/json",
+));
 downloads.csv.addEventListener("click", () => download("rsh-dna-midi-mapping.csv", artifacts.csv, "text/csv"));
 downloads.midi.addEventListener("click", () => download("rsh-dna-midi.mid", artifacts.midi, "audio/midi"));
 downloads.manifest.addEventListener("click", () => download("rsh-dna-midi-manifest.json", `${JSON.stringify(artifacts.manifest, null, 2)}\n`, "application/json"));
@@ -220,6 +245,7 @@ canvas.addEventListener("pointermove", (event) => {
 canvas.addEventListener("pointerup", () => { dragging = false; });
 canvas.addEventListener("pointercancel", () => { dragging = false; });
 
+sequenceInput.maxLength = MAX_SEQUENCE_BASES * 4;
 renderClaims();
 draw();
 run();
