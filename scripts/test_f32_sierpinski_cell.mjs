@@ -55,8 +55,8 @@ const numericClaim = structuredClone(wordToCell(0x3f800000));
 numericClaim.claims.physical_storage_demonstrated = 0;
 assert.throws(() => validateCell(numericClaim), /claim boundary/);
 assert.throws(() => wordToCell(0, { field: "chré" }), /printable ASCII/);
-assert.throws(
-  () => buildCellBundle(Array(MAX_F32_BUNDLE_CELLS + 1).fill(0)),
+await assert.rejects(
+  buildCellBundle(Array(MAX_F32_BUNDLE_CELLS + 1).fill(0)),
   new RegExp(String(MAX_F32_BUNDLE_CELLS)),
 );
 
