@@ -1,4 +1,4 @@
-const CACHE = "rsh-inversive-witness-v1";
+const CACHE = "rsh-inversive-witness-v2";
 const PREFIX = "rsh-inversive-witness-";
 const ASSETS = [
   "./",
@@ -6,7 +6,7 @@ const ASSETS = [
   "./style.css",
   "./app.js",
   "./model.js",
-  "../genomic-spectrum/f32-cell.js",
+  "./f32-cell.js",
 ];
 
 self.addEventListener("install", event => {
