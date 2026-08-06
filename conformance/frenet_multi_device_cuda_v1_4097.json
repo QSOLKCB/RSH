@@ -1,0 +1,71 @@
+{
+  "schema": "RSH-FRENET-MULTI-DEVICE-CUDA-CONFORMANCE-V1",
+  "software_version": "2.7.0",
+  "contract": "RSH-FRENET-MULTI-DEVICE-CUDA-V1",
+  "source_parallel_contract": "RSH-FRENET-PARALLEL-V1",
+  "source_shard_prefix_contract": "RSH-FRENET-SHARD-PREFIX-V1",
+  "assignment_policy": "round-robin-contiguous-shards-v1",
+  "local_prefix_policy": "sequential-local-inclusive-quaternion-se3-f32-v1",
+  "shard_prefix_policy": "hillis-steele-exclusive-shard-se3-f32-v1",
+  "assembly_policy": "ordered-base-compose-local-prefix-v1",
+  "configuration": {
+    "samples": 4097,
+    "s0": 0.0,
+    "s1": 4.0,
+    "kappa_fraction": 0.85,
+    "tau_floor": 0.22,
+    "tau_amplitude": 0.13
+  },
+  "sharding": {
+    "interval_width": 257,
+    "expected_intervals": 4096,
+    "expected_shard_count": 16,
+    "expected_shard_prefix_passes": 4,
+    "expected_final_shard_interval_count": 241
+  },
+  "topology": {
+    "portable_logical_device_count": 2,
+    "minimum_physical_device_count": 2,
+    "maximum_physical_device_count": 8,
+    "host_count": 1,
+    "stream_count_per_device": 1,
+    "distributed_execution": false
+  },
+  "gates": {
+    "max_position_vs_sequential_f32": 0.0005,
+    "max_frame_vs_sequential_f32": 0.0005,
+    "max_position_vs_f64_shard_reference": 0.0005,
+    "max_frame_vs_f64_shard_reference": 0.0005,
+    "max_schedule_vs_f64": 0.0001,
+    "max_frame_norm_error": 0.00005,
+    "max_frame_orthogonality_error": 0.00005
+  },
+  "adapter_gates": {
+    "frame_gate": 0.00005,
+    "centre_gate": 0.000001,
+    "tail_gate": 0.00001
+  },
+  "expected": {
+    "intervals": 4096,
+    "shard_count": 16,
+    "shard_prefix_passes": 4,
+    "final_shard_interval_count": 241,
+    "path_csv_sha256": "c1ec30e2c2f42b0554f9999477cb2a21b4f6387ca62f54b66ecf629969322e0d",
+    "canonical_sha256": "08c4cc39db3d395a93cf087a600c25ecf0836dcf156aaa176ca0b71476ef5368"
+  },
+  "trusted_execution": {
+    "repeat_runs": 3,
+    "compute_sanitizer_memcheck_required": true,
+    "compute_sanitizer_racecheck_required": true,
+    "complete_path_readback_required": true,
+    "accepted_main_ancestor_required": true,
+    "raw_device_uuid_published": false
+  },
+  "portable_claims": {
+    "actual_cuda_execution": false,
+    "actual_multi_device_execution": false,
+    "distributed_execution": false,
+    "universal_speedup_claim": false,
+    "geometry_receipt_authority": false
+  }
+}

@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
 project(rsh_native_adapters LANGUAGES CXX)
 
-option(RSH_ENABLE_CUDA "Build the optional CUDA schedule residual executable" OFF)
+option(RSH_ENABLE_CUDA "Build the optional CUDA schedule and multi-device path executables" OFF)
 set(
   RSH_CUDA_ARCHITECTURES
   ""
   CACHE STRING
-  "CUDA architectures for rsh-cuda (empty uses the compiler default; examples: native, 86, 89, 120)"
+  "CUDA architectures for RSH CUDA adapters (empty uses the compiler default; examples: native, 86, 89, 120)"
 )
 
 find_program(CARGO_EXECUTABLE cargo REQUIRED)
@@ -82,8 +82,30 @@ if(RSH_ENABLE_CUDA)
       CUDA_STANDARD_REQUIRED YES
       BUILD_RPATH "${RSH_CARGO_TARGET}/release"
   )
+
+  add_executable(
+    rsh-multi-cuda
+    "${RSH_ROOT}/native/cuda/rsh_multi_device_path_cuda.cu"
+  )
+  target_compile_features(rsh-multi-cuda PRIVATE cxx_std_17)
+  target_compile_definitions(
+    rsh-multi-cuda
+    PRIVATE RSH_CUDA_ARCHITECTURES="${RSH_CUDA_ARCHITECTURES_LABEL}"
+  )
+  target_include_directories(
+    rsh-multi-cuda
+    PRIVATE "${RSH_ROOT}/native/cuda"
+  )
+  set_target_properties(
+    rsh-multi-cuda
+    PROPERTIES
+      CUDA_STANDARD 17
+      CUDA_STANDARD_REQUIRED YES
+  )
+
   if(CMAKE_CUDA_ARCHITECTURES)
     set_property(TARGET rsh-cuda PROPERTY CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}")
+    set_property(TARGET rsh-multi-cuda PROPERTY CUDA_ARCHITECTURES "${CMAKE_CUDA_ARCHITECTURES}")
   endif()
 endif()
 

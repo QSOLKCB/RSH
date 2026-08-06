@@ -1,0 +1,114 @@
+name: Multi-device CUDA path boundaries
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "native/cuda/rsh_multi_device_*"
+      - "native/cpp/CMakeLists.txt"
+      - "scripts/multi_device_cuda_reference.py"
+      - "scripts/test_multi_device_cuda.py"
+      - "tests/test_multi_device_cuda_*.py"
+      - "conformance/frenet_multi_device_cuda_v1_4097.json"
+      - "research/multi-device-cuda/**"
+      - "docs/PHASE17_MULTI_DEVICE_CUDA.md"
+      - ".github/workflows/multi-device-cuda.yml"
+      - ".github/workflows/multi-device-cuda-hardware.yml"
+  pull_request:
+    paths:
+      - "native/cuda/rsh_multi_device_*"
+      - "native/cpp/CMakeLists.txt"
+      - "scripts/multi_device_cuda_reference.py"
+      - "scripts/test_multi_device_cuda.py"
+      - "tests/test_multi_device_cuda_*.py"
+      - "conformance/frenet_multi_device_cuda_v1_4097.json"
+      - "research/multi-device-cuda/**"
+      - "docs/PHASE17_MULTI_DEVICE_CUDA.md"
+      - ".github/workflows/multi-device-cuda.yml"
+      - ".github/workflows/multi-device-cuda-hardware.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  portable-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Portable logical-device and validator regressions
+        run: |
+          python3 -m unittest \
+            tests.test_multi_device_cuda_reference \
+            tests.test_multi_device_cuda_harness \
+            -v
+      - name: Replay sealed portable profile
+        run: |
+          OUT="${RUNNER_TEMP:-$PWD/target/multi-device-cuda}"
+          mkdir -p "$OUT"
+          python3 scripts/multi_device_cuda_reference.py \
+            --verify-profile conformance/frenet_multi_device_cuda_v1_4097.json \
+            --report "$OUT/reference.json" \
+            --csv "$OUT/reference.csv"
+          test -s "$OUT/reference.json"
+          test -s "$OUT/reference.csv"
+          python3 - "$OUT" <<'PY'
+          import hashlib
+          import json
+          import sys
+          from pathlib import Path
+
+          output = Path(sys.argv[1])
+          profile = json.loads(
+              Path("conformance/frenet_multi_device_cuda_v1_4097.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+          report = json.loads((output / "reference.json").read_text(encoding="utf-8"))
+          csv_digest = hashlib.sha256((output / "reference.csv").read_bytes()).hexdigest()
+          assert report["canonical_sha256"] == profile["expected"]["canonical_sha256"]
+          assert csv_digest == profile["expected"]["path_csv_sha256"]
+          assert report["claims"] == profile["portable_claims"]
+          PY
+      - name: Source and authority boundaries
+        run: |
+          python3 -m py_compile \
+            scripts/multi_device_cuda_reference.py \
+            scripts/test_multi_device_cuda.py \
+            tests/test_multi_device_cuda_reference.py \
+            tests/test_multi_device_cuda_harness.py
+          python3 -m json.tool \
+            conformance/frenet_multi_device_cuda_v1_4097.json >/dev/null
+          test -s native/cuda/rsh_multi_device_kernels.cuh
+          test -s native/cuda/rsh_multi_device_support.hpp
+          test -s native/cuda/rsh_multi_device_path_cuda.cu
+          grep -q 'add_executable(' native/cpp/CMakeLists.txt
+          grep -q 'rsh-multi-cuda' native/cpp/CMakeLists.txt
+          grep -q 'cudaGetDeviceCount' native/cuda/rsh_multi_device_path_cuda.cu
+          grep -q 'cudaStreamCreateWithFlags' native/cuda/rsh_multi_device_path_cuda.cu
+          grep -q 'build_local_prefixes' native/cuda/rsh_multi_device_kernels.cuh
+          grep -q 'apply_base_and_emit' native/cuda/rsh_multi_device_kernels.cuh
+          grep -q 'emit_identity' native/cuda/rsh_multi_device_kernels.cuh
+          grep -q 'actual_multi_device_execution\\\": true' \
+            native/cuda/rsh_multi_device_path_cuda.cu
+          grep -q 'raw_device_uuid_published\\\": false' \
+            native/cuda/rsh_multi_device_path_cuda.cu
+          ! grep -R -q '\"device_uuid\"' \
+            native/cuda/rsh_multi_device_kernels.cuh \
+            native/cuda/rsh_multi_device_support.hpp \
+            native/cuda/rsh_multi_device_path_cuda.cu
+          grep -q 'actual_multi_device_execution: false' \
+            research/multi-device-cuda/SPEC.md
+          grep -q 'geometry_receipt_authority: false' \
+            research/multi-device-cuda/SPEC.md
+          grep -q '^  workflow_dispatch:' \
+            .github/workflows/multi-device-cuda-hardware.yml
+          ! grep -q '^  pull_request:' \
+            .github/workflows/multi-device-cuda-hardware.yml
+          grep -q 'multi-gpu' \
+            .github/workflows/multi-device-cuda-hardware.yml
+          cmake -S native/cpp -B "${RUNNER_TEMP:-$PWD/target}/cmake-portable" \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DRSH_ENABLE_CUDA=OFF
