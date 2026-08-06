@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import copy
 import importlib.util
-import json
 import unittest
 from pathlib import Path
 
@@ -64,6 +63,17 @@ class MultiDeviceCudaCampaignTests(unittest.TestCase):
         payload["controlled_same_host_comparison"]["two_over_four_mean_time_ratio"] = 2.0
         with self.assertRaises(MODULE.CampaignError):
             MODULE.validate_campaign(payload)
+
+    def test_rejects_invalid_selected_device_indices(self) -> None:
+        for invalid in ("0", True, -1):
+            with self.subTest(invalid=invalid):
+                payload = copy.deepcopy(self.payload)
+                observation = payload["observations"][0]
+                observation["workflow"]["selected_device_indices"][0] = invalid
+                observation["result"]["used_device_indices"][0] = invalid
+                observation["result"]["devices"][0]["cuda_index"] = invalid
+                with self.assertRaises(MODULE.CampaignError):
+                    MODULE.validate_campaign(payload)
 
 
 if __name__ == "__main__":
