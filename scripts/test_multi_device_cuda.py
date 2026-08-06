@@ -99,10 +99,18 @@ def validate_profile(profile: dict[str, Any]) -> None:
     sharding = profile.get("sharding")
     topology = profile.get("topology")
     gates = profile.get("gates")
+    adapter_gates = profile.get("adapter_gates")
     claims = profile.get("portable_claims")
     if not all(
         isinstance(value, dict)
-        for value in (configuration, sharding, topology, gates, claims)
+        for value in (
+            configuration,
+            sharding,
+            topology,
+            gates,
+            adapter_gates,
+            claims,
+        )
     ):
         raise ValidationError("profile sections must be objects")
 
@@ -128,12 +136,29 @@ def validate_profile(profile: dict[str, Any]) -> None:
         "max_schedule_vs_f64",
         "max_frame_norm_error",
         "max_frame_orthogonality_error",
-        "max_tail_vs_reduction_component_error",
-        "centre_error",
     )
     for key in required_gates:
         if finite_number(gates.get(key), f"gates.{key}") <= 0.0:
             raise ValidationError(f"gate {key} must be positive")
+
+    for key in ("frame_gate", "centre_gate", "tail_gate"):
+        if finite_number(adapter_gates.get(key), f"adapter_gates.{key}") <= 0.0:
+            raise ValidationError(f"adapter gate {key} must be positive")
+
+    adapter_frame = finite_number(
+        adapter_gates["frame_gate"], "adapter_gates.frame_gate"
+    )
+    for key in ("max_frame_norm_error", "max_frame_orthogonality_error"):
+        portable_frame = finite_number(gates[key], f"gates.{key}")
+        if not math.isclose(
+            adapter_frame,
+            portable_frame,
+            rel_tol=GATE_REL_TOLERANCE,
+            abs_tol=GATE_ABS_TOLERANCE,
+        ):
+            raise ValidationError(
+                "adapter frame gate must match both portable frame invariant gates"
+            )
 
     if set(claims) != set(PORTABLE_CLAIMS):
         raise ValidationError("portable_claims must contain the exact mandatory key set")
@@ -248,6 +273,7 @@ def validate_sidecar(
     sharding = profile["sharding"]
     topology = profile["topology"]
     gates = profile["gates"]
+    adapter_gates = profile["adapter_gates"]
     required = {
         "schema": SCHEMA,
         "contract": CONTRACT,
@@ -382,16 +408,21 @@ def validate_sidecar(
     ) != configuration["samples"] * 64:
         raise ValidationError("final readback byte count mismatch")
 
-    _require_gate(sidecar, "frame_gate", finite_number(
-        gates["max_frame_norm_error"], "gates.max_frame_norm_error"
-    ))
-    _require_gate(sidecar, "centre_gate", finite_number(
-        gates["centre_error"], "gates.centre_error"
-    ))
-    _require_gate(sidecar, "tail_gate", finite_number(
-        gates["max_tail_vs_reduction_component_error"],
-        "gates.max_tail_vs_reduction_component_error",
-    ))
+    _require_gate(
+        sidecar,
+        "frame_gate",
+        finite_number(adapter_gates["frame_gate"], "adapter_gates.frame_gate"),
+    )
+    _require_gate(
+        sidecar,
+        "centre_gate",
+        finite_number(adapter_gates["centre_gate"], "adapter_gates.centre_gate"),
+    )
+    _require_gate(
+        sidecar,
+        "tail_gate",
+        finite_number(adapter_gates["tail_gate"], "adapter_gates.tail_gate"),
+    )
 
     for field, gate_key in (
         ("max_frame_norm_error", "max_frame_norm_error"),
@@ -399,13 +430,13 @@ def validate_sidecar(
     ):
         if finite_number(sidecar.get(field), field) > gates[gate_key]:
             raise ValidationError(f"{field} exceeds its gate")
-    if finite_number(sidecar.get("centre_error"), "centre_error") > gates[
-        "centre_error"
+    if finite_number(sidecar.get("centre_error"), "centre_error") > adapter_gates[
+        "centre_gate"
     ]:
         raise ValidationError("centre_error exceeds its gate")
     if finite_number(
         sidecar.get("max_tail_vs_reduction_component_error"), "tail_error"
-    ) > gates["max_tail_vs_reduction_component_error"]:
+    ) > adapter_gates["tail_gate"]:
         raise ValidationError("tail integrity exceeds its gate")
     if sidecar.get("compiled_architectures") in (None, "", "unspecified"):
         raise ValidationError("compiled architecture missing")
@@ -463,7 +494,7 @@ def cuda_command(
 ) -> list[str]:
     configuration = profile["configuration"]
     sharding = profile["sharding"]
-    gates = profile["gates"]
+    adapter_gates = profile["adapter_gates"]
     return [
         str(executable),
         "--samples", str(configuration["samples"]),
@@ -471,9 +502,9 @@ def cuda_command(
         "--block-size", "128",
         "--devices", ",".join(map(str, devices)),
         "--repeat-run", str(run_number),
-        "--frame-gate", str(gates["max_frame_norm_error"]),
-        "--centre-gate", str(gates["centre_error"]),
-        "--tail-gate", str(gates["max_tail_vs_reduction_component_error"]),
+        "--frame-gate", str(adapter_gates["frame_gate"]),
+        "--centre-gate", str(adapter_gates["centre_gate"]),
+        "--tail-gate", str(adapter_gates["tail_gate"]),
         "--output-csv", str(csv_path),
     ]
 
