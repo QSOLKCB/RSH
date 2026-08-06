@@ -1,30 +1,8 @@
 name: Pages
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "web/**"
-      - "crates/rsh-core/**"
-      - "crates/rsh-wasm/**"
-      - "crates/rsh-numerics/**"
-      - "crates/rsh-numerics-wasm/**"
-      - "crates/rsh-parallel/**"
-      - "crates/rsh-parallel-cli/**"
-      - "crates/rsh-parallel-wasm/**"
-      - "crates/rsh-tissue/**"
-      - "crates/rsh-tissue-cli/**"
-      - "crates/rsh-tissue-wasm/**"
-      - "conformance/**"
-      - "scripts/test_wasm.mjs"
-      - "scripts/test_frenet_path.mjs"
-      - "scripts/test_parallel_frenet.mjs"
-      - "scripts/test_tissue_wasm.mjs"
-      - "scripts/verify_tissue_goldens.py"
-      - ".github/actions/build-wasm/action.yml"
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - ".github/workflows/pages.yml"
+  # Automatic deployment is temporarily paused while GitHub Pages and Actions
+  # are degraded. Keep manual dispatch available for an explicit recovery test.
   workflow_dispatch:
 
 permissions:

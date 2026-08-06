@@ -7,9 +7,9 @@ that can accept physical execution across more than one CUDA device on one host.
 It accelerates the already accepted deterministic shard-prefix composition
 boundary; it does not define a new geometry model.
 
-The implementation remains a draft until portable review is complete. A physical
-claim can be accepted only after merge, through the protected trusted workflow,
-from an exact commit already contained in `main`.
+Portable review, protected workflow hardening, and post-merge physical
+acceptance are complete. The accepted observations remain noncanonical hardware
+records and do not alter the geometry receipt or portable conformance gates.
 
 ## Portable reference
 
@@ -69,6 +69,15 @@ The local prefix kernel uses one CUDA thread per shard in V1. This is an explici
 policy choice: Phase 17 establishes physical multi-device composition and
 complete evidence before making an intra-shard speedup claim.
 
+V1 performs no inter-device peer transfer:
+
+```text
+inter_device_peer_bytes: 0
+```
+
+Reductions and bases are host mediated. NVLink, CUDA peer access and collective
+communication are not part of this implementation policy.
+
 ## Device privacy
 
 The sidecar records device name, selected index, compute capability, memory and a
@@ -104,8 +113,8 @@ Portable pull-request validation:
 ```
 
 It runs the logical-device mirror, validator regressions, sealed hashes, source
-checks, CMake configuration and workflow-policy gates. It cannot make a physical
-CUDA claim.
+checks, checked-in observed-campaign validation, CMake configuration and
+workflow-policy gates. It cannot make a new physical CUDA claim.
 
 Protected physical workflow:
 
@@ -126,6 +135,62 @@ It is manual only and requires:
 
 The workflow has no pull-request, issue, comment, fork or schedule trigger.
 
+## Accepted physical campaign
+
+Five protected observations were accepted from commit:
+
+```text
+f590b4b251ad039e0b4c650fb29b7db3330708ef
+```
+
+| Workflow run | Selected hardware | CUDA arch | Status |
+|---|---|---:|---|
+| `31096520169` | 2× RTX 3090 | `86` | PASS |
+| `31102590955` | 4× RTX 4060 Ti | `89` | PASS |
+| `31110426341` | 2× RTX 4070 Ti SUPER | `89` | PASS |
+| `31113168005` | 2 of 4× RTX 4070 Ti SUPER | `89` | PASS |
+| `31113751699` | 4 of 4× RTX 4070 Ti SUPER | `89` | PASS |
+
+All fifteen physical repeat executions produced:
+
+```text
+complete path SHA-256
+2e69076c868cfdf7e77d904f60f3b3a5cf95fc411c48b75328aec2bd7ca49379
+```
+
+Every accepted artifact records full readback, passing reference residuals,
+passing memcheck, passing racecheck, no raw UUID publication, no distributed
+execution, no universal speedup claim and no geometry receipt authority.
+
+The complete machine-readable record is:
+
+```text
+conformance/observed/multi-device-cuda/2026-08-06/campaign.json
+```
+
+See [Physical multi-device CUDA evidence campaign](MULTI_DEVICE_CUDA_EVIDENCE.md).
+
+## Controlled scaling result
+
+Runs `31113168005` and `31113751699` used the same four-card RTX 4070 Ti SUPER
+host. The selected-device means were:
+
+```text
+2 devices  29.392407 ms
+4 devices  30.467223 ms
+delta       1.074816 ms
+change      3.656780% slower with four devices
+```
+
+The correct scoped interpretation is that four selected devices preserved exact
+output but did not improve the emitted end-to-end diagnostic time for this fixed
+4,097-point, 16-shard V1 profile. No `speedup_claim` is set because the trusted
+workflow does not define a separate warm-up/measurement benchmark protocol.
+
+This observation suggests that an unchanged eight-device run is unlikely to
+improve this particular fixed workload, but Phase 17 makes no eight-device
+timing claim because no accepted eight-device execution was performed.
+
 ## Build and run
 
 Portable evidence:
@@ -133,19 +198,22 @@ Portable evidence:
 ```bash
 python3 -m unittest \
   tests.test_multi_device_cuda_reference \
-  tests.test_multi_device_cuda_harness -v
+  tests.test_multi_device_cuda_harness \
+  tests.test_multi_device_cuda_campaign -v
 
 python3 scripts/multi_device_cuda_reference.py \
   --verify-profile conformance/frenet_multi_device_cuda_v1_4097.json
+
+python3 scripts/verify_multi_device_cuda_campaign.py
 ```
 
-Physical build on a suitable trusted host:
+Physical build covering both accepted Ampere and Ada campaign architectures:
 
 ```bash
 cmake -S native/cpp -B build/multi-cuda \
   -DCMAKE_BUILD_TYPE=Release \
   -DRSH_ENABLE_CUDA=ON \
-  -DRSH_CUDA_ARCHITECTURES="120"
+  -DRSH_CUDA_ARCHITECTURES="86;89"
 
 cmake --build build/multi-cuda \
   --target rsh-multi-cuda --parallel

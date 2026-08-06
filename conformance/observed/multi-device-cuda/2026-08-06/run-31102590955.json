@@ -1,0 +1,119 @@
+{
+  "artifact": {
+    "archive_sha256": "801d89775b19fcc4bdfcc7a4cbc585bb98f1fc0319a68dc5c43105fe31a2e044",
+    "audit_json_sha256": "17c07fc50d50d8281c8b20edfa7aa8338f028868141704385555953cc8b06e23",
+    "created_at_utc": "2026-08-06T12:44:39Z",
+    "downloaded_archive_sha256_verified": true,
+    "expires_at_utc": "2026-09-05T12:44:37Z",
+    "id": 8968155191,
+    "name": "RSH-multi-device-CUDA-f590b4b251ad039e0b4c650fb29b7db3330708ef-31102590955",
+    "path_csv_sha256": "2e69076c868cfdf7e77d904f60f3b3a5cf95fc411c48b75328aec2bd7ca49379",
+    "size_bytes": 3398654,
+    "url": "https://github.com/QSOLKCB/RSH/actions/runs/31102590955/artifacts/8968155191"
+  },
+  "campaign_role": "cross-architecture four-device reproduction",
+  "host_group": "ada-4060ti-host-a",
+  "result": {
+    "actual_cuda_execution": true,
+    "actual_multi_device_execution": true,
+    "complete_path_readback": true,
+    "devices": [
+      {
+        "compute_capability": "8.9",
+        "cuda_index": 0,
+        "logical_slot": 0,
+        "name": "NVIDIA GeForce RTX 4060 Ti",
+        "redacted_device_id": "10c417a8d9a7e2b6",
+        "stream_ordinal": 0,
+        "total_memory_bytes": 16722296832
+      },
+      {
+        "compute_capability": "8.9",
+        "cuda_index": 1,
+        "logical_slot": 1,
+        "name": "NVIDIA GeForce RTX 4060 Ti",
+        "redacted_device_id": "a04b6675399c2fb9",
+        "stream_ordinal": 0,
+        "total_memory_bytes": 16722296832
+      },
+      {
+        "compute_capability": "8.9",
+        "cuda_index": 2,
+        "logical_slot": 2,
+        "name": "NVIDIA GeForce RTX 4060 Ti",
+        "redacted_device_id": "95b422c221e0ba46",
+        "stream_ordinal": 0,
+        "total_memory_bytes": 16722296832
+      },
+      {
+        "compute_capability": "8.9",
+        "cuda_index": 3,
+        "logical_slot": 3,
+        "name": "NVIDIA GeForce RTX 4060 Ti",
+        "redacted_device_id": "75ed9a9192bae628",
+        "stream_ordinal": 0,
+        "total_memory_bytes": 16722296832
+      }
+    ],
+    "distributed_execution": false,
+    "geometry_receipt_authority": false,
+    "raw_device_uuid_published": false,
+    "repeat_runs": [
+      {
+        "end_to_end_milliseconds": 24.171768,
+        "path_sha256": "2e69076c868cfdf7e77d904f60f3b3a5cf95fc411c48b75328aec2bd7ca49379",
+        "repeat_run": 0,
+        "sidecar_status": "PASS"
+      },
+      {
+        "end_to_end_milliseconds": 24.177441,
+        "path_sha256": "2e69076c868cfdf7e77d904f60f3b3a5cf95fc411c48b75328aec2bd7ca49379",
+        "repeat_run": 1,
+        "sidecar_status": "PASS"
+      },
+      {
+        "end_to_end_milliseconds": 21.433927,
+        "path_sha256": "2e69076c868cfdf7e77d904f60f3b3a5cf95fc411c48b75328aec2bd7ca49379",
+        "repeat_run": 2,
+        "sidecar_status": "PASS"
+      }
+    ],
+    "repeatable_path_sha256": "2e69076c868cfdf7e77d904f60f3b3a5cf95fc411c48b75328aec2bd7ca49379",
+    "sanitizers": [
+      {
+        "available": true,
+        "exit_code": 0,
+        "status": "PASS",
+        "tool": "memcheck"
+      },
+      {
+        "available": true,
+        "exit_code": 0,
+        "status": "PASS",
+        "tool": "racecheck"
+      }
+    ],
+    "single_host_execution": true,
+    "status": "PASS",
+    "universal_speedup_claim": false,
+    "used_device_indices": [
+      0,
+      1,
+      2,
+      3
+    ]
+  },
+  "workflow": {
+    "cuda_architectures": "89",
+    "dispatch_actor": "EmergentMonk",
+    "selected_device_indices": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "workflow_run_attempt": "1"
+  },
+  "workflow_run_id": 31102590955,
+  "workflow_run_url": "https://github.com/QSOLKCB/RSH/actions/runs/31102590955"
+}
