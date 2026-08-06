@@ -1,19 +1,20 @@
 # Genomic spectral evidence
 
-`RSH-ETQ-GENOMIC-SPECTRAL-V1` is the reference genomics layer proposed between
-the DNA–ETQ–MIDI codec and future multi-device CUDA work.
+`RSH-ETQ-GENOMIC-SPECTRAL-V1` is the reference genomics layer between the
+DNA–ETQ–MIDI codec and future multi-device CUDA work.
 
-It converts a single FASTA record and an optional strict biallelic-SNV VCF subset
-into deterministic window evidence, variant deltas, a SPECTRAL MIDI receiver,
-and a SHA-256 manifest. Its primary job is to make the future accelerator target
-scientifically legible and reproducible before parallel hardware is introduced.
+It converts one bounded FASTA record and an optional strict eight-column VCF 4.5
+SNV subset into deterministic window evidence, variant deltas, a SPECTRAL MIDI
+receiver, and a SHA-256 manifest. Its job is to make the future accelerator
+target scientifically legible and reproducible before parallel hardware is
+introduced.
 
-## Why this follows the codec
+## Safety and determinism
 
-The Phase 14 codec proves exact symbolic recovery and ETQ receiver addressing.
-It deliberately does not answer genomic questions. Phase 15 adds conventional
-sequence-analysis surfaces—k-mer frequency structure, period-3 evidence,
-IUPAC-aware identity, and auditable SNV perturbations—without altering Phase 14.
+The implementation rejects oversized FASTA/VCF input, more than 4,096 windows,
+more than 4,096 SNVs, duplicate loci, malformed headers, overlapping-window
+variant evidence, and invalid frame origins before publishing artifacts.
+`report.json` is the exact canonical byte stream named by the manifest.
 
 ## Run
 
@@ -32,13 +33,16 @@ Verify the sealed cross-runtime profile:
 ```bash
 python3 scripts/genomic_spectral_etq.py \
   --verify-profile conformance/genomic_spectral_v1_606.json
+python3 -m unittest tests.test_genomic_spectral_etq -v
 node scripts/test_genomic_spectral_etq.mjs
 ```
 
 ## Browser laboratory
 
 Open `web/genomic-spectrum/index.html` directly. It runs without a server,
-package manager, CDN, or network connection and can export all five artifacts.
+package manager, CDN, or network connection. User-provided identifiers are
+rendered through text nodes rather than HTML, failed analyses clear stale
+artifacts, and playback follows the same 480-PPQ / 120-BPM timing as MIDI export.
 
 ## Research references
 
@@ -51,5 +55,5 @@ package manager, CDN, or network connection and can export all five artifacts.
 - GA4GH VCF specification v4.5.
 - NCBI IUPAC nucleotide codes and standard genetic code table 1.
 
-These sources motivate the conventional feature surfaces. They do not validate
-ETQ as a genomic ontology or make spectral evidence diagnostic.
+These sources motivate conventional feature surfaces. They do not validate ETQ
+as a genomic ontology or make spectral evidence diagnostic.
