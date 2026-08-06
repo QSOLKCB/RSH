@@ -6,7 +6,7 @@ import {
 } from "./model.js";
 
 const $ = id => document.getElementById(id);
-const state = { witness: null };
+const state = { witness: null, runGeneration: 0 };
 const triangle = [
   [0, 0],
   [1, 0],
@@ -53,6 +53,20 @@ function renderClaims() {
 function setStatus(message, kind = "") {
   $("status").textContent = message;
   $("status").className = kind;
+}
+
+function clearRenderedWitness(badge = "WAITING") {
+  $("metric-word").textContent = "—";
+  $("metric-axis").textContent = "—";
+  $("metric-product").textContent = "—";
+  $("metric-double").textContent = "—";
+  $("cell-hash").textContent = "—";
+  $("source-rational").textContent = "—";
+  $("conjugate-rational").textContent = "—";
+  $("recovered-rational").textContent = "—";
+  $("receipt").textContent = "No valid witness generated.";
+  $("badge").textContent = badge;
+  $("download").disabled = true;
 }
 
 function renderWitness(witness) {
@@ -191,21 +205,26 @@ function draw() {
 
 async function run(event) {
   event?.preventDefault();
-  $("download").disabled = true;
+  const generation = ++state.runGeneration;
+  state.witness = null;
+  clearRenderedWitness("COMPUTING");
   setStatus("Computing exact rational witness…");
+  draw();
   try {
     const word = parseWord($("word").value);
     const fibre = Number($("fibre").value);
     const witness = await wordToWitness(word, fibre);
+    if (generation !== state.runGeneration) return;
     await validateWitness(witness);
+    if (generation !== state.runGeneration) return;
     state.witness = witness;
     renderWitness(witness);
     draw();
     setStatus("PASS · radius product 1/9 · second application recovered the source", "pass");
   } catch (error) {
+    if (generation !== state.runGeneration) return;
     state.witness = null;
-    $("badge").textContent = "REJECTED";
-    $("receipt").textContent = "No valid witness generated.";
+    clearRenderedWitness("REJECTED");
     setStatus(`REJECTED · ${error instanceof Error ? error.message : String(error)}`, "fail");
     draw();
   }
@@ -226,6 +245,7 @@ $("witness-form").addEventListener("submit", run);
 $("download").addEventListener("click", downloadWitness);
 window.addEventListener("resize", draw);
 renderClaims();
+clearRenderedWitness();
 draw();
 run();
 
