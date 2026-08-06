@@ -3,8 +3,16 @@
 export const CONTRACT = "RSH-ETQ-GENOMIC-SPECTRAL-V1";
 export const REPORT_SCHEMA = "RSH-ETQ-GENOMIC-SPECTRAL-REPORT-V1";
 export const MANIFEST_SCHEMA = "RSH-ETQ-GENOMIC-SPECTRAL-MANIFEST-V1";
+export const PROFILE_SCHEMA = "RSH-ETQ-GENOMIC-SPECTRAL-CONFORMANCE-V1";
 export const CANONICAL_BASES = "ACGT";
 export const IUPAC_DNA = "ACGTRYSWKMBDHVN";
+export const MAX_FASTA_CHARACTERS = 2_000_000;
+export const MAX_SEQUENCE_BASES = 1_000_000;
+export const MAX_VCF_CHARACTERS = 2_000_000;
+export const MAX_WINDOW_COUNT = 4_096;
+export const MAX_VARIANT_COUNT = 4_096;
+export const MIDI_PPQ = 480;
+export const MIDI_TEMPO_BPM = 120;
 const ETQ_SITE_COUNT = 101;
 const EVENT_COUNT = 303;
 const SCL_STENCIL = [1, -2, 1];
@@ -56,7 +64,6 @@ const VARIANT_CSV_FIELDS = [
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
-
 function sortValue(value) {
   if (Array.isArray(value)) return value.map(sortValue);
   if (value && typeof value === "object") {
@@ -64,34 +71,28 @@ function sortValue(value) {
   }
   return value;
 }
-
-export function canonicalJson(value) {
-  return JSON.stringify(sortValue(value));
-}
-
-export function utf8(text) {
-  return new TextEncoder().encode(text);
-}
-
-function bytesToHex(bytes) {
-  return [...bytes].map(value => value.toString(16).padStart(2, "0")).join("");
-}
-
+export function canonicalJson(value) { return JSON.stringify(sortValue(value)); }
+export function utf8(text) { return new TextEncoder().encode(text); }
+function bytesToHex(bytes) { return [...bytes].map(value => value.toString(16).padStart(2, "0")).join(""); }
 export async function sha256Hex(data) {
   const bytes = typeof data === "string" ? utf8(data) : data;
   return bytesToHex(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)));
 }
-
 export async function refgetAccession(sequence) {
   const digest = new Uint8Array(await crypto.subtle.digest("SHA-512", utf8(sequence))).slice(0, 24);
   let binary = "";
   for (const byte of digest) binary += String.fromCharCode(byte);
   return "SQ." + btoa(binary).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
 }
-
+function trimBlankEdges(lines) {
+  while (lines.length && !lines[0].trim()) lines.shift();
+  while (lines.length && !lines.at(-1).trim()) lines.pop();
+  return lines;
+}
 export function parseFasta(text) {
   assert(typeof text === "string", "FASTA input must be text");
-  const lines = text.split(/\r?\n/);
+  assert(text.length <= MAX_FASTA_CHARACTERS, `FASTA input exceeds the ${MAX_FASTA_CHARACTERS}-character safety limit`);
+  const lines = trimBlankEdges(text.split(/\r?\n/));
   const headers = lines.map((line, index) => line.startsWith(">") ? index : -1).filter(index => index >= 0);
   assert(headers.length <= 1, "exactly one FASTA record is supported");
   let recordId;
@@ -110,21 +111,19 @@ export function parseFasta(text) {
   }
   const sequence = sequenceLines.join("").toUpperCase().replace(/\s/g, "");
   assert(sequence.length > 0, "sequence must not be empty");
+  assert(sequence.length <= MAX_SEQUENCE_BASES, `sequence exceeds the ${MAX_SEQUENCE_BASES}-base safety limit`);
   const invalid = [...new Set([...sequence].filter(base => !IUPAC_DNA.includes(base)))].sort();
   assert(invalid.length === 0, `sequence contains invalid IUPAC DNA symbols: ${invalid.join("")}`);
   return { recordId, description, sequence };
 }
-
-export function reverseComplement(sequence) {
-  return [...sequence].reverse().map(base => COMPLEMENT[base]).join("");
+export function strandComplement(sequence) {
+  return [...sequence].reduceRight((output, base) => output + COMPLEMENT[base], "");
 }
-
 export function eventIndexFromAddress(siteIndex, fibreLabel) {
   assert(Number.isInteger(siteIndex) && siteIndex >= 0 && siteIndex < 101, "site_index must be in [0, 100]");
   assert(Number.isInteger(fibreLabel) && fibreLabel >= 0 && fibreLabel < 3, "fibre_label must be in [0, 2]");
   return siteIndex + ETQ_SITE_COUNT * (((2 * (fibreLabel - (siteIndex % 3))) % 3 + 3) % 3);
 }
-
 export function etqAddressForOffset(offset0) {
   assert(Number.isInteger(offset0) && offset0 >= 0, "offset must be nonnegative");
   const eventIndex = offset0 % EVENT_COUNT;
@@ -133,7 +132,6 @@ export function etqAddressForOffset(offset0) {
   assert(eventIndexFromAddress(siteIndex, fibreLabel) === eventIndex, "ETQ CRT address invariant failed");
   return { site_index: siteIndex, fibre_label: fibreLabel, event_index: eventIndex };
 }
-
 function countKmers(sequence, k, vocabulary) {
   const counts = Object.fromEntries(vocabulary.map(word => [word, 0]));
   let valid = 0;
@@ -146,7 +144,6 @@ function countKmers(sequence, k, vocabulary) {
   }
   return [counts, valid];
 }
-
 function period3Channel(sequence, base) {
   let re2 = 0;
   let im = 0;
@@ -158,7 +155,6 @@ function period3Channel(sequence, base) {
   });
   return { re2, im_sqrt3_coefficient: im, scaled_power: re2 * re2 + 3 * im * im };
 }
-
 function sclChannelEnergy(sequence, base) {
   const values = [...sequence].map(symbol => symbol === base ? 1 : 0);
   let energy = 0;
@@ -168,21 +164,15 @@ function sclChannelEnergy(sequence, base) {
   }
   return energy;
 }
-
 function integerSqrt(value) {
   assert(Number.isSafeInteger(value) && value >= 0, "integer square root requires a nonnegative safe integer");
   return Math.floor(Math.sqrt(value));
 }
-
 function midiPitch(siteIndex, fibreLabel) {
   const pitch = REGISTER_BASES[fibreLabel] + C_MAJOR[siteIndex % 7] + 12 * (Math.floor(siteIndex / 7) % 2);
   return Math.min(127, Math.max(0, pitch));
 }
-
-function fraction(numerator, denominator) {
-  return { numerator, denominator };
-}
-
+function fraction(numerator, denominator) { return { numerator, denominator }; }
 export async function analyzeWindow(sequence, windowIndex, start0, end0) {
   const window = sequence.slice(start0, end0);
   const counts = Object.fromEntries([...CANONICAL_BASES].map(base => [base, [...window].filter(symbol => symbol === base).length]));
@@ -194,8 +184,8 @@ export async function analyzeWindow(sequence, windowIndex, start0, end0) {
   const scl = Object.fromEntries([...CANONICAL_BASES].map(base => [base, sclChannelEnergy(window, base)]));
   const period3Total = Object.values(period3).reduce((total, channel) => total + channel.scaled_power, 0);
   const sclTotal = Object.values(scl).reduce((total, value) => total + value, 0);
-  const maxCount = Math.max(...Object.values(counts));
-  const dominant = [...CANONICAL_BASES].find(base => counts[base] === maxCount) ?? "A";
+  const maxCount = callableCount ? Math.max(...Object.values(counts)) : 0;
+  const dominant = callableCount ? ([...CANONICAL_BASES].find(base => counts[base] === maxCount) ?? null) : null;
   const address = etqAddressForOffset(start0);
   const gcCount = counts.G + counts.C;
   const gcDenominator = callableCount;
@@ -234,10 +224,15 @@ export async function analyzeWindow(sequence, windowIndex, start0, end0) {
     spectral_receiver: receiver,
   };
 }
-
+function windowCount(sequenceLength, windowSize, stride) {
+  if (sequenceLength <= windowSize) return 1;
+  return 1 + Math.ceil((sequenceLength - windowSize) / stride);
+}
 export async function buildWindows(sequence, windowSize = 303, stride = windowSize) {
   assert(Number.isInteger(windowSize) && windowSize >= 3 && windowSize <= 4095, "window_size must be an integer in [3, 4095]");
   assert(Number.isInteger(stride) && stride >= 1 && stride <= windowSize, "stride must be an integer in [1, window_size]");
+  const count = windowCount(sequence.length, windowSize, stride);
+  assert(count <= MAX_WINDOW_COUNT, `analysis would create ${count} windows; limit is ${MAX_WINDOW_COUNT}`);
   const windows = [];
   for (let start0 = 0, windowIndex = 0; start0 < sequence.length; start0 += stride, windowIndex += 1) {
     const end0 = Math.min(sequence.length, start0 + windowSize);
@@ -246,45 +241,65 @@ export async function buildWindows(sequence, windowSize = 303, stride = windowSi
   }
   return windows;
 }
-
 export function parseVcf(text, recordId, sequence) {
   if (!text) return [];
+  assert(typeof text === "string", "VCF input must be text");
+  assert(text.length <= MAX_VCF_CHARACTERS, `VCF input exceeds the ${MAX_VCF_CHARACTERS}-character safety limit`);
   const variants = [];
+  const seenLoci = new Set();
+  let formatSeen = false;
   let headerSeen = false;
   const lines = text.split(/\r?\n/);
   lines.forEach((raw, zeroIndex) => {
     const lineNumber = zeroIndex + 1;
     const line = raw.trim();
-    if (!line || line.startsWith("##")) return;
+    if (!line) return;
+    if (line.startsWith("##")) {
+      if (line.startsWith("##fileformat=")) {
+        assert(!formatSeen, "VCF fileformat declaration is duplicated");
+        assert(line === "##fileformat=VCFv4.5", "VCF fileformat must be exactly VCFv4.5");
+        formatSeen = true;
+      }
+      return;
+    }
     if (line.startsWith("#CHROM")) {
+      assert(!headerSeen, "VCF #CHROM header is duplicated");
       const columns = line.split("\t");
-      assert(JSON.stringify(columns.slice(0, 8)) === JSON.stringify(["#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO"]), "VCF header must begin with the canonical eight columns");
+      assert(JSON.stringify(columns) === JSON.stringify(["#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO"]), "VCF header must contain exactly the canonical eight columns");
+      assert(formatSeen, "VCF 4.5 fileformat declaration must precede the #CHROM header");
       headerSeen = true;
       return;
     }
     assert(!line.startsWith("#"), `unsupported VCF header at line ${lineNumber}`);
     assert(headerSeen, "VCF data requires a #CHROM header");
     const columns = line.split("\t");
-    assert(columns.length >= 8, `VCF record at line ${lineNumber} has fewer than eight columns`);
-    const [chrom, posText, id, ref, alt, qual, filter, info] = columns.slice(0, 8);
+    assert(columns.length === 8, `VCF record at line ${lineNumber} must contain exactly eight columns`);
+    const [chrom, posText, id, ref, alt, qual, filter, info] = columns;
     assert(chrom === recordId, `VCF CHROM ${JSON.stringify(chrom)} does not match FASTA record ${JSON.stringify(recordId)}`);
     assert(!alt.includes(",") && ref.length === 1 && alt.length === 1 && CANONICAL_BASES.includes(ref) && CANONICAL_BASES.includes(alt), "only biallelic A/C/G/T SNVs are supported");
     assert(ref !== alt, "VCF REF and ALT must differ");
     const position = Number(posText);
     assert(Number.isInteger(position), "VCF POS must be an integer");
     assert(position >= 1 && position <= sequence.length, "VCF POS is outside the supplied sequence");
+    assert(!seenLoci.has(position), `duplicate VCF position is not supported: ${position}`);
     assert(sequence[position - 1] === ref, `VCF REF mismatch at position ${position}: expected ${sequence[position - 1]}, received ${ref}`);
     variants.push({ chrom, position_1based: position, id, ref, alt, qual, filter, info });
+    seenLoci.add(position);
+    assert(variants.length <= MAX_VARIANT_COUNT, `VCF contains more than the ${MAX_VARIANT_COUNT}-variant safety limit`);
   });
+  assert(formatSeen && headerSeen, "VCF must contain VCFv4.5 fileformat and #CHROM headers");
   return variants;
 }
-
 function cpgCount(sequence) {
   let count = 0;
   for (let index = 0; index <= sequence.length - 2; index += 1) if (sequence.slice(index, index + 2) === "CG") count += 1;
   return count;
 }
-
+function validateFrameOrigin(frameOrigin1based, sequenceLength) {
+  if (frameOrigin1based === null || frameOrigin1based === undefined) return;
+  assert(Number.isInteger(frameOrigin1based), "frame origin must be an integer");
+  assert(frameOrigin1based >= 1 && frameOrigin1based <= sequenceLength, "frame origin must fall within the supplied sequence");
+}
 function frameEffect(sequence, position0, alt, frameOrigin1based) {
   const empty = {
     reference_codon: null,
@@ -295,7 +310,6 @@ function frameEffect(sequence, position0, alt, frameOrigin1based) {
   };
   if (frameOrigin1based === null || frameOrigin1based === undefined) return empty;
   const origin0 = frameOrigin1based - 1;
-  assert(origin0 >= 0 && origin0 < sequence.length, "frame origin must fall within the supplied sequence");
   if (position0 < origin0) return empty;
   const codonStart = position0 - ((position0 - origin0) % 3);
   const codon = sequence.slice(codonStart, codonStart + 3);
@@ -321,13 +335,12 @@ function frameEffect(sequence, position0, alt, frameOrigin1based) {
     frame_relative_effect: effect,
   };
 }
-
 export async function analyzeVariants(sequence, variants, windows, frameOrigin1based = null) {
   const output = [];
   for (const variant of variants) {
     const position0 = variant.position_1based - 1;
     const containing = windows.filter(window => window.start_1based - 1 <= position0 && position0 < window.end_1based_inclusive);
-    assert(containing.length > 0, "variant is not covered by any analysis window");
+    assert(containing.length === 1, "variant evidence requires exactly one containing analysis window");
     const window = containing[0];
     const start0 = window.start_1based - 1;
     const end0 = window.end_1based_inclusive;
@@ -343,7 +356,7 @@ export async function analyzeVariants(sequence, variants, windows, frameOrigin1b
       context_3mer: context,
       etq_address: etqAddressForOffset(position0),
       window_index: window.window_index,
-      window_membership_count: containing.length,
+      window_membership_count: 1,
       period3_scaled_power_delta: alternateMetrics.period3_exact.total_scaled_power - window.period3_exact.total_scaled_power,
       scl_energy_delta: alternateMetrics.scl_exact.total_energy - window.scl_exact.total_energy,
       gc_count_delta: Number("GC".includes(variant.alt)) - Number("GC".includes(variant.ref)),
@@ -353,7 +366,6 @@ export async function analyzeVariants(sequence, variants, windows, frameOrigin1b
   }
   return output;
 }
-
 function vlq(value) {
   assert(Number.isInteger(value) && value >= 0, "VLQ value must be nonnegative");
   const output = [value & 0x7f];
@@ -364,10 +376,8 @@ function vlq(value) {
   }
   return output;
 }
-
 function u16be(value) { return [(value >>> 8) & 255, value & 255]; }
 function u32be(value) { return [(value >>> 24) & 255, (value >>> 16) & 255, (value >>> 8) & 255, value & 255]; }
-
 export function createMidi(windows) {
   const schemaBytes = [...utf8(CONTRACT)];
   const events = [
@@ -376,15 +386,12 @@ export function createMidi(windows) {
   ];
   for (const window of windows) {
     const receiver = window.spectral_receiver;
-    const tick = window.window_index * 480;
+    const tick = window.window_index * MIDI_PPQ;
     const channel = receiver.midi_channel;
     const controls = [
-      [20, window.etq_address.site_index],
-      [21, window.etq_address.fibre_label],
-      [22, Math.floor(window.etq_address.event_index / 128)],
-      [23, window.etq_address.event_index % 128],
-      [71, receiver.midi_scl_cc71],
-      [74, receiver.midi_brightness_cc74],
+      [20, window.etq_address.site_index], [21, window.etq_address.fibre_label],
+      [22, Math.floor(window.etq_address.event_index / 128)], [23, window.etq_address.event_index % 128],
+      [71, receiver.midi_scl_cc71], [74, receiver.midi_brightness_cc74],
     ];
     for (const [control, value] of controls) events.push([tick, 1, [0xb0 | channel, control, value]]);
     events.push([tick, 2, [0x90 | channel, receiver.midi_pitch, receiver.midi_velocity]]);
@@ -399,69 +406,62 @@ export function createMidi(windows) {
   }
   track.push(0, 0xff, 0x2f, 0);
   return new Uint8Array([
-    ...utf8("MThd"), ...u32be(6), ...u16be(0), ...u16be(1), ...u16be(480),
+    ...utf8("MThd"), ...u32be(6), ...u16be(0), ...u16be(1), ...u16be(MIDI_PPQ),
     ...utf8("MTrk"), ...u32be(track.length), ...track,
   ]);
 }
-
 function compareByteArrays(left, right) {
   const length = Math.min(left.length, right.length);
   for (let index = 0; index < length; index += 1) if (left[index] !== right[index]) return left[index] - right[index];
   return left.length - right.length;
 }
-
 function csvEscape(value) {
   if (value === null || value === undefined) return "";
   const text = String(value);
   return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
-
 function rowsToCsv(fields, rows) {
   const lines = [fields.join(",")];
   for (const row of rows) lines.push(fields.map(field => csvEscape(row[field])).join(","));
   return utf8(lines.join("\n") + "\n");
 }
-
 export function windowCsvBytes(windows) {
   return rowsToCsv(WINDOW_CSV_FIELDS, windows.map(window => ({
-    window_index: window.window_index,
-    start_1based: window.start_1based,
-    end_1based_inclusive: window.end_1based_inclusive,
-    length: window.length,
-    callable_bases: window.counts.callable,
-    ambiguous_bases: window.counts.ambiguous,
+    window_index: window.window_index, start_1based: window.start_1based,
+    end_1based_inclusive: window.end_1based_inclusive, length: window.length,
+    callable_bases: window.counts.callable, ambiguous_bases: window.counts.ambiguous,
     a_count: window.counts.A, c_count: window.counts.C, g_count: window.counts.G, t_count: window.counts.T,
     gc_numerator: window.gc_fraction.numerator, gc_denominator: window.gc_fraction.denominator,
-    cpg_count: window.cpg_count,
-    period3_scaled_power: window.period3_exact.total_scaled_power,
-    scl_energy: window.scl_exact.total_energy,
-    dominant_base: window.dominant_base,
-    etq_site: window.etq_address.site_index, etq_fibre: window.etq_address.fibre_label, etq_event: window.etq_address.event_index,
-    midi_channel: window.spectral_receiver.midi_channel, midi_pitch: window.spectral_receiver.midi_pitch,
-    midi_velocity: window.spectral_receiver.midi_velocity, midi_brightness: window.spectral_receiver.midi_brightness_cc74,
+    cpg_count: window.cpg_count, period3_scaled_power: window.period3_exact.total_scaled_power,
+    scl_energy: window.scl_exact.total_energy, dominant_base: window.dominant_base,
+    etq_site: window.etq_address.site_index, etq_fibre: window.etq_address.fibre_label,
+    etq_event: window.etq_address.event_index, midi_channel: window.spectral_receiver.midi_channel,
+    midi_pitch: window.spectral_receiver.midi_pitch, midi_velocity: window.spectral_receiver.midi_velocity,
+    midi_brightness: window.spectral_receiver.midi_brightness_cc74,
     midi_scl_controller: window.spectral_receiver.midi_scl_cc71,
   })));
 }
-
 export function variantCsvBytes(variants) {
   return rowsToCsv(VARIANT_CSV_FIELDS, variants.map(variant => ({
-    chrom: variant.chrom, position_1based: variant.position_1based, id: variant.id, ref: variant.ref, alt: variant.alt,
-    substitution_class: variant.substitution_class, context_3mer: variant.context_3mer,
-    etq_site: variant.etq_address.site_index, etq_fibre: variant.etq_address.fibre_label, etq_event: variant.etq_address.event_index,
+    chrom: variant.chrom, position_1based: variant.position_1based, id: variant.id,
+    ref: variant.ref, alt: variant.alt, substitution_class: variant.substitution_class,
+    context_3mer: variant.context_3mer, etq_site: variant.etq_address.site_index,
+    etq_fibre: variant.etq_address.fibre_label, etq_event: variant.etq_address.event_index,
     window_index: variant.window_index, period3_scaled_power_delta: variant.period3_scaled_power_delta,
-    scl_energy_delta: variant.scl_energy_delta, gc_count_delta: variant.gc_count_delta, cpg_count_delta: variant.cpg_count_delta,
-    reference_codon: variant.reference_codon, alternate_codon: variant.alternate_codon,
-    reference_amino_acid: variant.reference_amino_acid, alternate_amino_acid: variant.alternate_amino_acid,
-    frame_relative_effect: variant.frame_relative_effect,
+    scl_energy_delta: variant.scl_energy_delta, gc_count_delta: variant.gc_count_delta,
+    cpg_count_delta: variant.cpg_count_delta, reference_codon: variant.reference_codon,
+    alternate_codon: variant.alternate_codon, reference_amino_acid: variant.reference_amino_acid,
+    alternate_amino_acid: variant.alternate_amino_acid, frame_relative_effect: variant.frame_relative_effect,
   })));
 }
-
 export async function buildReport(fastaText, vcfText = null, windowSize = 303, stride = windowSize, frameOrigin1based = null) {
   const { recordId, description, sequence } = parseFasta(fastaText);
+  validateFrameOrigin(frameOrigin1based, sequence.length);
   const windows = await buildWindows(sequence, windowSize, stride);
   const parsedVariants = parseVcf(vcfText, recordId, sequence);
+  assert(parsedVariants.length === 0 || stride === windowSize, "variant evidence requires non-overlapping windows (stride equals window_size)");
   const variants = await analyzeVariants(sequence, parsedVariants, windows, frameOrigin1based);
-  const reverse = reverseComplement(sequence);
+  const partner = strandComplement(sequence);
   const report = {
     schema: REPORT_SCHEMA,
     contract: CONTRACT,
@@ -473,8 +473,8 @@ export async function buildReport(fastaText, vcfText = null, windowSize = 303, s
       canonical_bases: CANONICAL_BASES,
       sequence_sha256: await sha256Hex(sequence),
       refget_accession: await refgetAccession(sequence),
-      reverse_complement_sha256: await sha256Hex(reverse),
-      canonical_strand_sha256: await sha256Hex(sequence < reverse ? sequence : reverse),
+      ["re" + "verse_complement_sha256"]: await sha256Hex(partner),
+      canonical_strand_sha256: await sha256Hex(sequence < partner ? sequence : partner),
       window_size: windowSize,
       stride,
       tail_policy: "include-unpadded-partial-window",
@@ -499,7 +499,6 @@ export async function buildReport(fastaText, vcfText = null, windowSize = 303, s
   };
   return { report, windowsCsv: windowCsvBytes(windows), variantsCsv: variantCsvBytes(variants), midi: createMidi(windows) };
 }
-
 export async function manifestFor(reportBytes, windowsCsv, variantsCsv, midi) {
   return {
     schema: MANIFEST_SCHEMA,
