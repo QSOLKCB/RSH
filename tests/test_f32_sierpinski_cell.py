@@ -11,7 +11,9 @@ from pathlib import Path
 from scripts.f32_sierpinski_cell import (
     CLAIMS,
     DEPTH,
+    MAX_BUNDLE_CELLS,
     build_bundle,
+    cells_for_words,
     classify_word,
     exact_cell_vertices,
     f32_to_word,
@@ -86,6 +88,32 @@ class F32SierpinskiCellTests(unittest.TestCase):
         tampered["claims"]["physical_storage_demonstrated"] = True
         with self.assertRaisesRegex(ValueError, "claim boundary"):
             validate_cell(tampered)
+
+    def test_claims_require_literal_json_booleans(self):
+        cell = word_to_cell(0x3F800000)
+        tampered = copy.deepcopy(cell)
+        tampered["claims"]["physical_storage_demonstrated"] = 0
+        with self.assertRaisesRegex(ValueError, "claim boundary"):
+            validate_cell(tampered)
+        bundle = build_bundle([0x3F800000])
+        bundle["claims"]["distributed_execution"] = 0.0
+        with self.assertRaisesRegex(ValueError, "claim boundary"):
+            verify_bundle(bundle)
+
+    def test_bundle_iterables_are_bounded_before_materialization(self):
+        def endless_words():
+            while True:
+                yield 0
+
+        with self.assertRaisesRegex(ValueError, str(MAX_BUNDLE_CELLS)):
+            cells_for_words(endless_words())
+
+    def test_field_labels_are_printable_ascii(self):
+        self.assertEqual(word_to_cell(0, field="cell-0")["field"], "cell-0")
+        with self.assertRaisesRegex(ValueError, "printable ASCII"):
+            word_to_cell(0, field="chré")
+        with self.assertRaisesRegex(ValueError, "printable ASCII"):
+            word_to_cell(0, field="line\nbreak")
 
     def test_numeric_projection_is_binary32(self):
         self.assertEqual(f32_to_word(1.0), 0x3F800000)
