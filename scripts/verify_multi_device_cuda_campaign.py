@@ -79,6 +79,13 @@ def require_int(value: Any, label: str) -> int:
     return value
 
 
+def require_non_negative_int(value: Any, label: str) -> int:
+    result = require_int(value, label)
+    if result < 0:
+        raise CampaignError(f"{label} must be non-negative")
+    return result
+
+
 def require_finite(value: Any, label: str) -> float:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise CampaignError(f"{label} must be numeric")
@@ -130,6 +137,11 @@ def validate_observation(
     selected = workflow.get("selected_device_indices")
     if not isinstance(selected, list) or len(selected) not in {2, 4}:
         raise CampaignError(f"{label} selected device list is invalid")
+    for offset, device_index in enumerate(selected):
+        require_non_negative_int(
+            device_index,
+            f"{label}.selected_device_indices[{offset}]",
+        )
     if len(selected) != len(set(selected)):
         raise CampaignError(f"{label} selected devices contain duplicates")
 
@@ -160,9 +172,17 @@ def validate_observation(
     for slot, device in enumerate(devices):
         if not isinstance(device, dict):
             raise CampaignError(f"{label} device entry must be an object")
-        if device.get("logical_slot") != slot:
+        logical_slot = require_non_negative_int(
+            device.get("logical_slot"),
+            f"{label}.devices[{slot}].logical_slot",
+        )
+        if logical_slot != slot:
             raise CampaignError(f"{label} logical slot mismatch")
-        if device.get("cuda_index") != selected[slot]:
+        cuda_index = require_non_negative_int(
+            device.get("cuda_index"),
+            f"{label}.devices[{slot}].cuda_index",
+        )
+        if cuda_index != selected[slot]:
             raise CampaignError(f"{label} CUDA index mismatch")
         token = device.get("redacted_device_id")
         if not isinstance(token, str) or re.fullmatch(r"[0-9a-f]{16}", token) is None:
@@ -180,7 +200,11 @@ def validate_observation(
     for expected_index, repeat in enumerate(repeats):
         if not isinstance(repeat, dict):
             raise CampaignError(f"{label} repeat entry must be an object")
-        if repeat.get("repeat_run") != expected_index:
+        repeat_index = require_non_negative_int(
+            repeat.get("repeat_run"),
+            f"{label}.repeat[{expected_index}].repeat_run",
+        )
+        if repeat_index != expected_index:
             raise CampaignError(f"{label} repeat order mismatch")
         if repeat.get("sidecar_status") != "PASS":
             raise CampaignError(f"{label} repeat sidecar did not pass")
