@@ -39,8 +39,8 @@
           <p class="eyebrow">INPUT</p>
           <h2>DNA sequence</h2>
         </div>
-        <label for="sequence">A, C, G, and T only; incomplete codons are rejected.</label>
-        <textarea id="sequence" spellcheck="false" rows="8">ATGGCCAAAGCGTTCGACGGCTAG</textarea>
+        <label for="sequence">A, C, G, and T only; complete codons; maximum 12,000 normalized bases.</label>
+        <textarea id="sequence" maxlength="48000" spellcheck="false" rows="8">ATGGCCAAAGCGTTCGACGGCTAG</textarea>
         <div class="button-row">
           <button class="primary" type="submit">Encode and verify</button>
           <button id="play" type="button" disabled>Play</button>
@@ -48,7 +48,7 @@
         </div>
         <p id="status" class="status" role="status">Ready.</p>
         <div class="downloads">
-          <button id="download-report" type="button" disabled>Report JSON</button>
+          <button id="download-report" type="button" disabled>Canonical report JSON</button>
           <button id="download-csv" type="button" disabled>Mapping CSV</button>
           <button id="download-midi" type="button" disabled>MIDI</button>
           <button id="download-manifest" type="button" disabled>Manifest</button>
