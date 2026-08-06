@@ -19,7 +19,7 @@ PROFILE = json.loads(
 def valid_sidecar():
     configuration = PROFILE["configuration"]
     sharding = PROFILE["sharding"]
-    gates = PROFILE["gates"]
+    adapter_gates = PROFILE["adapter_gates"]
     devices = [0, 1]
     start = 0
     shards = []
@@ -87,9 +87,9 @@ def valid_sidecar():
         "max_frame_orthogonality_error": 1.0e-7,
         "max_tail_vs_reduction_component_error": 0.0,
         "centre_error": 0.0,
-        "frame_gate": gates["max_frame_norm_error"],
-        "tail_gate": gates["max_tail_vs_reduction_component_error"],
-        "centre_gate": gates["centre_error"],
+        "frame_gate": adapter_gates["frame_gate"],
+        "tail_gate": adapter_gates["tail_gate"],
+        "centre_gate": adapter_gates["centre_gate"],
         "pass_finite": True,
         "pass_coverage": True,
         "pass_schedule_bounds": True,
@@ -158,6 +158,12 @@ class MultiDeviceCudaHarnessTests(unittest.TestCase):
                 sidecar[field] *= 2.0
                 with self.assertRaises(harness.ValidationError):
                     harness.validate_sidecar(sidecar, PROFILE, 0, [0, 1])
+
+    def test_rejects_profile_gate_divergence(self):
+        profile = copy.deepcopy(PROFILE)
+        profile["adapter_gates"]["frame_gate"] *= 2.0
+        with self.assertRaises(harness.ValidationError):
+            harness.validate_profile(profile)
 
     def test_parse_csv_wraps_non_numeric_fields(self):
         with tempfile.TemporaryDirectory() as directory:
