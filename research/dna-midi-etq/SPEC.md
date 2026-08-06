@@ -18,6 +18,9 @@ mapping.
 3. Every remaining character must be one of `A`, `C`, `G`, `T`.
 4. Empty input is rejected.
 5. Incomplete codons are rejected; no padding or silent truncation occurs.
+6. Raw input text is limited to 48,000 characters before normalization.
+7. The normalized sequence is limited to 12,000 bases before coordinate,
+   record, MIDI, table, or audio allocations are created.
 
 ## 3. Codon site
 
@@ -84,15 +87,24 @@ strings to preserve cross-runtime canonical bytes.
 - note duration: 180 ticks for positive SCL lanes; 240 for the `-2` lane
 - schema marker: track-name meta event containing the contract identifier
 
-The decoder requires CC 20–23 metadata before each note-on and validates the
-codon, base, fibre, and event address. A note stream without a complete schema
-marker or complete codons is rejected.
+Every note-on must be immediately preceded on its channel by one fresh ordered
+metadata sequence:
+
+```text
+CC20, CC21, CC22, CC23, CC24, CC74
+```
+
+Consumed metadata is cleared after each note. Stale, missing, duplicated,
+reordered, unrelated, or excess controls are rejected. The decoder also requires
+all three notes in a codon to declare one shared site index and validates the
+codon, base, fibre, and ETQ event address.
 
 ## 7. Canonical evidence
 
 The canonical report is UTF-8 JSON with recursive lexicographic object-key order,
 no insignificant whitespace, and coordinates already encoded as fixed-decimal
-strings. The manifest records SHA-256 for:
+strings. The emitted `report.json` contains exactly the bytes hashed by the
+manifest. The manifest records SHA-256 for:
 
 - normalized sequence bytes;
 - canonical report bytes;
@@ -100,6 +112,8 @@ strings. The manifest records SHA-256 for:
 - MIDI bytes.
 
 Python and JavaScript implementations must reproduce the same sealed hashes.
+Text evidence is emitted as explicit UTF-8/LF bytes so platform newline policies
+cannot change the declared artifacts.
 
 ## 8. Authority boundary
 
