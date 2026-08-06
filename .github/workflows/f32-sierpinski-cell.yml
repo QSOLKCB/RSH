@@ -50,4 +50,4 @@ jobs:
           grep -q 'compression_claim: false' research/f32-sierpinski-cell/SPEC.md
           grep -q 'physical_storage_demonstrated: false' research/f32-sierpinski-cell/SPEC.md
           grep -q 'geometry_receipt_authority: false' research/f32-sierpinski-cell/SPEC.md
-          grep -q '0x5f3759df' tests/test_f32_sierpinski_cell.py
+          grep -qi '0x5f3759df' tests/test_f32_sierpinski_cell.py
