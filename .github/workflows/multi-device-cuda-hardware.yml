@@ -211,12 +211,12 @@ jobs:
             rustup show active-toolchain
           } > "$evidence/rustup-setup.txt" 2>&1
 
-          cargo build --locked --release -p rsh-parallel-cli \
+          cargo build --locked --release -p rsh-parallel-cli --bin rsh-parallel \
             > "$evidence/cargo-build.txt" 2>&1
-          parallel_cli="$CARGO_TARGET_DIR/release/rsh-parallel-cli"
+          parallel_cli="$CARGO_TARGET_DIR/release/rsh-parallel"
           test -x "$parallel_cli" || {
             echo "Cargo completed but the expected parallel CLI is unavailable: $parallel_cli" >&2
-            find "$CARGO_TARGET_DIR" -maxdepth 3 -type f -name 'rsh-parallel-cli*' -print >&2 || true
+            find "$CARGO_TARGET_DIR" -maxdepth 3 -type f -name 'rsh-parallel*' -print >&2 || true
             exit 26
           }
           cmake -S native/cpp -B build/multi-cuda \
