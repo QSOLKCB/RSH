@@ -1,0 +1,113 @@
+{
+  "authority": "observed-noncanonical",
+  "campaign_date_utc": "2026-08-06",
+  "campaign_invariants": {
+    "accepted_observations": 5,
+    "all_complete_path_readback": true,
+    "all_required_sanitizers_pass": true,
+    "all_status_pass": true,
+    "compute_capabilities_observed": [
+      "8.6",
+      "8.9"
+    ],
+    "distributed_execution": false,
+    "geometry_receipt_authority": false,
+    "gpu_models_observed": [
+      "NVIDIA GeForce RTX 3090",
+      "NVIDIA GeForce RTX 4060 Ti",
+      "NVIDIA GeForce RTX 4070 Ti SUPER"
+    ],
+    "max_residuals": {
+      "parallel": {
+        "frame": 1.9477898010877848e-06,
+        "position": 1.9637626254009888e-06,
+        "schedule": 4.196258607258585e-08
+      },
+      "shard": {
+        "frame": 1.9477898026698526e-06,
+        "position": 1.9637626329505053e-06,
+        "schedule": 4.196258607258585e-08
+      }
+    },
+    "physical_cuda_executions": 15,
+    "physical_device_count_range": [
+      2,
+      4
+    ],
+    "raw_device_uuid_published": false,
+    "repeatable_path_sha256": "2e69076c868cfdf7e77d904f60f3b3a5cf95fc411c48b75328aec2bd7ca49379",
+    "universal_speedup_claim": false
+  },
+  "configuration": {
+    "block_size": 128,
+    "complete_path_readback_required": true,
+    "compute_sanitizer_memcheck_required": true,
+    "compute_sanitizer_racecheck_required": true,
+    "inter_device_peer_bytes": 0,
+    "interval_width": 257,
+    "intervals": 4096,
+    "repeat_runs_per_observation": 3,
+    "samples": 4097,
+    "shard_count": 16,
+    "stream_count_per_device": 1
+  },
+  "contract": "RSH-FRENET-MULTI-DEVICE-CUDA-V1",
+  "controlled_same_host_comparison": {
+    "four_device_mean_ms": 30.467222666666668,
+    "four_device_times_ms": [
+      30.364491,
+      30.391641,
+      30.645536
+    ],
+    "four_device_workflow_run_id": 31113751699,
+    "four_minus_two_ms": 1.074815666666666,
+    "four_vs_two_percent_change": 3.6567800203183953,
+    "gpu_model": "NVIDIA GeForce RTX 4070 Ti SUPER",
+    "host_group": "ada-4070ti-super-host-b",
+    "interpretation": "For this fixed 4097-point, 16-shard V1 profile on this host, four selected devices preserved exact output but were slower than two selected devices.",
+    "shared_redacted_device_ids_for_cuda_indices_0_1": [
+      "51f5878d81d91a82",
+      "ba0f7aad1d8204ed"
+    ],
+    "speedup_claim": false,
+    "timing_scope": "adapter end-to-end diagnostic timing emitted by each accepted repeat; no warm-up benchmark protocol and no speedup acceptance gate",
+    "two_device_mean_ms": 29.392407000000002,
+    "two_device_times_ms": [
+      29.259772,
+      29.603148,
+      29.314301
+    ],
+    "two_device_workflow_run_id": 31113168005,
+    "two_over_four_mean_time_ratio": 0.9647222302332601
+  },
+  "implementation_boundary": {
+    "eight_device_execution_performed": false,
+    "eight_device_inference": "The controlled 2-to-4 result suggests that selecting eight devices for this fixed profile is unlikely to improve end-to-end time, but no eight-device timing claim is made.",
+    "final_path": "complete device-to-host readback",
+    "inter_device_peer_traffic": false,
+    "local_prefix_kernel_policy": "one CUDA thread per shard",
+    "nvlink_caveat": "NVLink would not automatically accelerate V1 because V1 emits zero inter-device peer bytes. A peer-aware redesign would be a new implementation policy and would require fresh evidence.",
+    "nvlink_or_peer_to_peer_used": false,
+    "shard_bases": "host-to-device",
+    "shard_prefix_scan": "host f32 inclusive scan",
+    "shard_reductions": "device-to-host"
+  },
+  "interpretation": [
+    "All five accepted artifacts were produced by the protected manual hardware workflow from the same accepted main commit.",
+    "All fifteen physical CUDA executions produced the same complete-path SHA-256 and the same maximum reference residuals.",
+    "The campaign establishes cross-host, cross-device-count and Ampere-to-Ada reproducibility for this bounded profile.",
+    "The controlled same-host comparison does not support a local speedup claim when increasing selected RTX 4070 Ti SUPER devices from two to four.",
+    "These observations do not establish distributed execution, universal speedup, geometry receipt authority, or an eight-device result.",
+    "The diagnostic timing comparison is not a published speedup benchmark because the V1 trusted workflow does not include a separate warm-up/measurement protocol."
+  ],
+  "observation_files": [
+    "run-31096520169.json",
+    "run-31102590955.json",
+    "run-31110426341.json",
+    "run-31113168005.json",
+    "run-31113751699.json"
+  ],
+  "schema": "RSH-FRENET-MULTI-DEVICE-CUDA-CAMPAIGN-V1",
+  "software_release": "2.7.0",
+  "tested_commit": "f590b4b251ad039e0b4c650fb29b7db3330708ef"
+}
