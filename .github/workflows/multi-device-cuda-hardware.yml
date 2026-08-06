@@ -251,7 +251,7 @@ jobs:
           printf 'status=%s\n' "$status" >> "$GITHUB_OUTPUT"
           exit "$status"
 
-      - name: Report rejected hardware audit
+      - name: Report failed hardware audit
         if: always() && steps.audit.outputs.status != '0'
         shell: bash
         run: |
