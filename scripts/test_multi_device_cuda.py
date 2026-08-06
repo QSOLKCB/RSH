@@ -25,6 +25,15 @@ CSV_FIELDS = (
 POSITION_FIELDS = ("x", "y", "z")
 FRAME_FIELDS = ("tx", "ty", "tz", "nx", "ny", "nz", "bx", "by", "bz")
 SCHEDULE_FIELDS = ("p", "s", "kappa", "tau")
+PORTABLE_CLAIMS = {
+    "actual_cuda_execution": False,
+    "actual_multi_device_execution": False,
+    "distributed_execution": False,
+    "universal_speedup_claim": False,
+    "geometry_receipt_authority": False,
+}
+GATE_REL_TOLERANCE = 1.0e-6
+GATE_ABS_TOLERANCE = 1.0e-12
 STABLE_FIELDS = (
     "schema", "contract", "source_parallel_contract",
     "source_shard_prefix_contract", "status", "actual_cuda_execution",
@@ -85,15 +94,23 @@ def sha256_file(path: Path) -> str:
 def validate_profile(profile: dict[str, Any]) -> None:
     if profile.get("schema") != PROFILE_SCHEMA or profile.get("contract") != CONTRACT:
         raise ValidationError("profile schema or contract mismatch")
+
     configuration = profile.get("configuration")
     sharding = profile.get("sharding")
     topology = profile.get("topology")
-    if not all(isinstance(value, dict) for value in (configuration, sharding, topology)):
+    gates = profile.get("gates")
+    claims = profile.get("portable_claims")
+    if not all(
+        isinstance(value, dict)
+        for value in (configuration, sharding, topology, gates, claims)
+    ):
         raise ValidationError("profile sections must be objects")
+
     samples = exact_int(configuration.get("samples"), "configuration.samples")
     width = exact_int(sharding.get("interval_width"), "sharding.interval_width")
     if samples < 3 or samples % 2 == 0 or width < 1:
         raise ValidationError("profile sample or shard bounds invalid")
+
     minimum = exact_int(
         topology.get("minimum_physical_device_count"),
         "topology.minimum_physical_device_count",
@@ -104,8 +121,25 @@ def validate_profile(profile: dict[str, Any]) -> None:
     )
     if minimum < 2 or maximum < minimum or maximum > 8:
         raise ValidationError("physical device bounds invalid")
-    for key, value in profile.get("portable_claims", {}).items():
-        if type(value) is not bool or value is not False:
+
+    required_gates = (
+        "max_position_vs_f64_shard_reference",
+        "max_frame_vs_f64_shard_reference",
+        "max_schedule_vs_f64",
+        "max_frame_norm_error",
+        "max_frame_orthogonality_error",
+        "max_tail_vs_reduction_component_error",
+        "centre_error",
+    )
+    for key in required_gates:
+        if finite_number(gates.get(key), f"gates.{key}") <= 0.0:
+            raise ValidationError(f"gate {key} must be positive")
+
+    if set(claims) != set(PORTABLE_CLAIMS):
+        raise ValidationError("portable_claims must contain the exact mandatory key set")
+    for key, expected in PORTABLE_CLAIMS.items():
+        value = claims.get(key)
+        if type(value) is not bool or value is not expected:
             raise ValidationError(f"portable claim {key} must be literal false")
 
 
@@ -125,8 +159,14 @@ def parse_csv(path: Path, expected_samples: int) -> list[dict[str, float | int]]
                     raise ValidationError(
                         f"{path} row {row_index} {field} malformed"
                     )
+                try:
+                    numeric = float(token)
+                except (TypeError, ValueError) as error:
+                    raise ValidationError(
+                        f"{path} row {row_index} {field} is not numeric"
+                    ) from error
                 parsed[field] = finite_number(
-                    float(token), f"{path} row {row_index} {field}"
+                    numeric, f"{path} row {row_index} {field}"
                 )
             rows.append(parsed)
     if len(rows) != expected_samples:
@@ -171,12 +211,39 @@ def compare_rows(
     return maxima
 
 
+def _require_exact(sidecar: dict[str, Any], key: str, expected: Any) -> None:
+    actual = sidecar.get(key)
+    if type(expected) is bool:
+        if type(actual) is not bool or actual is not expected:
+            raise ValidationError(f"{key}: {actual!r} != {expected!r}")
+        return
+    if type(expected) is int:
+        if exact_int(actual, key) != expected:
+            raise ValidationError(f"{key}: {actual!r} != {expected!r}")
+        return
+    if actual != expected:
+        raise ValidationError(f"{key}: {actual!r} != {expected!r}")
+
+
+def _require_gate(sidecar: dict[str, Any], field: str, expected: float) -> None:
+    actual = finite_number(sidecar.get(field), field)
+    if not math.isclose(
+        actual,
+        expected,
+        rel_tol=GATE_REL_TOLERANCE,
+        abs_tol=GATE_ABS_TOLERANCE,
+    ):
+        raise ValidationError(f"{field}: {actual!r} != profile gate {expected!r}")
+
+
 def validate_sidecar(
     sidecar: dict[str, Any],
     profile: dict[str, Any],
     expected_run: int,
     selected_devices: list[int],
 ) -> None:
+    if not isinstance(sidecar, dict):
+        raise ValidationError("CUDA sidecar must be an object")
     configuration = profile["configuration"]
     sharding = profile["sharding"]
     topology = profile["topology"]
@@ -217,10 +284,10 @@ def validate_sidecar(
         "pass_tail_integrity": True,
     }
     for key, expected in required.items():
-        if sidecar.get(key) != expected:
-            raise ValidationError(f"{key}: {sidecar.get(key)!r} != {expected!r}")
-    if sidecar.get("repeat_run") != expected_run:
+        _require_exact(sidecar, key, expected)
+    if exact_int(sidecar.get("repeat_run"), "repeat_run") != expected_run:
         raise ValidationError("repeat_run mismatch")
+
     used = exact_int(sidecar.get("used_device_count"), "used_device_count")
     if (
         used != len(selected_devices)
@@ -241,9 +308,11 @@ def validate_sidecar(
         if not isinstance(device, dict):
             raise ValidationError("device metadata must be an object")
         if (
-            device.get("logical_slot") != slot
-            or device.get("cuda_index") != selected_devices[slot]
-            or device.get("stream_ordinal") != 0
+            exact_int(device.get("logical_slot"), f"devices[{slot}].logical_slot") != slot
+            or exact_int(device.get("cuda_index"), f"devices[{slot}].cuda_index")
+            != selected_devices[slot]
+            or exact_int(device.get("stream_ordinal"), f"devices[{slot}].stream_ordinal")
+            != 0
         ):
             raise ValidationError("device slot/index/stream mismatch")
         token = device.get("redacted_device_id")
@@ -267,42 +336,76 @@ def validate_sidecar(
         count = exact_int(
             shard.get("interval_count"), f"shards[{index}].interval_count"
         )
+        start = exact_int(
+            shard.get("start_interval"), f"shards[{index}].start_interval"
+        )
+        end = exact_int(
+            shard.get("end_interval_exclusive"),
+            f"shards[{index}].end_interval_exclusive",
+        )
         if (
-            shard.get("shard_index") != index
-            or shard.get("start_interval") != expected_start
-            or shard.get("end_interval_exclusive") != expected_start + count
+            exact_int(shard.get("shard_index"), f"shards[{index}].shard_index")
+            != index
+            or start != expected_start
+            or end != expected_start + count
         ):
             raise ValidationError("shard assignment is missing, overlapping, or unordered")
         expected_slot = index % used
         if (
-            shard.get("device_slot") != expected_slot
-            or shard.get("cuda_device_index") != selected_devices[expected_slot]
-            or shard.get("stream_ordinal") != 0
+            exact_int(shard.get("device_slot"), f"shards[{index}].device_slot")
+            != expected_slot
+            or exact_int(
+                shard.get("cuda_device_index"),
+                f"shards[{index}].cuda_device_index",
+            )
+            != selected_devices[expected_slot]
+            or exact_int(
+                shard.get("stream_ordinal"), f"shards[{index}].stream_ordinal"
+            )
+            != 0
         ):
             raise ValidationError("shard device/stream binding mismatch")
         expected_start += count
     if expected_start != sharding["expected_intervals"]:
         raise ValidationError("shards do not cover all intervals")
 
-    if sidecar.get("reduction_transfer_bytes") != len(shards) * 32:
+    if exact_int(
+        sidecar.get("reduction_transfer_bytes"), "reduction_transfer_bytes"
+    ) != len(shards) * 32:
         raise ValidationError("reduction transfer byte count mismatch")
-    if sidecar.get("base_transfer_bytes") != len(shards) * 32:
+    if exact_int(sidecar.get("base_transfer_bytes"), "base_transfer_bytes") != len(
+        shards
+    ) * 32:
         raise ValidationError("base transfer byte count mismatch")
-    if sidecar.get("final_readback_bytes") != configuration["samples"] * 64:
+    if exact_int(
+        sidecar.get("final_readback_bytes"), "final_readback_bytes"
+    ) != configuration["samples"] * 64:
         raise ValidationError("final readback byte count mismatch")
+
+    _require_gate(sidecar, "frame_gate", finite_number(
+        gates["max_frame_norm_error"], "gates.max_frame_norm_error"
+    ))
+    _require_gate(sidecar, "centre_gate", finite_number(
+        gates["centre_error"], "gates.centre_error"
+    ))
+    _require_gate(sidecar, "tail_gate", finite_number(
+        gates["max_tail_vs_reduction_component_error"],
+        "gates.max_tail_vs_reduction_component_error",
+    ))
+
     for field, gate_key in (
         ("max_frame_norm_error", "max_frame_norm_error"),
         ("max_frame_orthogonality_error", "max_frame_orthogonality_error"),
     ):
         if finite_number(sidecar.get(field), field) > gates[gate_key]:
             raise ValidationError(f"{field} exceeds its gate")
-    if finite_number(sidecar.get("centre_error"), "centre_error") > gates.get(
-        "centre_error", 1.0e-6
-    ):
+    if finite_number(sidecar.get("centre_error"), "centre_error") > gates[
+        "centre_error"
+    ]:
         raise ValidationError("centre_error exceeds its gate")
     if finite_number(
         sidecar.get("max_tail_vs_reduction_component_error"), "tail_error"
-    ) > gates.get("max_tail_vs_reduction_component_error", 1.0e-5):
+    ) > gates["max_tail_vs_reduction_component_error"]:
         raise ValidationError("tail integrity exceeds its gate")
     if sidecar.get("compiled_architectures") in (None, "", "unspecified"):
         raise ValidationError("compiled architecture missing")
@@ -369,8 +472,8 @@ def cuda_command(
         "--devices", ",".join(map(str, devices)),
         "--repeat-run", str(run_number),
         "--frame-gate", str(gates["max_frame_norm_error"]),
-        "--centre-gate", str(gates.get("centre_error", 1.0e-6)),
-        "--tail-gate", str(gates.get("max_tail_vs_reduction_component_error", 1.0e-5)),
+        "--centre-gate", str(gates["centre_error"]),
+        "--tail-gate", str(gates["max_tail_vs_reduction_component_error"]),
         "--output-csv", str(csv_path),
     ]
 
@@ -420,6 +523,24 @@ def write_manifest(output: Path) -> None:
     write_text(output / "SHA256SUMS.txt", "".join(lines))
 
 
+def build_rejection_audit(reason: str, source_commit: str | None) -> dict[str, Any]:
+    return {
+        "schema": AUDIT_SCHEMA,
+        "contract": CONTRACT,
+        "status": "REJECTED",
+        "source_commit": source_commit,
+        "actual_cuda_execution": False,
+        "actual_multi_device_execution": False,
+        "single_host_execution": False,
+        "distributed_execution": False,
+        "universal_speedup_claim": False,
+        "geometry_receipt_authority": False,
+        "raw_device_uuid_published": False,
+        "complete_path_readback": False,
+        "reason": reason,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--cuda-executable", type=Path, required=True)
@@ -441,9 +562,17 @@ def main() -> int:
         r"[0-9a-f]{40}", args.source_commit
     ) is None:
         raise SystemExit("--source-commit must be a full lowercase commit SHA")
-    devices = [int(token) for token in args.devices.split(",") if token != ""]
-    if len(devices) != len(set(devices)) or len(devices) < 2:
-        raise SystemExit("--devices must contain at least two unique indices")
+    try:
+        devices = [int(token) for token in args.devices.split(",") if token != ""]
+    except ValueError as error:
+        raise SystemExit("--devices must contain comma-separated integers") from error
+    if (
+        len(devices) != len(set(devices))
+        or len(devices) < 2
+        or len(devices) > 8
+        or any(device < 0 for device in devices)
+    ):
+        raise SystemExit("--devices must contain between two and eight unique indices")
     if args.output_dir.exists() and any(args.output_dir.iterdir()):
         raise SystemExit("output directory must be empty")
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -491,7 +620,12 @@ def main() -> int:
             )
             if not result.stdout.strip():
                 raise ValidationError(f"CUDA run {run_number} produced no sidecar")
-            sidecar = json.loads(result.stdout)
+            try:
+                sidecar = json.loads(result.stdout)
+            except json.JSONDecodeError as error:
+                raise ValidationError(
+                    f"CUDA run {run_number} produced invalid JSON"
+                ) from error
             validate_sidecar(sidecar, profile, run_number, devices)
             rows = parse_csv(csv_path, expected_samples)
             parallel_residuals = compare_rows(
@@ -523,9 +657,10 @@ def main() -> int:
                     "repeat_run": run_number,
                     "path_sha256": digest,
                     "sidecar_status": sidecar["status"],
-                    "end_to_end_milliseconds": sidecar[
-                        "end_to_end_milliseconds"
-                    ],
+                    "end_to_end_milliseconds": finite_number(
+                        sidecar.get("end_to_end_milliseconds"),
+                        "end_to_end_milliseconds",
+                    ),
                 }
             )
         if len(set(path_hashes)) != 1:
@@ -571,16 +706,7 @@ def main() -> int:
         print(json.dumps(audit, indent=2, sort_keys=True))
         return 0
     except Exception as error:
-        rejection = {
-            "schema": AUDIT_SCHEMA,
-            "contract": CONTRACT,
-            "status": "REJECTED",
-            "actual_multi_device_execution": False,
-            "distributed_execution": False,
-            "universal_speedup_claim": False,
-            "geometry_receipt_authority": False,
-            "reason": str(error),
-        }
+        rejection = build_rejection_audit(str(error), args.source_commit)
         write_text(
             args.output_dir / "rejection.json",
             json.dumps(rejection, indent=2, sort_keys=True) + "\n",
