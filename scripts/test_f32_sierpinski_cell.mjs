@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import {
   F32_CELL_CLAIMS,
   F32_CELL_CONTRACT,
+  MAX_F32_BUNDLE_CELLS,
   buildCellBundle,
   classifyWord,
   exactCellVertices,
@@ -50,6 +51,14 @@ assert.equal(f32ToWord(Math.PI), 0x40490fdb);
 const tampered = structuredClone(wordToCell(0x3f800000));
 tampered.claims.physical_storage_demonstrated = true;
 assert.throws(() => validateCell(tampered), /claim boundary/);
+const numericClaim = structuredClone(wordToCell(0x3f800000));
+numericClaim.claims.physical_storage_demonstrated = 0;
+assert.throws(() => validateCell(numericClaim), /claim boundary/);
+assert.throws(() => wordToCell(0, { field: "chré" }), /printable ASCII/);
+assert.throws(
+  () => buildCellBundle(Array(MAX_F32_BUNDLE_CELLS + 1).fill(0)),
+  new RegExp(String(MAX_F32_BUNDLE_CELLS)),
+);
 
 console.log(JSON.stringify({
   schema: "RSH-F32-SIERPINSKI-CELL-CROSS-RUNTIME-V1",
