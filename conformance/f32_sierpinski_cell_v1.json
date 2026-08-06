@@ -1,0 +1,47 @@
+{
+  "schema": "RSH-F32-SIERPINSKI-CELL-CONFORMANCE-V1",
+  "contract": "RSH-F32-SIERPINSKI-CELL-V1",
+  "words_hex": [
+    "00000000",
+    "80000000",
+    "00000001",
+    "007fffff",
+    "00800000",
+    "3f800000",
+    "bf800000",
+    "40490fdb",
+    "5f3759df",
+    "7f7fffff",
+    "7f800000",
+    "ff800000",
+    "7fc00001",
+    "7fa00001",
+    "ffffffff"
+  ],
+  "fields": [
+    "positive-zero",
+    "negative-zero",
+    "smallest-subnormal",
+    "largest-subnormal",
+    "smallest-normal",
+    "positive-one",
+    "negative-one",
+    "pi-f32",
+    "quake3-lineage-word",
+    "largest-finite",
+    "positive-infinity",
+    "negative-infinity",
+    "quiet-nan-payload",
+    "signaling-nan-payload",
+    "all-bits-set"
+  ],
+  "expected_bundle_sha256": "708f0c182eaf442d33e4c14b6b1c9c0208cf13a079ddbc44adfe8867acc748b3",
+  "expected_claims": {
+    "actual_multi_device_execution": false,
+    "compression_claim": false,
+    "coordinates_are_identity": false,
+    "distributed_execution": false,
+    "geometry_receipt_authority": false,
+    "physical_storage_demonstrated": false
+  }
+}
