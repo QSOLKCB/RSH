@@ -11,6 +11,13 @@ The prototype archive is recorded as lineage evidence only. Its alternate
 single-device and shard-prefix implementations instead of creating a second
 implementation under the same contract name.
 
+## Bounded input
+
+The codec rejects raw input above 48,000 characters and normalized sequences
+above 12,000 bases before constructing coordinate, record, MIDI, browser-table,
+or audio collections. Input must contain only complete `A/C/G/T` codons after
+whitespace removal.
+
 ## Contract
 
 For each complete codon:
@@ -44,7 +51,8 @@ than the planar `x = z` projection in the source prototype.
 
 ## Exact MIDI round trip
 
-The Type-0 MIDI stream uses 480 PPQ and 120 BPM. Each note is preceded by:
+The Type-0 MIDI stream uses 480 PPQ and 120 BPM. Each note is preceded by one
+fresh ordered metadata set:
 
 | Control | Meaning |
 |---|---|
@@ -55,8 +63,15 @@ The Type-0 MIDI stream uses 480 PPQ and 120 BPM. Each note is preceded by:
 | CC 24 | Gaussian phase exponent |
 | CC 74 | audible brightness mapping |
 
-The MIDI channel is the codon offset/fibre label. The decoder rejects missing,
-reordered, inconsistent, or tampered metadata.
+The MIDI channel is the codon offset/fibre label. Metadata is consumed once per
+note; stale, missing, reordered, unrelated, or tampered controls are rejected.
+All three notes belonging to one codon must also identify the same codon site.
+
+## Canonical artifacts
+
+`report.json` is the compact canonical JSON byte stream named by
+`report_canonical_sha256`; hashing the downloaded or CLI-emitted file reproduces
+the manifest value exactly. CSV is emitted with explicit UTF-8 and LF bytes.
 
 ## Run
 
