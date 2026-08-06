@@ -1,0 +1,97 @@
+{
+  "artifact": {
+    "archive_sha256": "adec76de81fa824df578f6dd39067ca6c59e8b631bd320787bb780c0e8d1a089",
+    "audit_json_sha256": "f1bf0643a6a0e13949bde162a4aa6e679f978e105b41b826ba40278b7ed69905",
+    "created_at_utc": "2026-08-06T14:22:51Z",
+    "downloaded_archive_sha256_verified": true,
+    "expires_at_utc": "2026-09-05T14:22:49Z",
+    "id": 8971451998,
+    "name": "RSH-multi-device-CUDA-f590b4b251ad039e0b4c650fb29b7db3330708ef-31110426341",
+    "path_csv_sha256": "2e69076c868cfdf7e77d904f60f3b3a5cf95fc411c48b75328aec2bd7ca49379",
+    "size_bytes": 3398220,
+    "url": "https://github.com/QSOLKCB/RSH/actions/runs/31110426341/artifacts/8971451998"
+  },
+  "campaign_role": "independent two-device reproduction",
+  "host_group": "ada-4070ti-super-host-a",
+  "result": {
+    "actual_cuda_execution": true,
+    "actual_multi_device_execution": true,
+    "complete_path_readback": true,
+    "devices": [
+      {
+        "compute_capability": "8.9",
+        "cuda_index": 0,
+        "logical_slot": 0,
+        "name": "NVIDIA GeForce RTX 4070 Ti SUPER",
+        "redacted_device_id": "2de86c602d8a3ef4",
+        "stream_ordinal": 0,
+        "total_memory_bytes": 16717840384
+      },
+      {
+        "compute_capability": "8.9",
+        "cuda_index": 1,
+        "logical_slot": 1,
+        "name": "NVIDIA GeForce RTX 4070 Ti SUPER",
+        "redacted_device_id": "0893753bbeefb781",
+        "stream_ordinal": 0,
+        "total_memory_bytes": 16717840384
+      }
+    ],
+    "distributed_execution": false,
+    "geometry_receipt_authority": false,
+    "raw_device_uuid_published": false,
+    "repeat_runs": [
+      {
+        "end_to_end_milliseconds": 30.400986,
+        "path_sha256": "2e69076c868cfdf7e77d904f60f3b3a5cf95fc411c48b75328aec2bd7ca49379",
+        "repeat_run": 0,
+        "sidecar_status": "PASS"
+      },
+      {
+        "end_to_end_milliseconds": 29.01931,
+        "path_sha256": "2e69076c868cfdf7e77d904f60f3b3a5cf95fc411c48b75328aec2bd7ca49379",
+        "repeat_run": 1,
+        "sidecar_status": "PASS"
+      },
+      {
+        "end_to_end_milliseconds": 29.012694,
+        "path_sha256": "2e69076c868cfdf7e77d904f60f3b3a5cf95fc411c48b75328aec2bd7ca49379",
+        "repeat_run": 2,
+        "sidecar_status": "PASS"
+      }
+    ],
+    "repeatable_path_sha256": "2e69076c868cfdf7e77d904f60f3b3a5cf95fc411c48b75328aec2bd7ca49379",
+    "sanitizers": [
+      {
+        "available": true,
+        "exit_code": 0,
+        "status": "PASS",
+        "tool": "memcheck"
+      },
+      {
+        "available": true,
+        "exit_code": 0,
+        "status": "PASS",
+        "tool": "racecheck"
+      }
+    ],
+    "single_host_execution": true,
+    "status": "PASS",
+    "universal_speedup_claim": false,
+    "used_device_indices": [
+      0,
+      1
+    ]
+  },
+  "workflow": {
+    "cuda_architectures": "89",
+    "dispatch_actor": "EmergentMonk",
+    "selected_device_indices": [
+      0,
+      1
+    ],
+    "workflow_run_attempt": "1"
+  },
+  "workflow_run_id": 31110426341,
+  "workflow_run_url": "https://github.com/QSOLKCB/RSH/actions/runs/31110426341"
+}
