@@ -82,7 +82,7 @@ footer { border-top: 1px solid var(--line); display: flex; justify-content: spac
 }
 
 @media (max-width: 560px) {
-  header, main, footer { width: min(100% - 22px, 1400px); }
+  header, main, footer { width: min(calc(100% - 22px), 1400px); }
   .hero { padding-top: 48px; }
   .controls, .visual-panel, .evidence { padding: 22px; }
   .metrics { grid-template-columns: 1fr; }
