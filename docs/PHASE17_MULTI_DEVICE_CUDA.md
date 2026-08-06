@@ -207,13 +207,13 @@ python3 scripts/multi_device_cuda_reference.py \
 python3 scripts/verify_multi_device_cuda_campaign.py
 ```
 
-Physical build on a suitable trusted host:
+Physical build covering both accepted Ampere and Ada campaign architectures:
 
 ```bash
 cmake -S native/cpp -B build/multi-cuda \
   -DCMAKE_BUILD_TYPE=Release \
   -DRSH_ENABLE_CUDA=ON \
-  -DRSH_CUDA_ARCHITECTURES="89"
+  -DRSH_CUDA_ARCHITECTURES="86;89"
 
 cmake --build build/multi-cuda \
   --target rsh-multi-cuda --parallel
