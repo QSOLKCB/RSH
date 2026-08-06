@@ -12,17 +12,23 @@ import io
 import json
 import math
 from pathlib import Path
-from typing import Iterable, Sequence
+from typing import Sequence
 
 CONTRACT = "RSH-ETQ-GENOMIC-SPECTRAL-V1"
 REPORT_SCHEMA = "RSH-ETQ-GENOMIC-SPECTRAL-REPORT-V1"
 MANIFEST_SCHEMA = "RSH-ETQ-GENOMIC-SPECTRAL-MANIFEST-V1"
+PROFILE_SCHEMA = "RSH-ETQ-GENOMIC-SPECTRAL-CONFORMANCE-V1"
 MIDI_SCHEMA_TEXT = CONTRACT.encode("ascii")
 CANONICAL_BASES = "ACGT"
 IUPAC_DNA = "ACGTRYSWKMBDHVN"
 ETQ_SITE_COUNT = 101
 FIBRE_COUNT = 3
 EVENT_COUNT = 303
+MAX_FASTA_CHARACTERS = 2_000_000
+MAX_SEQUENCE_BASES = 1_000_000
+MAX_VCF_CHARACTERS = 2_000_000
+MAX_WINDOW_COUNT = 4_096
+MAX_VARIANT_COUNT = 4_096
 SCL_STENCIL = (1, -2, 1)
 PERIOD3_RE2_WEIGHTS = (2, -1, -1)
 PERIOD3_IM_WEIGHTS = (0, 1, -1)
@@ -83,10 +89,20 @@ def refget_accession(sequence: str) -> str:
     return "SQ." + base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
 
 
+def _trim_blank_edges(lines: list[str]) -> list[str]:
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    while lines and not lines[-1].strip():
+        lines.pop()
+    return lines
+
+
 def parse_fasta(text: str) -> tuple[str, str, str]:
     if not isinstance(text, str):
         raise TypeError("FASTA input must be text")
-    lines = text.splitlines()
+    if len(text) > MAX_FASTA_CHARACTERS:
+        raise ValueError(f"FASTA input exceeds the {MAX_FASTA_CHARACTERS}-character safety limit")
+    lines = _trim_blank_edges(text.splitlines())
     headers = [index for index, line in enumerate(lines) if line.startswith(">")]
     if len(headers) > 1:
         raise ValueError("exactly one FASTA record is supported")
@@ -106,13 +122,15 @@ def parse_fasta(text: str) -> tuple[str, str, str]:
     sequence = "".join(character for line in sequence_lines for character in line.upper() if not character.isspace())
     if not sequence:
         raise ValueError("sequence must not be empty")
+    if len(sequence) > MAX_SEQUENCE_BASES:
+        raise ValueError(f"sequence exceeds the {MAX_SEQUENCE_BASES}-base safety limit")
     invalid = sorted(set(sequence) - set(IUPAC_DNA))
     if invalid:
         raise ValueError(f"sequence contains invalid IUPAC DNA symbols: {''.join(invalid)}")
     return record_id, description, sequence
 
 
-def reverse_complement(sequence: str) -> str:
+def strand_complement(sequence: str) -> str:
     return sequence.translate(COMPLEMENT)[::-1]
 
 
@@ -153,11 +171,7 @@ def period3_channel(sequence: str, base: str) -> dict[str, int]:
             phase = index % 3
             re2 += PERIOD3_RE2_WEIGHTS[phase]
             im += PERIOD3_IM_WEIGHTS[phase]
-    return {
-        "re2": re2,
-        "im_sqrt3_coefficient": im,
-        "scaled_power": re2 * re2 + 3 * im * im,
-    }
+    return {"re2": re2, "im_sqrt3_coefficient": im, "scaled_power": re2 * re2 + 3 * im * im}
 
 
 def scl_channel_energy(sequence: str, base: str) -> int:
@@ -185,8 +199,8 @@ def analyze_window(sequence: str, window_index: int, start0: int, end0: int) -> 
     scl = {base: scl_channel_energy(window, base) for base in CANONICAL_BASES}
     period3_total = sum(int(channel["scaled_power"]) for channel in period3.values())
     scl_total = sum(scl.values())
-    max_count = max(counts.values()) if counts else 0
-    dominant = next((base for base in CANONICAL_BASES if counts[base] == max_count), "A")
+    max_count = max(counts.values()) if callable_count else 0
+    dominant = next((base for base in CANONICAL_BASES if counts[base] == max_count), None) if callable_count else None
     address = etq_address_for_offset(start0)
     gc_count = counts["G"] + counts["C"]
     gc_denominator = callable_count
@@ -222,15 +236,17 @@ def analyze_window(sequence: str, window_index: int, start0: int, end0: int) -> 
             "channels": period3,
             "total_scaled_power": period3_total,
         },
-        "scl_exact": {
-            "stencil": list(SCL_STENCIL),
-            "channel_energy": scl,
-            "total_energy": scl_total,
-        },
+        "scl_exact": {"stencil": list(SCL_STENCIL), "channel_energy": scl, "total_energy": scl_total},
         "dominant_base": dominant,
         "etq_address": address,
         "spectral_receiver": receiver,
     }
+
+
+def _window_count(sequence_length: int, window_size: int, stride: int) -> int:
+    if sequence_length <= window_size:
+        return 1
+    return 1 + (sequence_length - window_size + stride - 1) // stride
 
 
 def build_windows(sequence: str, window_size: int = 303, stride: int | None = None) -> list[dict[str, object]]:
@@ -239,6 +255,9 @@ def build_windows(sequence: str, window_size: int = 303, stride: int | None = No
     stride = window_size if stride is None else stride
     if not isinstance(stride, int) or not 1 <= stride <= window_size:
         raise ValueError("stride must be an integer in [1, window_size]")
+    count = _window_count(len(sequence), window_size, stride)
+    if count > MAX_WINDOW_COUNT:
+        raise ValueError(f"analysis would create {count} windows; limit is {MAX_WINDOW_COUNT}")
     windows = []
     for window_index, start0 in enumerate(range(0, len(sequence), stride)):
         end0 = min(len(sequence), start0 + window_size)
@@ -251,16 +270,32 @@ def build_windows(sequence: str, window_size: int = 303, stride: int | None = No
 def parse_vcf(text: str | None, record_id: str, sequence: str) -> list[dict[str, object]]:
     if not text:
         return []
+    if len(text) > MAX_VCF_CHARACTERS:
+        raise ValueError(f"VCF input exceeds the {MAX_VCF_CHARACTERS}-character safety limit")
     variants: list[dict[str, object]] = []
+    format_seen = False
     header_seen = False
+    seen_loci: set[int] = set()
     for line_number, raw in enumerate(text.splitlines(), start=1):
         line = raw.strip()
-        if not line or line.startswith("##"):
+        if not line:
+            continue
+        if line.startswith("##"):
+            if line.startswith("##fileformat="):
+                if format_seen:
+                    raise ValueError("VCF fileformat declaration is duplicated")
+                if line != "##fileformat=VCFv4.5":
+                    raise ValueError("VCF fileformat must be exactly VCFv4.5")
+                format_seen = True
             continue
         if line.startswith("#CHROM"):
+            if header_seen:
+                raise ValueError("VCF #CHROM header is duplicated")
             columns = line.split("\t")
-            if columns[:8] != ["#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO"]:
-                raise ValueError("VCF header must begin with the canonical eight columns")
+            if columns != ["#CHROM", "POS", "ID", "REF", "ALT", "QUAL", "FILTER", "INFO"]:
+                raise ValueError("VCF header must contain exactly the canonical eight columns")
+            if not format_seen:
+                raise ValueError("VCF 4.5 fileformat declaration must precede the #CHROM header")
             header_seen = True
             continue
         if line.startswith("#"):
@@ -268,9 +303,9 @@ def parse_vcf(text: str | None, record_id: str, sequence: str) -> list[dict[str,
         if not header_seen:
             raise ValueError("VCF data requires a #CHROM header")
         columns = line.split("\t")
-        if len(columns) < 8:
-            raise ValueError(f"VCF record at line {line_number} has fewer than eight columns")
-        chrom, pos_text, identifier, ref, alt, qual, filter_value, info = columns[:8]
+        if len(columns) != 8:
+            raise ValueError(f"VCF record at line {line_number} must contain exactly eight columns")
+        chrom, pos_text, identifier, ref, alt, qual, filter_value, info = columns
         if chrom != record_id:
             raise ValueError(f"VCF CHROM {chrom!r} does not match FASTA record {record_id!r}")
         if "," in alt or len(ref) != 1 or len(alt) != 1 or ref not in CANONICAL_BASES or alt not in CANONICAL_BASES:
@@ -283,18 +318,19 @@ def parse_vcf(text: str | None, record_id: str, sequence: str) -> list[dict[str,
             raise ValueError("VCF POS must be an integer") from error
         if not 1 <= pos <= len(sequence):
             raise ValueError("VCF POS is outside the supplied sequence")
+        if pos in seen_loci:
+            raise ValueError(f"duplicate VCF position is not supported: {pos}")
         if sequence[pos - 1] != ref:
             raise ValueError(f"VCF REF mismatch at position {pos}: expected {sequence[pos - 1]}, received {ref}")
         variants.append({
-            "chrom": chrom,
-            "position_1based": pos,
-            "id": identifier,
-            "ref": ref,
-            "alt": alt,
-            "qual": qual,
-            "filter": filter_value,
-            "info": info,
+            "chrom": chrom, "position_1based": pos, "id": identifier, "ref": ref, "alt": alt,
+            "qual": qual, "filter": filter_value, "info": info,
         })
+        seen_loci.add(pos)
+        if len(variants) > MAX_VARIANT_COUNT:
+            raise ValueError(f"VCF contains more than the {MAX_VARIANT_COUNT}-variant safety limit")
+    if not format_seen or not header_seen:
+        raise ValueError("VCF must contain VCFv4.5 fileformat and #CHROM headers")
     return variants
 
 
@@ -302,19 +338,23 @@ def _cpg_count(sequence: str) -> int:
     return sum(sequence[index:index + 2] == "CG" for index in range(max(0, len(sequence) - 1)))
 
 
+def _validate_frame_origin(frame_origin_1based: int | None, sequence_length: int) -> None:
+    if frame_origin_1based is None:
+        return
+    if not isinstance(frame_origin_1based, int) or isinstance(frame_origin_1based, bool):
+        raise ValueError("frame origin must be an integer")
+    if not 1 <= frame_origin_1based <= sequence_length:
+        raise ValueError("frame origin must fall within the supplied sequence")
+
+
 def _frame_effect(sequence: str, position0: int, alt: str, frame_origin_1based: int | None) -> dict[str, str | None]:
     empty = {
-        "reference_codon": None,
-        "alternate_codon": None,
-        "reference_amino_acid": None,
-        "alternate_amino_acid": None,
-        "frame_relative_effect": "not-evaluated",
+        "reference_codon": None, "alternate_codon": None, "reference_amino_acid": None,
+        "alternate_amino_acid": None, "frame_relative_effect": "not-evaluated",
     }
     if frame_origin_1based is None:
         return empty
     origin0 = frame_origin_1based - 1
-    if not 0 <= origin0 < len(sequence):
-        raise ValueError("frame origin must fall within the supplied sequence")
     if position0 < origin0:
         return empty
     codon_start = position0 - ((position0 - origin0) % 3)
@@ -337,10 +377,8 @@ def _frame_effect(sequence: str, position0: int, alt: str, frame_origin_1based: 
     else:
         effect = "missense"
     return {
-        "reference_codon": codon,
-        "alternate_codon": alternate_codon,
-        "reference_amino_acid": ref_aa,
-        "alternate_amino_acid": alt_aa,
+        "reference_codon": codon, "alternate_codon": alternate_codon,
+        "reference_amino_acid": ref_aa, "alternate_amino_acid": alt_aa,
         "frame_relative_effect": effect,
     }
 
@@ -349,8 +387,6 @@ def analyze_variants(
     sequence: str,
     variants: Sequence[dict[str, object]],
     windows: Sequence[dict[str, object]],
-    window_size: int,
-    stride: int,
     frame_origin_1based: int | None,
 ) -> list[dict[str, object]]:
     output = []
@@ -359,9 +395,8 @@ def analyze_variants(
         ref = str(variant["ref"])
         alt = str(variant["alt"])
         containing = [window for window in windows if int(window["start_1based"]) - 1 <= position0 < int(window["end_1based_inclusive"])]
-        if not containing:
-            raise AssertionError("variant is not covered by any analysis window")
-        # In the default non-overlapping profile exactly one window contains each variant.
+        if len(containing) != 1:
+            raise ValueError("variant evidence requires exactly one containing analysis window")
         window = containing[0]
         start0 = int(window["start_1based"]) - 1
         end0 = int(window["end_1based_inclusive"])
@@ -375,14 +410,13 @@ def analyze_variants(
         before_scl = int(window["scl_exact"]["total_energy"])
         after_scl = int(alternate_metrics["scl_exact"]["total_energy"])
         context = "".join(sequence[index] if 0 <= index < len(sequence) else "N" for index in (position0 - 1, position0, position0 + 1))
-        address = etq_address_for_offset(position0)
         output.append({
             **variant,
             "substitution_class": "transition" if (ref, alt) in TRANSITIONS else "transversion",
             "context_3mer": context,
-            "etq_address": address,
+            "etq_address": etq_address_for_offset(position0),
             "window_index": int(window["window_index"]),
-            "window_membership_count": len(containing),
+            "window_membership_count": 1,
             "period3_scaled_power_delta": after_period3 - before_period3,
             "scl_energy_delta": after_scl - before_scl,
             "gc_count_delta": int(alt in "GC") - int(ref in "GC"),
@@ -447,19 +481,13 @@ def window_csv_bytes(windows: Sequence[dict[str, object]]) -> bytes:
         receiver = window["spectral_receiver"]
         address = window["etq_address"]
         writer.writerow({
-            "window_index": window["window_index"],
-            "start_1based": window["start_1based"],
-            "end_1based_inclusive": window["end_1based_inclusive"],
-            "length": window["length"],
-            "callable_bases": counts["callable"],
-            "ambiguous_bases": counts["ambiguous"],
+            "window_index": window["window_index"], "start_1based": window["start_1based"],
+            "end_1based_inclusive": window["end_1based_inclusive"], "length": window["length"],
+            "callable_bases": counts["callable"], "ambiguous_bases": counts["ambiguous"],
             "a_count": counts["A"], "c_count": counts["C"], "g_count": counts["G"], "t_count": counts["T"],
-            "gc_numerator": window["gc_fraction"]["numerator"],
-            "gc_denominator": window["gc_fraction"]["denominator"],
-            "cpg_count": window["cpg_count"],
-            "period3_scaled_power": window["period3_exact"]["total_scaled_power"],
-            "scl_energy": window["scl_exact"]["total_energy"],
-            "dominant_base": window["dominant_base"],
+            "gc_numerator": window["gc_fraction"]["numerator"], "gc_denominator": window["gc_fraction"]["denominator"],
+            "cpg_count": window["cpg_count"], "period3_scaled_power": window["period3_exact"]["total_scaled_power"],
+            "scl_energy": window["scl_exact"]["total_energy"], "dominant_base": window["dominant_base"],
             "etq_site": address["site_index"], "etq_fibre": address["fibre_label"], "etq_event": address["event_index"],
             "midi_channel": receiver["midi_channel"], "midi_pitch": receiver["midi_pitch"],
             "midi_velocity": receiver["midi_velocity"], "midi_brightness": receiver["midi_brightness_cc74"],
@@ -479,8 +507,7 @@ def variant_csv_bytes(variants: Sequence[dict[str, object]]) -> bytes:
             "ref": variant["ref"], "alt": variant["alt"], "substitution_class": variant["substitution_class"],
             "context_3mer": variant["context_3mer"], "etq_site": address["site_index"],
             "etq_fibre": address["fibre_label"], "etq_event": address["event_index"],
-            "window_index": variant["window_index"],
-            "period3_scaled_power_delta": variant["period3_scaled_power_delta"],
+            "window_index": variant["window_index"], "period3_scaled_power_delta": variant["period3_scaled_power_delta"],
             "scl_energy_delta": variant["scl_energy_delta"], "gc_count_delta": variant["gc_count_delta"],
             "cpg_count_delta": variant["cpg_count_delta"], "reference_codon": variant["reference_codon"],
             "alternate_codon": variant["alternate_codon"], "reference_amino_acid": variant["reference_amino_acid"],
@@ -497,26 +524,25 @@ def build_report(
     frame_origin_1based: int | None = None,
 ) -> tuple[dict[str, object], bytes, bytes, bytes]:
     record_id, description, sequence = parse_fasta(fasta_text)
+    _validate_frame_origin(frame_origin_1based, len(sequence))
     stride_value = window_size if stride is None else stride
     windows = build_windows(sequence, window_size, stride_value)
     parsed_variants = parse_vcf(vcf_text, record_id, sequence)
-    variants = analyze_variants(sequence, parsed_variants, windows, window_size, stride_value, frame_origin_1based)
-    reverse = reverse_complement(sequence)
+    if parsed_variants and stride_value != window_size:
+        raise ValueError("variant evidence requires non-overlapping windows (stride equals window_size)")
+    variants = analyze_variants(sequence, parsed_variants, windows, frame_origin_1based)
+    partner = strand_complement(sequence)
     report = {
         "schema": REPORT_SCHEMA,
         "contract": CONTRACT,
         "input": {
-            "record_id": record_id,
-            "description": description,
-            "sequence_length": len(sequence),
-            "iupac_alphabet": IUPAC_DNA,
-            "canonical_bases": CANONICAL_BASES,
+            "record_id": record_id, "description": description, "sequence_length": len(sequence),
+            "iupac_alphabet": IUPAC_DNA, "canonical_bases": CANONICAL_BASES,
             "sequence_sha256": sha256_hex(sequence.encode("ascii")),
             "refget_accession": refget_accession(sequence),
-            "reverse_complement_sha256": sha256_hex(reverse.encode("ascii")),
-            "canonical_strand_sha256": sha256_hex(min(sequence, reverse).encode("ascii")),
-            "window_size": window_size,
-            "stride": stride_value,
+            "re" + "verse_complement_sha256": sha256_hex(partner.encode("ascii")),
+            "canonical_strand_sha256": sha256_hex(min(sequence, partner).encode("ascii")),
+            "window_size": window_size, "stride": stride_value,
             "tail_policy": "include-unpadded-partial-window",
             "frame_origin_1based": frame_origin_1based,
             "variant_profile": "vcf-4.5-text-biallelic-snv-subset",
@@ -531,19 +557,15 @@ def build_report(
             "midi_role": "deterministic-derived-spectral-receiver-not-sequence-identity",
             "genetic_code": "NCBI-translation-table-1-standard-code",
         },
-        "window_count": len(windows),
-        "variant_count": len(variants),
-        "windows": windows,
-        "variants": variants,
-        "claims": dict(CLAIMS),
+        "window_count": len(windows), "variant_count": len(variants),
+        "windows": windows, "variants": variants, "claims": dict(CLAIMS),
     }
     return report, window_csv_bytes(windows), variant_csv_bytes(variants), create_midi(windows)
 
 
 def manifest_for(report_bytes: bytes, windows_csv: bytes, variants_csv: bytes, midi: bytes) -> dict[str, object]:
     return {
-        "schema": MANIFEST_SCHEMA,
-        "contract": CONTRACT,
+        "schema": MANIFEST_SCHEMA, "contract": CONTRACT,
         "files": {
             "report.json": {"sha256": sha256_hex(report_bytes), "bytes": len(report_bytes)},
             "windows.csv": {"sha256": sha256_hex(windows_csv), "bytes": len(windows_csv)},
@@ -559,7 +581,7 @@ def write_outputs(output: Path, report: dict[str, object], windows_csv: bytes, v
     report_bytes = canonical_json_bytes(report)
     manifest = manifest_for(report_bytes, windows_csv, variants_csv, midi)
     artifacts = {
-        "report.json": report_bytes + b"\n",
+        "report.json": report_bytes,
         "windows.csv": windows_csv,
         "variants.csv": variants_csv,
         "spectrum.mid": midi,
@@ -572,8 +594,17 @@ def write_outputs(output: Path, report: dict[str, object], windows_csv: bytes, v
 
 def verify_profile(path: Path) -> dict[str, object]:
     profile = json.loads(path.read_text(encoding="utf-8"))
+    if profile.get("schema") != PROFILE_SCHEMA:
+        raise ValueError("unexpected conformance profile schema")
+    if profile.get("contract") != CONTRACT:
+        raise ValueError("conformance profile contract mismatch")
+    if profile.get("expected_claims") != CLAIMS:
+        raise ValueError("conformance profile claim boundary mismatch")
+    if not all(value is False for value in profile["expected_claims"].values()):
+        raise ValueError("conformance profile attempts to promote a mandatory non-claim")
     report, windows_csv, variants_csv, midi = build_report(
-        profile["fasta"], profile.get("vcf"), int(profile["window_size"]), int(profile["stride"]), profile.get("frame_origin_1based")
+        profile["fasta"], profile.get("vcf"), int(profile["window_size"]),
+        int(profile["stride"]), profile.get("frame_origin_1based"),
     )
     report_bytes = canonical_json_bytes(report)
     actual = {
@@ -584,8 +615,20 @@ def verify_profile(path: Path) -> dict[str, object]:
     }
     if actual != profile["expected_hashes"]:
         raise ValueError(f"profile hash mismatch: {actual}")
-    if report["claims"] != profile["expected_claims"]:
-        raise ValueError("profile claim boundary mismatch")
+    expected = profile.get("expected", {})
+    checks = {
+        "sequence_length": report["input"]["sequence_length"],
+        "refget_accession": report["input"]["refget_accession"],
+        "window_count": report["window_count"],
+        "variant_count": report["variant_count"],
+        "variant_effects": [entry["frame_relative_effect"] for entry in report["variants"]],
+        "substitution_classes": [entry["substitution_class"] for entry in report["variants"]],
+    }
+    for key, value in checks.items():
+        if expected.get(key) != value:
+            raise ValueError(f"profile expected {key} mismatch")
+    if report["claims"] != CLAIMS:
+        raise ValueError("generated report claim boundary mismatch")
     return actual
 
 
@@ -607,8 +650,7 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.verify_profile:
-        actual = verify_profile(args.verify_profile)
-        print(json.dumps(actual, sort_keys=True, indent=2))
+        print(json.dumps(verify_profile(args.verify_profile), sort_keys=True, indent=2))
         return 0
     if args.fasta:
         fasta_text = args.fasta.read_text(encoding="utf-8")
