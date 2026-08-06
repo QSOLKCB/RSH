@@ -8,10 +8,13 @@ on:
       - "native/cpp/CMakeLists.txt"
       - "scripts/multi_device_cuda_reference.py"
       - "scripts/test_multi_device_cuda.py"
+      - "scripts/verify_multi_device_cuda_campaign.py"
       - "tests/test_multi_device_cuda_*.py"
       - "conformance/frenet_multi_device_cuda_v1_4097.json"
+      - "conformance/observed/multi-device-cuda/**"
       - "research/multi-device-cuda/**"
       - "docs/PHASE17_MULTI_DEVICE_CUDA.md"
+      - "docs/MULTI_DEVICE_CUDA_EVIDENCE.md"
       - ".github/workflows/multi-device-cuda.yml"
       - ".github/workflows/multi-device-cuda-hardware.yml"
   pull_request:
@@ -20,10 +23,13 @@ on:
       - "native/cpp/CMakeLists.txt"
       - "scripts/multi_device_cuda_reference.py"
       - "scripts/test_multi_device_cuda.py"
+      - "scripts/verify_multi_device_cuda_campaign.py"
       - "tests/test_multi_device_cuda_*.py"
       - "conformance/frenet_multi_device_cuda_v1_4097.json"
+      - "conformance/observed/multi-device-cuda/**"
       - "research/multi-device-cuda/**"
       - "docs/PHASE17_MULTI_DEVICE_CUDA.md"
+      - "docs/MULTI_DEVICE_CUDA_EVIDENCE.md"
       - ".github/workflows/multi-device-cuda.yml"
       - ".github/workflows/multi-device-cuda-hardware.yml"
 
@@ -43,6 +49,7 @@ jobs:
           python3 -m unittest \
             tests.test_multi_device_cuda_reference \
             tests.test_multi_device_cuda_harness \
+            tests.test_multi_device_cuda_campaign \
             -v
       - name: Replay sealed portable profile
         run: |
@@ -72,15 +79,23 @@ jobs:
           assert csv_digest == profile["expected"]["path_csv_sha256"]
           assert report["claims"] == profile["portable_claims"]
           PY
+      - name: Validate checked-in physical campaign
+        run: |
+          python3 scripts/verify_multi_device_cuda_campaign.py
       - name: Source and authority boundaries
         run: |
           python3 -m py_compile \
             scripts/multi_device_cuda_reference.py \
             scripts/test_multi_device_cuda.py \
+            scripts/verify_multi_device_cuda_campaign.py \
             tests/test_multi_device_cuda_reference.py \
-            tests/test_multi_device_cuda_harness.py
+            tests/test_multi_device_cuda_harness.py \
+            tests/test_multi_device_cuda_campaign.py
           python3 -m json.tool \
             conformance/frenet_multi_device_cuda_v1_4097.json >/dev/null
+          for file in conformance/observed/multi-device-cuda/2026-08-06/*.json; do
+            python3 -m json.tool "$file" >/dev/null
+          done
           test -s native/cuda/rsh_multi_device_kernels.cuh
           test -s native/cuda/rsh_multi_device_support.hpp
           test -s native/cuda/rsh_multi_device_path_cuda.cu
@@ -95,7 +110,7 @@ jobs:
             native/cuda/rsh_multi_device_path_cuda.cu
           grep -q 'raw_device_uuid_published\\\": false' \
             native/cuda/rsh_multi_device_path_cuda.cu
-          ! grep -R -q '\"device_uuid\"' \
+          ! grep -R -q '"device_uuid"' \
             native/cuda/rsh_multi_device_kernels.cuh \
             native/cuda/rsh_multi_device_support.hpp \
             native/cuda/rsh_multi_device_path_cuda.cu
