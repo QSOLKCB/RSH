@@ -120,9 +120,10 @@ export function strandComplement(sequence) {
   return [...sequence].reduceRight((output, base) => output + COMPLEMENT[base], "");
 }
 export function eventIndexFromAddress(siteIndex, fibreLabel) {
-  assert(Number.isInteger(siteIndex) && siteIndex >= 0 && siteIndex < 101, "site_index must be in [0, 100]");
-  assert(Number.isInteger(fibreLabel) && fibreLabel >= 0 && fibreLabel < 3, "fibre_label must be in [0, 2]");
-  return siteIndex + ETQ_SITE_COUNT * (((2 * (fibreLabel - (siteIndex % 3))) % 3 + 3) % 3);
+  const fibreCount = 3;
+  assert(Number.isInteger(siteIndex) && siteIndex >= 0 && siteIndex < ETQ_SITE_COUNT, `site_index must be in [0, ${ETQ_SITE_COUNT - 1}]`);
+  assert(Number.isInteger(fibreLabel) && fibreLabel >= 0 && fibreLabel < fibreCount, `fibre_label must be in [0, ${fibreCount - 1}]`);
+  return siteIndex + ETQ_SITE_COUNT * (((2 * (fibreLabel - (siteIndex % fibreCount))) % fibreCount + fibreCount) % fibreCount);
 }
 export function etqAddressForOffset(offset0) {
   assert(Number.isInteger(offset0) && offset0 >= 0, "offset must be nonnegative");
