@@ -87,6 +87,8 @@ jobs:
           grep -q 'MAX_SEQUENCE_BASES = 1_000_000' web/genomic-spectrum/model.js
           grep -q 'replaceRows' web/genomic-spectrum/app.js
           grep -q 'secondsPerTick' web/genomic-spectrum/app.js
+          grep -q 'analysisGeneration' web/genomic-spectrum/app.js
+          grep -q 'generation !== state.analysisGeneration' web/genomic-spectrum/app.js
           grep -q 'navigator.serviceWorker.register' web/genomic-spectrum/app.js
           grep -q 'clinical_variant_interpretation: false' research/genomic-spectral/SPEC.md
           grep -q 'spectral_feature_is_diagnostic: false' research/genomic-spectral/SPEC.md
