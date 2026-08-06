@@ -6,6 +6,8 @@ export const F32_BUNDLE_SCHEMA = "RSH-F32-SIERPINSKI-CELL-BUNDLE-V1";
 export const F32_CELL_DEPTH = 21;
 export const F32_WORD_LIMIT = 2n ** 32n;
 export const F32_TRIT_CAPACITY = 3n ** BigInt(F32_CELL_DEPTH);
+export const MAX_F32_BUNDLE_CELLS = 16_384;
+export const MAX_F32_FIELD_CHARACTERS = 128;
 export const F32_CELL_CLAIMS = Object.freeze({
   actual_multi_device_execution: false,
   compression_claim: false,
@@ -43,6 +45,18 @@ export function validateWord(word) {
     throw new RangeError("binary32 word must be an integer in [0, 2^32)");
   }
   return word >>> 0;
+}
+
+export function validateField(field) {
+  if (field === null) return null;
+  if (typeof field !== "string" || field.length === 0) throw new TypeError("field must be nonempty text");
+  if (field.length > MAX_F32_FIELD_CHARACTERS) {
+    throw new RangeError(`field exceeds the ${MAX_F32_FIELD_CHARACTERS}-character safety limit`);
+  }
+  if (!/^[\x20-\x7e]+$/u.test(field)) {
+    throw new Error("field must contain printable ASCII only for cross-runtime canonicalization");
+  }
+  return field;
 }
 
 export function wordToTrits(word) {
@@ -118,9 +132,7 @@ export function wordToCell(word, { cellIndex = null, field = null } = {}) {
   if (cellIndex !== null && (!Number.isSafeInteger(cellIndex) || cellIndex < 0)) {
     throw new RangeError("cellIndex must be a nonnegative integer");
   }
-  if (field !== null && (typeof field !== "string" || field.length === 0)) {
-    throw new TypeError("field must be nonempty text");
-  }
+  field = validateField(field);
   const trits = wordToTrits(value);
   const vertices = exactCellVertices(trits);
   const centroid = exactCellCentroid(trits);
@@ -165,6 +177,7 @@ export function validateCell(cell) {
   if (cell.exponent_bits !== ((word >>> 23) & 0xff)) throw new Error("binary32 exponent bits mismatch");
   if (cell.fraction_bits !== (word & 0x7fffff)) throw new Error("binary32 fraction bits mismatch");
   if (cell.classification !== classifyWord(word)) throw new Error("binary32 classification mismatch");
+  if (Object.hasOwn(cell, "field")) validateField(cell.field);
   const vertices = exactCellVertices(cell.address_trits);
   const centroid = exactCellCentroid(cell.address_trits);
   if (canonicalJson(cell.cell_vertex_barycentric_numerators) !== canonicalJson(vertices.numerators)
@@ -180,6 +193,9 @@ export function validateCell(cell) {
 
 export async function buildCellBundle(words, fields = null) {
   if (!Array.isArray(words)) throw new TypeError("words must be an array");
+  if (words.length > MAX_F32_BUNDLE_CELLS) {
+    throw new RangeError(`word count exceeds the ${MAX_F32_BUNDLE_CELLS}-cell bundle limit`);
+  }
   if (fields !== null && (!Array.isArray(fields) || fields.length !== words.length)) {
     throw new Error("field count must equal word count");
   }
@@ -210,7 +226,10 @@ export async function verifyCellBundle(bundle) {
   if (canonicalJson(bundle.claims) !== canonicalJson(F32_CELL_CLAIMS)) {
     throw new Error("Sierpinski bundle claim boundary mismatch");
   }
-  if (!Array.isArray(bundle.cells) || bundle.cell_count !== bundle.cells.length) {
+  if (!Array.isArray(bundle.cells)
+      || !Number.isSafeInteger(bundle.cell_count)
+      || bundle.cell_count !== bundle.cells.length
+      || bundle.cell_count > MAX_F32_BUNDLE_CELLS) {
     throw new Error("Sierpinski bundle cell count mismatch");
   }
   const words = bundle.cells.map(validateCell);
