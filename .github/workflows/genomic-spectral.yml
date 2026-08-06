@@ -1,0 +1,94 @@
+name: Genomic spectral evidence
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/genomic_spectral_etq.py"
+      - "scripts/test_genomic_spectral_etq.mjs"
+      - "tests/test_genomic_spectral_etq.py"
+      - "conformance/genomic_spectral_v1_606.json"
+      - "research/genomic-spectral/**"
+      - "docs/PHASE15_GENOMIC_SPECTRAL_EVIDENCE.md"
+      - "web/genomic-spectrum/**"
+      - ".github/workflows/genomic-spectral.yml"
+  pull_request:
+    paths:
+      - "scripts/genomic_spectral_etq.py"
+      - "scripts/test_genomic_spectral_etq.mjs"
+      - "tests/test_genomic_spectral_etq.py"
+      - "conformance/genomic_spectral_v1_606.json"
+      - "research/genomic-spectral/**"
+      - "docs/PHASE15_GENOMIC_SPECTRAL_EVIDENCE.md"
+      - "web/genomic-spectrum/**"
+      - ".github/workflows/genomic-spectral.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python reference and negative tests
+        run: python3 -m unittest tests.test_genomic_spectral_etq -v
+      - name: Generate and verify deterministic artifacts
+        run: |
+          python3 scripts/genomic_spectral_etq.py \
+            --verify-profile conformance/genomic_spectral_v1_606.json
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import pathlib
+          import subprocess
+          import tempfile
+
+          profile = json.loads(pathlib.Path(
+              "conformance/genomic_spectral_v1_606.json"
+          ).read_text(encoding="utf-8"))
+          with tempfile.TemporaryDirectory() as directory:
+              root = pathlib.Path(directory)
+              fasta = root / "fixture.fa"
+              vcf = root / "fixture.vcf"
+              output = root / "out"
+              fasta.write_text(profile["fasta"], encoding="utf-8", newline="\n")
+              vcf.write_text(profile["vcf"], encoding="utf-8", newline="\n")
+              subprocess.run([
+                  "python3", "scripts/genomic_spectral_etq.py",
+                  "--fasta", str(fasta), "--vcf", str(vcf),
+                  "--window-size", "303", "--stride", "303",
+                  "--frame-origin", "1", "--output", str(output),
+              ], check=True)
+              manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+              for name in ("report.json", "windows.csv", "variants.csv", "spectrum.mid"):
+                  data = (output / name).read_bytes()
+                  assert data
+                  assert hashlib.sha256(data).hexdigest() == manifest["files"][name]["sha256"]
+                  assert len(data) == manifest["files"][name]["bytes"]
+              assert b"\r\n" not in (output / "report.json").read_bytes()
+              assert b"\r\n" not in (output / "windows.csv").read_bytes()
+          PY
+      - name: Browser JavaScript cross-runtime conformance
+        run: node scripts/test_genomic_spectral_etq.mjs
+      - name: Offline and claim boundaries
+        run: |
+          python3 -m py_compile scripts/genomic_spectral_etq.py tests/test_genomic_spectral_etq.py
+          node --check scripts/test_genomic_spectral_etq.mjs
+          node --check web/genomic-spectrum/model.js
+          node --check web/genomic-spectrum/app.js
+          node --check web/genomic-spectrum/sw.js
+          python3 -m json.tool conformance/genomic_spectral_v1_606.json >/dev/null
+          grep -q '<title>RSH Genomic Spectral Laboratory</title>' web/genomic-spectrum/index.html
+          grep -q 'MAX_SEQUENCE_BASES = 1_000_000' scripts/genomic_spectral_etq.py
+          grep -q 'MAX_SEQUENCE_BASES = 1_000_000' web/genomic-spectrum/model.js
+          grep -q 'replaceRows' web/genomic-spectrum/app.js
+          grep -q 'secondsPerTick' web/genomic-spectrum/app.js
+          grep -q 'navigator.serviceWorker.register' web/genomic-spectrum/app.js
+          grep -q 'clinical_variant_interpretation: false' research/genomic-spectral/SPEC.md
+          grep -q 'spectral_feature_is_diagnostic: false' research/genomic-spectral/SPEC.md
+          ! grep -q 'innerHTML' web/genomic-spectrum/app.js
+          ! grep -R -E -q 'https?://|from "https?://' web/genomic-spectrum

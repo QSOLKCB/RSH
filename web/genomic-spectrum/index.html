@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#151515">
+  <meta name="description" content="Offline deterministic FASTA, genomic-window, SNV, ETQ-address, spectral, and MIDI evidence laboratory.">
+  <title>RSH Genomic Spectral Laboratory</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">RSH · ETQ · SPECTRAL · PHASE 15</p>
+      <h1>Genomic Spectral Laboratory</h1>
+      <p class="lede">Deterministic FASTA identity, exact k-mer and period-3 evidence, ETQ position addresses, SNV deltas, and a reproducible MIDI receiver.</p>
+    </div>
+    <div class="contract"><span>CONTRACT</span><strong>RSH-ETQ-GENOMIC-SPECTRAL-V1</strong><em>Exploratory computational evidence — not clinical interpretation</em></div>
+  </header>
+
+  <main>
+    <section class="panel inputs">
+      <div class="section-head"><div><p class="kicker">01 / SOURCE</p><h2>Sequence and variants</h2></div><button id="loadFixture" class="ghost">Load sealed fixture</button></div>
+      <div class="input-grid">
+        <label>Single-record FASTA · up to 1,000,000 normalized bases<textarea id="fasta" spellcheck="false" aria-label="FASTA sequence">&gt;example
+ATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAG</textarea></label>
+        <label>Optional VCF 4.5 · exact eight-column biallelic SNVs<textarea id="vcf" spellcheck="false" aria-label="VCF variants">##fileformat=VCFv4.5
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+example	4	stop_gain	G	T	.	PASS	.</textarea></label>
+      </div>
+      <div class="controls">
+        <label>Window <input id="windowSize" type="number" min="3" max="4095" value="303"></label>
+        <label>Stride <input id="stride" type="number" min="1" max="303" value="303"></label>
+        <label>Frame origin <input id="frameOrigin" type="number" min="1" placeholder="optional" value="1"></label>
+        <button id="analyze" class="primary">Analyze deterministically</button>
+      </div>
+      <p class="input-note">Maximum 4,096 windows and 4,096 SNVs. Variant evidence requires non-overlapping windows.</p>
+      <p id="status" class="status" role="status">Ready. Processing remains local to this browser.</p>
+    </section>
+
+    <section class="metrics" aria-label="Analysis summary">
+      <article><span>Sequence</span><strong id="sequenceLength">—</strong><small>bases</small></article>
+      <article><span>Windows</span><strong id="windowCount">—</strong><small>deterministic records</small></article>
+      <article><span>Variants</span><strong id="variantCount">—</strong><small>strict SNVs</small></article>
+      <article class="wide"><span>Refget accession</span><strong id="refget">—</strong><small>sequence-derived identity</small></article>
+    </section>
+
+    <section class="panel visual">
+      <div class="section-head"><div><p class="kicker">02 / EVIDENCE FIELD</p><h2>Window spectrum</h2></div><div class="legend"><i></i>Period-3 power <b></b>SCL energy</div></div>
+      <canvas id="chart" width="1200" height="360" aria-label="Window evidence chart"></canvas>
+      <div class="table-wrap"><table><thead><tr><th>Window</th><th>Range</th><th>GC</th><th>CpG</th><th>Period-3</th><th>SCL energy</th><th>ETQ event</th><th>Receiver</th></tr></thead><tbody id="windowRows"><tr><td colspan="8">Run an analysis to populate evidence.</td></tr></tbody></table></div>
+    </section>
+
+    <section class="panel variants">
+      <div class="section-head"><div><p class="kicker">03 / PERTURBATION</p><h2>SNV evidence deltas</h2></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Variant</th><th>Class</th><th>Context</th><th>ETQ</th><th>Δ period-3</th><th>Δ SCL</th><th>Frame-relative label</th></tr></thead><tbody id="variantRows"><tr><td colspan="7">No variant evidence yet.</td></tr></tbody></table></div>
+    </section>
+
+    <section class="panel outputs">
+      <div class="section-head">
+        <div><p class="kicker">04 / RECEIPTS</p><h2>Replay and export</h2></div>
+        <div class="transport"><button id="play" class="ghost" disabled>Play SPECTRAL receiver</button><button id="stop" class="ghost" disabled>Stop</button></div>
+      </div>
+      <div class="downloads">
+        <button data-download="report" disabled>report.json</button>
+        <button data-download="windows" disabled>windows.csv</button>
+        <button data-download="variants" disabled>variants.csv</button>
+        <button data-download="midi" disabled>spectrum.mid</button>
+        <button data-download="manifest" disabled>manifest.json</button>
+      </div>
+      <pre id="receipt">No receipt generated.</pre>
+    </section>
+  </main>
+
+  <footer><strong>Boundary:</strong> spectral features are exploratory evidence, not gene calls, pathogenicity classifications, or diagnoses. All analysis runs locally; no sequence is uploaded.</footer>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
