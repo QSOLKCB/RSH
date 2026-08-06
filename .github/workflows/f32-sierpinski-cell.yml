@@ -1,0 +1,53 @@
+name: F32 Sierpinski cells
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/f32_sierpinski_cell.py"
+      - "scripts/test_f32_sierpinski_cell.mjs"
+      - "tests/test_f32_sierpinski_cell.py"
+      - "conformance/f32_sierpinski_cell_v1.json"
+      - "research/f32-sierpinski-cell/**"
+      - "docs/PHASE15B_F32_SIERPINSKI_CELL.md"
+      - "web/genomic-spectrum/f32-cell.js"
+      - ".github/workflows/f32-sierpinski-cell.yml"
+  pull_request:
+    paths:
+      - "scripts/f32_sierpinski_cell.py"
+      - "scripts/test_f32_sierpinski_cell.mjs"
+      - "tests/test_f32_sierpinski_cell.py"
+      - "conformance/f32_sierpinski_cell_v1.json"
+      - "research/f32-sierpinski-cell/**"
+      - "docs/PHASE15B_F32_SIERPINSKI_CELL.md"
+      - "web/genomic-spectrum/f32-cell.js"
+      - ".github/workflows/f32-sierpinski-cell.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python exact-word and tamper regressions
+        run: python3 -m unittest tests.test_f32_sierpinski_cell -v
+      - name: Verify sealed Python profile
+        run: python3 scripts/f32_sierpinski_cell.py --verify-profile conformance/f32_sierpinski_cell_v1.json
+      - name: JavaScript cross-runtime conformance
+        run: node scripts/test_f32_sierpinski_cell.mjs
+      - name: Source and authority boundaries
+        run: |
+          python3 -m py_compile scripts/f32_sierpinski_cell.py tests/test_f32_sierpinski_cell.py
+          node --check web/genomic-spectrum/f32-cell.js
+          node --check scripts/test_f32_sierpinski_cell.mjs
+          python3 -m json.tool conformance/f32_sierpinski_cell_v1.json >/dev/null
+          grep -q '3\^20 = 3,486,784,401' research/f32-sierpinski-cell/SPEC.md
+          grep -q 'compression_claim: false' research/f32-sierpinski-cell/SPEC.md
+          grep -q 'physical_storage_demonstrated: false' research/f32-sierpinski-cell/SPEC.md
+          grep -q 'geometry_receipt_authority: false' research/f32-sierpinski-cell/SPEC.md
+          grep -q '0x5f3759df' tests/test_f32_sierpinski_cell.py
