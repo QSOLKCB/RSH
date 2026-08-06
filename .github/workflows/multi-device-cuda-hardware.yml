@@ -186,17 +186,18 @@ jobs:
           mkdir -p "$evidence/run"
 
           # rsh-gpu-shell runs as the unprivileged trusted-runner user. Force
-          # rustup off the image-owned /opt/rustup tree and onto the persistent,
-          # writable cache mounted beneath HOME.
+          # rustup off the image-owned /opt/rustup tree and keep Cargo output in
+          # the workspace path consumed by the conformance harness.
           : "${HOME:?trusted CUDA audit requires HOME to be set}"
           export RUSTUP_HOME="$HOME/.rustup"
           export CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"
+          export CARGO_TARGET_DIR="$PWD/target"
           export PATH="$CARGO_HOME/bin:${PATH:-/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin}"
-          if ! mkdir -p "$RUSTUP_HOME" "$CARGO_HOME"; then
-            echo "trusted CUDA audit could not create Rust cache directories: $RUSTUP_HOME $CARGO_HOME" >&2
+          if ! mkdir -p "$RUSTUP_HOME" "$CARGO_HOME" "$CARGO_TARGET_DIR"; then
+            echo "trusted CUDA audit could not create Rust directories: $RUSTUP_HOME $CARGO_HOME $CARGO_TARGET_DIR" >&2
             exit 25
           fi
-          for directory in "$RUSTUP_HOME" "$CARGO_HOME"; do
+          for directory in "$RUSTUP_HOME" "$CARGO_HOME" "$CARGO_TARGET_DIR"; do
             probe="$directory/.rsh-write-test-$$"
             : > "$probe" || {
               echo "trusted CUDA audit directory is not writable: $directory" >&2
@@ -212,6 +213,12 @@ jobs:
 
           cargo build --locked --release -p rsh-parallel-cli \
             > "$evidence/cargo-build.txt" 2>&1
+          parallel_cli="$CARGO_TARGET_DIR/release/rsh-parallel-cli"
+          test -x "$parallel_cli" || {
+            echo "Cargo completed but the expected parallel CLI is unavailable: $parallel_cli" >&2
+            find "$CARGO_TARGET_DIR" -maxdepth 3 -type f -name 'rsh-parallel-cli*' -print >&2 || true
+            exit 26
+          }
           cmake -S native/cpp -B build/multi-cuda \
             -DCMAKE_BUILD_TYPE=Release \
             -DRSH_ENABLE_CUDA=ON \
@@ -223,7 +230,7 @@ jobs:
             > "$evidence/cmake-build.txt" 2>&1
           python3 scripts/test_multi_device_cuda.py \
             --cuda-executable build/multi-cuda/rsh-multi-cuda \
-            --parallel-cli target/release/rsh-parallel-cli \
+            --parallel-cli "$parallel_cli" \
             --profile conformance/frenet_multi_device_cuda_v1_4097.json \
             --devices "$devices" \
             --source-commit "$tested_sha" \
@@ -243,6 +250,28 @@ jobs:
           printf '%s\n' "$status" > "$RSH_EVIDENCE_DIR/exit-code.txt"
           printf 'status=%s\n' "$status" >> "$GITHUB_OUTPUT"
           exit "$status"
+
+      - name: Report failed hardware audit
+        if: always() && steps.audit.outputs.status != '0'
+        shell: bash
+        run: |
+          set -uo pipefail
+          printf '%s\n' 'Trusted multi-device CUDA audit returned a non-zero status.'
+          for file in \
+            "$RSH_EVIDENCE_DIR/exit-code.txt" \
+            "$RSH_EVIDENCE_DIR/run/rejection.json" \
+            "$RSH_EVIDENCE_DIR/harness-console.json" \
+            "$RSH_EVIDENCE_DIR/rustup-setup.txt" \
+            "$RSH_EVIDENCE_DIR/cargo-build.txt" \
+            "$RSH_EVIDENCE_DIR/cmake-configure.txt" \
+            "$RSH_EVIDENCE_DIR/cmake-build.txt"; do
+            printf '\n=== %s ===\n' "$file"
+            if [ -f "$file" ]; then
+              tail -n 200 "$file" || true
+            else
+              printf '%s\n' '(missing)'
+            fi
+          done
 
       - name: Record trusted workflow metadata
         if: always()
