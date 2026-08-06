@@ -14,8 +14,12 @@ feature receives a new name, new conformance profile, and mandatory non-claims.
 
 - strict validation replaces silent deletion of unsupported characters;
 - incomplete codons are rejected rather than truncated;
+- raw text and normalized base counts are bounded before artifact allocation;
 - codon offset is the independent qutrit fibre, preserving all four DNA bases;
-- MIDI contains enough metadata for exact recovery decoding;
+- MIDI requires a fresh ordered metadata set for every note;
+- all three notes in a codon must identify one shared site index;
+- emitted report bytes reproduce the manifest's canonical report hash;
+- browser playback derives seconds from the declared 480 PPQ / 120 BPM tempo;
 - the Sierpinski recurrence is global rather than reset for each codon;
 - four tetrahedral vertices replace the planar three-direction `x=z` map;
 - Python and JavaScript reproduce the same report, CSV, and MIDI hashes;
@@ -32,7 +36,8 @@ web/dna-midi/
 ```
 
 The browser surface is dependency-free, installs its own subdirectory-scoped
-service worker, and supports playback plus JSON, CSV, MIDI, and manifest export.
+service worker, and supports tempo-correct playback plus canonical JSON, CSV,
+MIDI, and manifest export.
 
 ## Future boundary
 
