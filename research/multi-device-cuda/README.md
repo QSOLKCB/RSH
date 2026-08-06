@@ -29,6 +29,7 @@ reduction/base traffic permitted between composition phases.
 ## Mandatory portable non-claims
 
 ```text
+actual_cuda_execution: false
 actual_multi_device_execution: false
 distributed_execution: false
 universal_speedup_claim: false
@@ -37,4 +38,4 @@ geometry_receipt_authority: false
 
 Only an accepted trusted run from an exact commit already contained in `main`,
 on a host exposing at least two physical CUDA devices, may set
-`actual_multi_device_execution: true`.
+`actual_cuda_execution: true` and `actual_multi_device_execution: true`.
