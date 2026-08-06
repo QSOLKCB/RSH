@@ -38,18 +38,39 @@ jobs:
         run: python3 -m unittest tests.test_genomic_spectral_etq -v
       - name: Generate and verify deterministic artifacts
         run: |
-          OUT="${RUNNER_TEMP:-$PWD/target/genomic-spectral}"
           python3 scripts/genomic_spectral_etq.py \
             --verify-profile conformance/genomic_spectral_v1_606.json
           python3 - <<'PY'
-          import json, pathlib, subprocess, tempfile
-          p=json.loads(pathlib.Path('conformance/genomic_spectral_v1_606.json').read_text())
-          with tempfile.TemporaryDirectory() as d:
-              fa=pathlib.Path(d)/'fixture.fa'; vcf=pathlib.Path(d)/'fixture.vcf'; out=pathlib.Path(d)/'out'
-              fa.write_text(p['fasta']); vcf.write_text(p['vcf'])
-              subprocess.run(['python3','scripts/genomic_spectral_etq.py','--fasta',str(fa),'--vcf',str(vcf),'--window-size','303','--stride','303','--frame-origin','1','--output',str(out)],check=True)
-              for name in ('report.json','windows.csv','variants.csv','spectrum.mid','manifest.json'):
-                  assert (out/name).stat().st_size > 0
+          import hashlib
+          import json
+          import pathlib
+          import subprocess
+          import tempfile
+
+          profile = json.loads(pathlib.Path(
+              "conformance/genomic_spectral_v1_606.json"
+          ).read_text(encoding="utf-8"))
+          with tempfile.TemporaryDirectory() as directory:
+              root = pathlib.Path(directory)
+              fasta = root / "fixture.fa"
+              vcf = root / "fixture.vcf"
+              output = root / "out"
+              fasta.write_text(profile["fasta"], encoding="utf-8", newline="\n")
+              vcf.write_text(profile["vcf"], encoding="utf-8", newline="\n")
+              subprocess.run([
+                  "python3", "scripts/genomic_spectral_etq.py",
+                  "--fasta", str(fasta), "--vcf", str(vcf),
+                  "--window-size", "303", "--stride", "303",
+                  "--frame-origin", "1", "--output", str(output),
+              ], check=True)
+              manifest = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+              for name in ("report.json", "windows.csv", "variants.csv", "spectrum.mid"):
+                  data = (output / name).read_bytes()
+                  assert data
+                  assert hashlib.sha256(data).hexdigest() == manifest["files"][name]["sha256"]
+                  assert len(data) == manifest["files"][name]["bytes"]
+              assert b"\r\n" not in (output / "report.json").read_bytes()
+              assert b"\r\n" not in (output / "windows.csv").read_bytes()
           PY
       - name: Browser JavaScript cross-runtime conformance
         run: node scripts/test_genomic_spectral_etq.mjs
@@ -62,7 +83,12 @@ jobs:
           node --check web/genomic-spectrum/sw.js
           python3 -m json.tool conformance/genomic_spectral_v1_606.json >/dev/null
           grep -q '<title>RSH Genomic Spectral Laboratory</title>' web/genomic-spectrum/index.html
+          grep -q 'MAX_SEQUENCE_BASES = 1_000_000' scripts/genomic_spectral_etq.py
+          grep -q 'MAX_SEQUENCE_BASES = 1_000_000' web/genomic-spectrum/model.js
+          grep -q 'replaceRows' web/genomic-spectrum/app.js
+          grep -q 'secondsPerTick' web/genomic-spectrum/app.js
           grep -q 'navigator.serviceWorker.register' web/genomic-spectrum/app.js
           grep -q 'clinical_variant_interpretation: false' research/genomic-spectral/SPEC.md
           grep -q 'spectral_feature_is_diagnostic: false' research/genomic-spectral/SPEC.md
+          ! grep -q 'innerHTML' web/genomic-spectrum/app.js
           ! grep -R -E -q 'https?://|from "https?://' web/genomic-spectrum
