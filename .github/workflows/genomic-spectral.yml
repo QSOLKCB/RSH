@@ -1,0 +1,68 @@
+name: Genomic spectral evidence
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/genomic_spectral_etq.py"
+      - "scripts/test_genomic_spectral_etq.mjs"
+      - "tests/test_genomic_spectral_etq.py"
+      - "conformance/genomic_spectral_v1_606.json"
+      - "research/genomic-spectral/**"
+      - "docs/PHASE15_GENOMIC_SPECTRAL_EVIDENCE.md"
+      - "web/genomic-spectrum/**"
+      - ".github/workflows/genomic-spectral.yml"
+  pull_request:
+    paths:
+      - "scripts/genomic_spectral_etq.py"
+      - "scripts/test_genomic_spectral_etq.mjs"
+      - "tests/test_genomic_spectral_etq.py"
+      - "conformance/genomic_spectral_v1_606.json"
+      - "research/genomic-spectral/**"
+      - "docs/PHASE15_GENOMIC_SPECTRAL_EVIDENCE.md"
+      - "web/genomic-spectrum/**"
+      - ".github/workflows/genomic-spectral.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python reference and negative tests
+        run: python3 -m unittest tests.test_genomic_spectral_etq -v
+      - name: Generate and verify deterministic artifacts
+        run: |
+          OUT="${RUNNER_TEMP:-$PWD/target/genomic-spectral}"
+          python3 scripts/genomic_spectral_etq.py \
+            --verify-profile conformance/genomic_spectral_v1_606.json
+          python3 - <<'PY'
+          import json, pathlib, subprocess, tempfile
+          p=json.loads(pathlib.Path('conformance/genomic_spectral_v1_606.json').read_text())
+          with tempfile.TemporaryDirectory() as d:
+              fa=pathlib.Path(d)/'fixture.fa'; vcf=pathlib.Path(d)/'fixture.vcf'; out=pathlib.Path(d)/'out'
+              fa.write_text(p['fasta']); vcf.write_text(p['vcf'])
+              subprocess.run(['python3','scripts/genomic_spectral_etq.py','--fasta',str(fa),'--vcf',str(vcf),'--window-size','303','--stride','303','--frame-origin','1','--output',str(out)],check=True)
+              for name in ('report.json','windows.csv','variants.csv','spectrum.mid','manifest.json'):
+                  assert (out/name).stat().st_size > 0
+          PY
+      - name: Browser JavaScript cross-runtime conformance
+        run: node scripts/test_genomic_spectral_etq.mjs
+      - name: Offline and claim boundaries
+        run: |
+          python3 -m py_compile scripts/genomic_spectral_etq.py tests/test_genomic_spectral_etq.py
+          node --check scripts/test_genomic_spectral_etq.mjs
+          node --check web/genomic-spectrum/model.js
+          node --check web/genomic-spectrum/app.js
+          node --check web/genomic-spectrum/sw.js
+          python3 -m json.tool conformance/genomic_spectral_v1_606.json >/dev/null
+          grep -q '<title>RSH Genomic Spectral Laboratory</title>' web/genomic-spectrum/index.html
+          grep -q 'navigator.serviceWorker.register' web/genomic-spectrum/app.js
+          grep -q 'clinical_variant_interpretation: false' research/genomic-spectral/SPEC.md
+          grep -q 'spectral_feature_is_diagnostic: false' research/genomic-spectral/SPEC.md
+          ! grep -R -E -q 'https?://|from "https?://' web/genomic-spectrum

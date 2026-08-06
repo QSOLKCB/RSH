@@ -1,0 +1,41 @@
+{
+  "contract": "RSH-ETQ-GENOMIC-SPECTRAL-V1",
+  "expected": {
+    "refget_accession": "SQ.xM-Vrd3Qu2Wg6WRlzRGMbl4XMHVrjUrW",
+    "sequence_length": 606,
+    "substitution_classes": [
+      "transversion",
+      "transition"
+    ],
+    "variant_count": 2,
+    "variant_effects": [
+      "stop-gained",
+      "missense"
+    ],
+    "window_count": 2
+  },
+  "expected_claims": {
+    "actual_multi_device_execution": false,
+    "biological_function_inferred": false,
+    "clinical_variant_interpretation": false,
+    "coding_region_annotation_authority": false,
+    "distributed_execution": false,
+    "etq_canonical_genomic_mapping": false,
+    "gene_prediction_demonstrated": false,
+    "geometry_receipt_authority": false,
+    "physical_dna_storage_demonstrated": false,
+    "spectral_feature_is_diagnostic": false
+  },
+  "expected_hashes": {
+    "midi_sha256": "bbd950ed6bf715db4f71e92c69343a77d1544963272d94de245c16dd45465728",
+    "report_canonical_sha256": "5b0fe1e2d063b0db51cd6583218fca9ddfd2617beb17f60ce5c40a474faaf926",
+    "variants_csv_sha256": "f946eb179d731c0ac12b72c33bb41f95ca94e441420246e68922f38258058ff3",
+    "windows_csv_sha256": "e001bf603c4baf4b87d22e6877c0e0c5d265b1b09498966cb018e929bb116370"
+  },
+  "fasta": ">synthetic_chr sealed genomic spectral fixture\nATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAGACGTNNATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAGATGGAACTGCCTGGCTTTAACGCGTAGACGTNN\n",
+  "frame_origin_1based": 1,
+  "schema": "RSH-ETQ-GENOMIC-SPECTRAL-CONFORMANCE-V1",
+  "stride": 303,
+  "vcf": "##fileformat=VCFv4.5\n#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\nsynthetic_chr\t4\tstop_gain\tG\tT\t.\tPASS\t.\nsynthetic_chr\t307\ttransition\tG\tA\t.\tPASS\t.\n",
+  "window_size": 303
+}
