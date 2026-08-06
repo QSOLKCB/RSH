@@ -2,8 +2,11 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
+import copy
+import hashlib
 import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -30,14 +33,22 @@ class GenomicSpectralTests(unittest.TestCase):
                 entry["event_index"],
             )
 
-    def test_fasta_iupac_and_strict_record_boundary(self) -> None:
-        record_id, description, sequence = model.parse_fasta(">chr1 description\nacgtryswkmbdhvn\n")
+    def test_fasta_iupac_bounds_and_record_boundary(self) -> None:
+        record_id, description, sequence = model.parse_fasta("\n>chr1 description\nacgtryswkmbdhvn\n")
         self.assertEqual((record_id, description), ("chr1", "chr1 description"))
         self.assertEqual(sequence, model.IUPAC_DNA)
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, "exactly one"):
             model.parse_fasta(">one\nACGT\n>two\nACGT\n")
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, "invalid IUPAC"):
             model.parse_fasta(">one\nAC-GT\n")
+        with self.assertRaisesRegex(ValueError, "base safety limit"):
+            model.parse_fasta("A" * (model.MAX_SEQUENCE_BASES + 1))
+
+    def test_window_count_and_frame_origin_are_bounded(self) -> None:
+        with self.assertRaisesRegex(ValueError, "windows; limit"):
+            model.build_windows("A" * 5000, 3, 1)
+        with self.assertRaisesRegex(ValueError, "frame origin"):
+            model.build_report(">x\nACGTAC\n", frame_origin_1based=99)
 
     def test_period_three_and_scl_exact_integer_metrics(self) -> None:
         window = model.analyze_window("ATG" * 4, 0, 0, 12)
@@ -45,20 +56,24 @@ class GenomicSpectralTests(unittest.TestCase):
         self.assertIsInstance(window["period3_exact"]["total_scaled_power"], int)
         self.assertIsInstance(window["scl_exact"]["total_energy"], int)
         self.assertEqual(window["counts"]["ambiguous"], 0)
+        ambiguous = model.analyze_window("NNN", 0, 0, 3)
+        self.assertIsNone(ambiguous["dominant_base"])
 
-    def test_vcf_subset_rejects_indels_multiallelic_and_reference_mismatch(self) -> None:
+    def test_vcf_subset_rejects_invalid_structure_and_overlap(self) -> None:
         fasta = ">chr1\nACGTACGTACGT\n"
         _, _, sequence = model.parse_fasta(fasta)
-        bad = (
-            "##fileformat=VCFv4.5\n#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n"
-            "chr1\t2\t.\tC\tCA\t.\tPASS\t.\n"
-        )
-        with self.assertRaises(ValueError):
+        header = "##fileformat=VCFv4.5\n#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\n"
+        bad = header + "chr1\t2\t.\tC\tCA\t.\tPASS\t.\n"
+        with self.assertRaisesRegex(ValueError, "biallelic"):
             model.parse_vcf(bad, "chr1", sequence)
-        with self.assertRaises(ValueError):
-            model.parse_vcf(bad.replace("CA", "A,G"), "chr1", sequence)
-        with self.assertRaises(ValueError):
-            model.parse_vcf(bad.replace("C\tCA", "T\tA"), "chr1", sequence)
+        with self.assertRaisesRegex(ValueError, "fileformat"):
+            model.parse_vcf(bad.replace("##fileformat=VCFv4.5\n", ""), "chr1", sequence)
+        duplicate = header + "chr1\t2\ta\tC\tA\t.\tPASS\t.\nchr1\t2\tb\tC\tG\t.\tPASS\t.\n"
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            model.parse_vcf(duplicate, "chr1", sequence)
+        valid = header + "chr1\t2\t.\tC\tA\t.\tPASS\t.\n"
+        with self.assertRaisesRegex(ValueError, "non-overlapping"):
+            model.build_report(fasta, valid, 6, 3, 1)
 
     def test_sealed_profile_and_variant_effects(self) -> None:
         actual = model.verify_profile(self.profile_path)
@@ -72,17 +87,36 @@ class GenomicSpectralTests(unittest.TestCase):
         self.assertEqual(report["claims"], model.CLAIMS)
         self.assertTrue(all(value is False for value in report["claims"].values()))
 
-    def test_tampered_profile_fails_closed(self) -> None:
-        altered = dict(self.profile)
-        altered["expected_hashes"] = dict(altered["expected_hashes"])
-        altered["expected_hashes"]["midi_sha256"] = "0" * 64
-        temp = ROOT / "conformance" / ".tampered-genomic-profile.json"
-        try:
-            temp.write_text(json.dumps(altered), encoding="utf-8")
-            with self.assertRaises(ValueError):
-                model.verify_profile(temp)
-        finally:
-            temp.unlink(missing_ok=True)
+    def test_profile_contract_claims_and_expected_fields_fail_closed(self) -> None:
+        mutations = (
+            ("contract", "WRONG", "contract"),
+            ("schema", "WRONG", "schema"),
+            ("expected_claims", {**model.CLAIMS, "geometry_receipt_authority": True}, "claim"),
+            ("expected", {**self.profile["expected"], "window_count": 99}, "window_count"),
+        )
+        for key, value, message in mutations:
+            altered = copy.deepcopy(self.profile)
+            altered[key] = value
+            with tempfile.TemporaryDirectory() as directory:
+                path = Path(directory) / "profile.json"
+                path.write_text(json.dumps(altered), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, message):
+                    model.verify_profile(path)
+
+    def test_exported_report_bytes_match_manifest(self) -> None:
+        report, windows_csv, variants_csv, midi = model.build_report(
+            self.profile["fasta"], self.profile["vcf"], 303, 303, 1
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            manifest = model.write_outputs(output, report, windows_csv, variants_csv, midi)
+            report_bytes = (output / "report.json").read_bytes()
+            self.assertEqual(report_bytes, model.canonical_json_bytes(report))
+            self.assertEqual(
+                hashlib.sha256(report_bytes).hexdigest(),
+                manifest["files"]["report.json"]["sha256"],
+            )
+            self.assertNotIn(b"\r\n", report_bytes + (output / "windows.csv").read_bytes())
 
 
 if __name__ == "__main__":
