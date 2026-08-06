@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -9,13 +10,16 @@ from scripts import test_multi_device_cuda as harness
 
 ROOT = Path(__file__).resolve().parents[1]
 PROFILE = json.loads(
-    (ROOT / "conformance" / "frenet_multi_device_cuda_v1_4097.json").read_text()
+    (ROOT / "conformance" / "frenet_multi_device_cuda_v1_4097.json").read_text(
+        encoding="utf-8"
+    )
 )
 
 
 def valid_sidecar():
     configuration = PROFILE["configuration"]
     sharding = PROFILE["sharding"]
+    gates = PROFILE["gates"]
     devices = [0, 1]
     start = 0
     shards = []
@@ -83,9 +87,9 @@ def valid_sidecar():
         "max_frame_orthogonality_error": 1.0e-7,
         "max_tail_vs_reduction_component_error": 0.0,
         "centre_error": 0.0,
-        "frame_gate": 5.0e-5,
-        "tail_gate": 1.0e-5,
-        "centre_gate": 1.0e-6,
+        "frame_gate": gates["max_frame_norm_error"],
+        "tail_gate": gates["max_tail_vs_reduction_component_error"],
+        "centre_gate": gates["centre_error"],
         "pass_finite": True,
         "pass_coverage": True,
         "pass_schedule_bounds": True,
@@ -131,11 +135,57 @@ class MultiDeviceCudaHarnessTests(unittest.TestCase):
         with self.assertRaises(harness.ValidationError):
             harness.validate_sidecar(sidecar, PROFILE, 0, [0, 1])
 
-    def test_claim_type(self):
+    def test_claim_type_and_exact_key_set(self):
         profile = copy.deepcopy(PROFILE)
         profile["portable_claims"]["distributed_execution"] = 0
         with self.assertRaises(harness.ValidationError):
             harness.validate_profile(profile)
+
+        profile = copy.deepcopy(PROFILE)
+        del profile["portable_claims"]["actual_cuda_execution"]
+        with self.assertRaises(harness.ValidationError):
+            harness.validate_profile(profile)
+
+        profile = copy.deepcopy(PROFILE)
+        profile["portable_claims"]["invented_claim"] = False
+        with self.assertRaises(harness.ValidationError):
+            harness.validate_profile(profile)
+
+    def test_rejects_sidecar_gate_drift(self):
+        for field in ("frame_gate", "centre_gate", "tail_gate"):
+            with self.subTest(field=field):
+                sidecar = valid_sidecar()
+                sidecar[field] *= 2.0
+                with self.assertRaises(harness.ValidationError):
+                    harness.validate_sidecar(sidecar, PROFILE, 0, [0, 1])
+
+    def test_parse_csv_wraps_non_numeric_fields(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "bad.csv"
+            values = ["not-a-number", *("0" for _ in range(len(harness.CSV_FIELDS) - 2))]
+            path.write_text(
+                ",".join(harness.CSV_FIELDS) + "\n0," + ",".join(values) + "\n",
+                encoding="utf-8",
+                newline="\n",
+            )
+            with self.assertRaises(harness.ValidationError):
+                harness.parse_csv(path, 1)
+
+    def test_rejection_audit_has_complete_boundaries(self):
+        audit = harness.build_rejection_audit("failure", "a" * 40)
+        expected = {
+            "actual_cuda_execution": False,
+            "actual_multi_device_execution": False,
+            "single_host_execution": False,
+            "distributed_execution": False,
+            "universal_speedup_claim": False,
+            "geometry_receipt_authority": False,
+            "raw_device_uuid_published": False,
+            "complete_path_readback": False,
+        }
+        for field, value in expected.items():
+            self.assertIs(audit[field], value)
+        self.assertEqual(audit["source_commit"], "a" * 40)
 
     def test_compare_rows(self):
         row = {"index": 0, **{field: 0.0 for field in harness.CSV_FIELDS[1:]}}
