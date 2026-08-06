@@ -184,8 +184,28 @@ jobs:
           evidence="$4"
           rm -rf build/multi-cuda "$evidence/run"
           mkdir -p "$evidence/run"
-          rustup toolchain install stable --profile minimal
-          rustup default stable
+
+          # rsh-gpu-shell runs as the unprivileged trusted-runner user. Force
+          # rustup off the image-owned /opt/rustup tree and onto the persistent,
+          # writable cache mounted beneath HOME.
+          export RUSTUP_HOME="$HOME/.rustup"
+          export CARGO_HOME="${CARGO_HOME:-$HOME/.cargo}"
+          export PATH="$CARGO_HOME/bin:$PATH"
+          mkdir -p "$RUSTUP_HOME" "$CARGO_HOME"
+          for directory in "$RUSTUP_HOME" "$CARGO_HOME"; do
+            probe="$directory/.rsh-write-test-$$"
+            : > "$probe" || {
+              echo "trusted CUDA audit directory is not writable: $directory" >&2
+              exit 25
+            }
+            rm -f "$probe"
+          done
+          {
+            rustup toolchain install stable --profile minimal
+            rustup default stable
+            rustup show active-toolchain
+          } > "$evidence/rustup-setup.txt" 2>&1
+
           cargo build --locked --release -p rsh-parallel-cli \
             > "$evidence/cargo-build.txt" 2>&1
           cmake -S native/cpp -B build/multi-cuda \
