@@ -117,7 +117,11 @@ export function parseFasta(text) {
   return { recordId, description, sequence };
 }
 export function strandComplement(sequence) {
-  return [...sequence].reduceRight((output, base) => output + COMPLEMENT[base], "");
+  const out = new Array(sequence.length);
+  for (let i = 0, j = sequence.length - 1; i < sequence.length; i += 1, j -= 1) {
+    out[i] = COMPLEMENT[sequence[j]];
+  }
+  return out.join("");
 }
 export function eventIndexFromAddress(siteIndex, fibreLabel) {
   const fibreCount = 3;
