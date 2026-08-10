@@ -1,0 +1,33 @@
+{
+  "schema": "RSH-REFERENCE-SPINE-CONFORMANCE-V1",
+  "contract_version": "1.0.0",
+  "source_seed": "GammaSeed-restricted-v1",
+  "source_seed_hash": "baec1aa01299bb465be50e9685988f1d27c41fb97c40a4e2058660dc63ce2681",
+  "domain": {
+    "full_t0": 0.0,
+    "full_t1": 6.283185307179586,
+    "restricted_t0": 0.0479798189030703,
+    "restricted_t1": 6.283185307179586
+  },
+  "expected": {
+    "psi": 2.0581710272714924,
+    "kappa_bound": 0.41421356237309515,
+    "kappa_at_zero": 0.4755038230472299,
+    "tau_at_zero": 0.09549150281252629,
+    "full_domain_disposition": "REFUSE",
+    "restricted_domain_disposition": "ADMIT",
+    "full_domain_receipt": "766a728f08a7280b1b8361a00c1273f4a006d7d270d212f95f4e85bfc979a25c",
+    "restricted_domain_receipt": "94157127dc78c2eb78a35c467449ca7f2937c7b09047f30990b64e5bfc87a596",
+    "audit_receipt": "5f0ab748d0d9a55ee040df186d552505d7709bed4d7065c84f3154aeca1f680a",
+    "absolute_tolerance": 1e-12
+  },
+  "requirements": {
+    "analytic_monotonicity_basis": true,
+    "unique_curvature_crossing": true,
+    "full_domain_refused": true,
+    "restricted_domain_admitted": true,
+    "same_runtime_receipt_replay": true,
+    "canonical_geometry_unchanged": true,
+    "geometry_receipt_authority": false
+  }
+}
