@@ -11,6 +11,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 RUNNER = ROOT / "rsh_runner.py"
+PROFILE = ROOT / "conformance" / "reference_spine_v1.json"
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
@@ -33,19 +34,19 @@ class ReferenceSpineTests(unittest.TestCase):
         self.assertAlmostEqual(
             reference_curvature(0.0),
             0.4755038230472298,
-            places=15,
+            delta=1.0e-14,
         )
         self.assertGreater(reference_curvature(0.0), KAPPA_MAX)
         self.assertAlmostEqual(
             reference_torsion(0.0),
             0.09549150281252636,
-            places=15,
+            delta=1.0e-14,
         )
 
     def test_restricted_start_is_unique_admissible_crossing(self) -> None:
         t_star = restricted_seed_start()
-        self.assertAlmostEqual(t_star, 0.04797981890307021, places=14)
-        self.assertAlmostEqual(reference_curvature(t_star), KAPPA_MAX, places=12)
+        self.assertAlmostEqual(t_star, 0.04797981890307021, delta=1.0e-14)
+        self.assertAlmostEqual(reference_curvature(t_star), KAPPA_MAX, delta=1.0e-12)
         self.assertGreater(reference_curvature(0.5 * t_star), KAPPA_MAX)
         self.assertLess(reference_curvature(2.0 * t_star), KAPPA_MAX)
 
@@ -97,6 +98,32 @@ class ReferenceSpineTests(unittest.TestCase):
         self.assertFalse(audit.geometry_contract_modified)
         self.assertFalse(audit.geometry_receipt_authority)
         self.assertTrue(math.isclose(audit.seed_t1, 2.0 * math.pi))
+
+    def test_sealed_conformance_profile(self) -> None:
+        profile = json.loads(PROFILE.read_text(encoding="utf-8"))
+        expected = profile["expected"]
+        tolerance = float(expected["absolute_tolerance"])
+        audit = build_reference_spine_audit()
+
+        self.assertEqual(
+            profile["source_seed_hash"],
+            GAMMASEED_RESTRICTED_V1_HASH,
+        )
+        self.assertAlmostEqual(audit.t_star, profile["domain"]["restricted_t0"], delta=tolerance)
+        self.assertAlmostEqual(audit.kappa_at_zero, expected["kappa_at_zero"], delta=tolerance)
+        self.assertAlmostEqual(audit.tau_at_zero, expected["tau_at_zero"], delta=tolerance)
+        self.assertEqual(audit.full_domain.disposition, expected["full_domain_disposition"])
+        self.assertEqual(
+            audit.restricted_domain.disposition,
+            expected["restricted_domain_disposition"],
+        )
+        self.assertEqual(audit.full_domain.receipt, expected["full_domain_receipt"])
+        self.assertEqual(
+            audit.restricted_domain.receipt,
+            expected["restricted_domain_receipt"],
+        )
+        self.assertEqual(audit.receipt, expected["audit_receipt"])
+        self.assertFalse(audit.geometry_receipt_authority)
 
     def test_cli_exports_reference_spine_audit(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
