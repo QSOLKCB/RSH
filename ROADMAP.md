@@ -6,9 +6,9 @@ phase documents remain under [`docs/`](docs/).
 
 RSH is evolving from a geometry implementation into a cross-runtime scientific
 evidence platform. That expansion does **not** collapse all subjects into one
-model. Exact identity, numerical conformance, hardware observations, physical
-simulation, experimental measurements, visualisation, and sonification remain
-separately named evidence surfaces.
+model. Exact identity, numerical conformance, hardware observations, regulated
+dynamics, physical simulation, experimental measurements, visualisation, and
+sonification remain separately named evidence surfaces.
 
 ## Non-negotiable boundaries
 
@@ -28,6 +28,10 @@ separately named evidence surfaces.
    validated evidence. They never feed back into scientific metrics.
 7. Performance, parallelism, model complexity, or hardware execution never
    promotes an adapter into scientific authority.
+8. The analytic Robitaille reference spine and any later dynamical regulator are
+   separately named research/evidence surfaces. They do not silently revise the
+   canonical prescribed-schedule geometry contract, and theorem labels are not
+   promoted until their hypotheses and operators are sealed.
 
 Preserve explicit false fields such as:
 
@@ -118,8 +122,10 @@ The trusted workflow now provides:
 - stable hardware identifiers excluded from public artifacts and logs;
 - no privileged execution of untrusted public-pull-request code.
 
-Future trusted acoustic, multi-GPU, or experimental workflows must preserve this
-separation between portable CI and privileged evidence generation.
+The physical multi-device CUDA campaign has also been accepted and recorded on
+`main` through PR #25. It is no longer a queued prerequisite. Future trusted
+acoustic, multi-GPU, or experimental workflows must preserve the same separation
+between portable CI and privileged evidence generation.
 
 ## 5. DNA–ETQ–MIDI exploratory codec
 
@@ -175,44 +181,123 @@ is not a complete physical surface or volume index.
 
 # II. Immediate execution programme
 
-## 8. Multi-device CUDA path experiment
+## 8. Analytic reference spine and dynamical-closure programme
 
-**Status: Active — planned PR #21**
+This programme adds the recent Robitaille finite-dimensional work without
+silently modifying the original RSH geometry oracle. The order is deliberately
+conservative: first make the analytic seed and admission correction
+machine-checkable; then harden the regulator specification; only then implement
+Lyapunov/regulator claims and cross-runtime ports.
 
-The next implementation remains a separately named physical multi-device CUDA
-experiment based on the accepted shard-prefix contract.
+### 8.1 Restricted analytic reference spine and admission certificate
 
-Required scope:
+**Status: Active — implementation started in the current PR**
 
-1. enumerate actual CUDA devices and record stable redacted device metadata;
-2. partition the complete interval range into deterministic contiguous shards;
-3. bind every shard to one declared device and stream;
-4. compute local transforms, prefixes, and reductions on the assigned device;
-5. transfer only declared shard reductions and required prefix bases;
-6. reconstruct the complete ordered path;
-7. read back every position and frame component;
-8. compare against the accepted single-device and shard-prefix references;
-9. run repeated execution plus Compute Sanitizer where supported;
-10. retain rejected sidecars when execution completes but evidence gates fail.
-
-The first contract must remain topology-bounded and should prefer one host with
-multiple CUDA devices over distributed-node claims.
-
-Mandatory non-claims until physically demonstrated:
+Introduce:
 
 ```text
-actual_multi_device_execution: false
-distributed_execution: false
-universal_speedup_claim: false
-geometry_receipt_authority: false
+RSH-REFERENCE-SPINE-V1
+RSH-GAMMASEED-ADMISSION-V1
+RSH-REFERENCE-SPINE-AUDIT-V1
 ```
 
-The fields may change only after an actual accepted hardware run supplies full
-readback and passing evidence.
+The analytic reference spine is
 
-Optional research payloads may include f32 Sierpiński cell or inversive-witness
-records, but those records remain sidecar evidence and do not alter the Frenet
-numerical contract.
+\[
+r_*(t)=e^{\psi t}(\cos t,\sin t,t),
+\qquad \psi=\sqrt{2+\sqrt5}.
+\]
+
+Required evidence:
+
+- closed-form binary64 evaluation of `r_*(t)`, curvature, and torsion;
+- analytic monotonicity evidence for curvature and torsion on `t >= 0`;
+- deterministic solution of the unique crossing
+  `kappa(t_star) = sqrt(2)-1`;
+- explicit full-seed `[0, 2*pi] -> REFUSE` because
+  `kappa(0) ~= 0.475503823 > sqrt(2)-1`;
+- explicit restricted-seed `[t_star, 2*pi] -> ADMIT`, with
+  `t_star ~= 0.04797981890307`;
+- frozen source-seed hash recorded as source metadata rather than falsely
+  reproduced as an RSH receipt;
+- new domain-separated point, admission, and audit receipts;
+- `geometry_contract_modified: false` and
+  `geometry_receipt_authority: false` in every admission surface;
+- a dependency-free CLI/JSON audit and deterministic regression tests.
+
+The canonical RSH prescribed-schedule path, geometry contract, and geometry
+receipt remain unchanged.
+
+### 8.2 Dynamical-closure specification hardening
+
+**Status: Queued — P0, must precede regulator implementation**
+
+Freeze a separately named contract such as
+`RSH-ROBITAILLE-DYNAMICAL-CLOSURE-V1` only after resolving the current source
+ambiguities:
+
+1. distinguish the stated core operator
+   `R_core = psi + n*tau/kappa` from any regularized/observed operator using
+   `kappa + epsilon_0` and `-lambda*sigma(r)`;
+2. resolve the printed `n` equation whose current `(kappa-kappa)` factor is
+   identically zero unless one symbol is intended to be `kappa_*`;
+3. freeze the positive/negative-part convention used by the torsion correction;
+4. define `T(r)` and `sigma(r)` together with their regularity and locality
+   assumptions;
+5. distinguish strict constitutional admission `0 < tau < 1` from safety in the
+   projected closure `[0,1]`;
+6. supply a valid damping/contraction mechanism before claiming that the
+   ordinary Frenet–Serret normal block is Hurwitz or that shape error contracts
+   exponentially.
+
+Until these points are resolved, theorem names from the dissertation are source
+claims under audit, not machine-certified RSH theorems.
+
+### 8.3 Python regulator and Lyapunov evidence
+
+**Status: Queued — after 8.2 is sealed**
+
+Candidate first implementation:
+
+- readable dependency-light Python reference over state `(r, kappa, tau, n)`;
+- explicit projected Euler policy with a separately named numerical contract;
+- `V_0`, observation residual, `V_O`, shape error, projection state, and strict
+  versus closure-safe admission recorded per step;
+- empirical verification of any proposed discrete Lyapunov inequality on sealed
+  fixtures;
+- rejected evidence retained whenever monotonicity, admission, or step-size
+  gates fail;
+- no automatic promotion from observed decay to a theorem claim;
+- no mutation of the canonical geometry receipt.
+
+Only after the mathematical hypotheses are proved and encoded may fields such as
+`tube_stability_theorem_verified` or `exponential_decay_theorem_verified` become
+eligible for a true value.
+
+### 8.4 Rust/WASM/browser regulator conformance
+
+**Status: Queued — after the Python regulator contract is sealed**
+
+Candidate surfaces:
+
+```text
+rsh-regulator
+rsh-regulator-cli
+rsh-regulator-wasm
+web/regulator.html
+```
+
+Required rules:
+
+- Rust reproduces the declared regulator observables rather than redefining the
+  mathematics;
+- WASM calls the shared Rust implementation rather than creating another
+  JavaScript regulator;
+- complete state and Lyapunov readback under declared residual gates;
+- optional WebGPU/CUDA work remains an accelerator sidecar only;
+- regulator receipts remain separate from geometry and tissue receipt domains;
+- the tissue layer may later consume accepted regulator evidence only through an
+  explicit one-way contract.
 
 ## 9. Fuzzing and malformed-evidence hardening
 
@@ -220,6 +305,8 @@ numerical contract.
 
 - shard range, order, overlap, missing-prefix, missing-tail, and fingerprint
   mutation fuzzing;
+- reference-spine interval, receipt, boundary, and source-seed mutation tests;
+- future regulator state, projection, step-size, and Lyapunov-report fuzzing;
 - exact-cell trit, rational, claim, count, and canonical-hash mutation fuzzing;
 - MIDI metadata and genomic-window malformed-input fuzzing;
 - tissue configuration and audit-chain fuzzing;
@@ -638,6 +725,8 @@ format, version, units, coordinate frame, and role.
 ## 24. Recommended CI jobs
 
 ```text
+reference-spine-admission
+regulator-python
 schema-and-canonicalisation
 exact-spatial
 fuzz-and-property-tests
@@ -655,8 +744,9 @@ trusted-acoustic-gpu
 experimental-evidence-validation
 ```
 
-Ordinary pull requests run bounded deterministic fixtures only. Large 3-D,
-GPU, multi-GPU, distributed, or physical experiments run on trusted
+`regulator-python` remains a future job until the dynamical-closure contract is
+sealed. Ordinary pull requests run bounded deterministic fixtures only. Large
+3-D, GPU, multi-GPU, distributed, or physical experiments run on trusted
 manual/scheduled infrastructure and must verify that the tested commit is an
 accepted ancestor of `main`.
 
@@ -680,6 +770,11 @@ hardware execution state
 mandatory non-claims
 ```
 
+For analytic/regulator research, the analogous gate must also record the frozen
+operator definition, domain, invariant set, projection policy, Lyapunov quantity
+being tested, and whether a result is a proved theorem, a numerical observation,
+or a rejected claim.
+
 Validation tiers:
 
 1. **Analytical/semi-analytical fixtures** — exact or declared residual gates.
@@ -689,12 +784,15 @@ Validation tiers:
    processing provenance.
 
 A run that executes but fails convergence, reconstruction, residual, hash,
-calibration, or uncertainty gates remains preserved as rejected evidence.
+calibration, uncertainty, admission, or Lyapunov gates remains preserved as
+rejected evidence.
 
 # IX. Principal risks and mitigations
 
 | Risk | Severity | Required mitigation |
 |---|---:|---|
+| Analytic reference spine confused with canonical RSH geometry | High | Separate contract and receipt domains; `geometry_contract_modified: false` |
+| Unverified regulator theorem promoted from numerical behaviour | Critical | Seal operators/hypotheses first; distinguish theorem, observation, and rejected evidence |
 | Pressure threshold presented as proof of cavitation | Critical | Require nuclei/bubble model and calibrated evidence |
 | Unknown nuclei distribution | Critical | Ensembles, gas metadata, uncertainty reporting |
 | Model-to-experiment mismatch | Critical | Calibration, raw-data retention, uncertainty budgets |
@@ -713,20 +811,28 @@ calibration, or uncertainty gates remains preserved as rejected evidence.
 
 The current priority sequence is:
 
-1. implement PR #21 as the bounded multi-device CUDA/shard-prefix experiment;
-2. continue fuzzing and malformed-evidence hardening;
-3. introduce the contract registry, canonicalisation vectors, unit quantities,
+1. complete and seal the restricted analytic reference-spine/admission slice,
+   including the full-domain refusal and restricted-domain certificate;
+2. harden and freeze the dynamical-closure specification before implementing
+   regulator theorem claims;
+3. implement the dependency-light Python regulator plus explicit Lyapunov,
+   projection, strict-admission, and rejected-evidence traces;
+4. add Rust/WASM/browser regulator conformance only after the Python contract and
+   fixtures are sealed;
+5. continue fuzzing and malformed-evidence hardening across the new and existing
+   evidence surfaces;
+6. introduce the contract registry, canonicalisation vectors, unit quantities,
    provenance envelope, and field-data manifest;
-4. consolidate exact spatial identity in shared Rust/WASM and define complete
+7. consolidate exact spatial identity in shared Rust/WASM and define complete
    physical surface/volume indexing;
-5. implement reactor, medium, and source-array contracts;
-6. implement the single-bubble model ladder with analytical fixtures;
-7. integrate time-domain and frequency-domain acoustic solver adapters;
-8. implement one-way field-to-bubble execution;
-9. implement nonlinear coupled cavitation with explicit convergence evidence;
-10. add the browser field/cavitation laboratory and deterministic sonification;
-11. begin calibrated experimental validation;
-12. proceed to source optimisation, piezoelectric, streaming, thermal, chemical,
+8. implement reactor, medium, and source-array contracts;
+9. implement the single-bubble model ladder with analytical fixtures;
+10. integrate time-domain and frequency-domain acoustic solver adapters;
+11. implement one-way field-to-bubble execution;
+12. implement nonlinear coupled cavitation with explicit convergence evidence;
+13. add the browser field/cavitation laboratory and deterministic sonification;
+14. begin calibrated experimental validation;
+15. proceed to source optimisation, piezoelectric, streaming, thermal, chemical,
     and bubble-cloud/HPC work only after the earlier gates pass.
 
 ## Planning ranges
@@ -735,6 +841,9 @@ These are engineering estimates, not delivery promises:
 
 | Programme slice | Approximate effort |
 |---|---:|
+| Reference-spine admission and evidence | 1–2 person-weeks |
+| Dynamical-closure hardening + Python regulator | 4–8 person-weeks |
+| Regulator Rust/WASM/browser conformance | 4–7 person-weeks |
 | Evidence foundation | 5–8 person-weeks |
 | Exact spatial consolidation | 5–9 person-weeks |
 | Bubble kernel | 6–10 person-weeks |
@@ -747,5 +856,5 @@ These are engineering estimates, not delivery promises:
 | Broad multiphysics programme | 80–130 person-weeks total, excluding equipment and facility lead times |
 
 The roadmap should be revised whenever evidence invalidates an assumption. A new
-backend, equation, field, experiment, or ontology requires a new name and
-contract rather than silent modification of an accepted one.
+backend, equation, field, experiment, regulator, or ontology requires a new name
+and contract rather than silent modification of an accepted one.
