@@ -16,9 +16,11 @@ SRC = ROOT / "src"
 if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
-from rsh.constants import KAPPA_MAX
+from rsh.constants import KAPPA_MAX, PSI
 from rsh.reference_spine import (  # noqa: E402
     GAMMASEED_RESTRICTED_V1_HASH,
+    REFERENCE_SPINE_CONTRACT_VERSION,
+    SEED_T0,
     SEED_T1,
     admission_certificate,
     build_reference_spine_audit,
@@ -101,29 +103,119 @@ class ReferenceSpineTests(unittest.TestCase):
 
     def test_sealed_conformance_profile(self) -> None:
         profile = json.loads(PROFILE.read_text(encoding="utf-8"))
-        expected = profile["expected"]
-        tolerance = float(expected["absolute_tolerance"])
-        audit = build_reference_spine_audit()
-
+        self.assertEqual(
+            set(profile),
+            {
+                "schema",
+                "contract_version",
+                "source_seed",
+                "source_seed_hash",
+                "domain",
+                "expected",
+                "requirements",
+            },
+        )
+        self.assertEqual(profile["schema"], "RSH-REFERENCE-SPINE-CONFORMANCE-V1")
+        self.assertEqual(
+            profile["contract_version"],
+            REFERENCE_SPINE_CONTRACT_VERSION,
+        )
+        self.assertEqual(profile["source_seed"], "GammaSeed-restricted-v1")
         self.assertEqual(
             profile["source_seed_hash"],
             GAMMASEED_RESTRICTED_V1_HASH,
         )
-        self.assertAlmostEqual(audit.t_star, profile["domain"]["restricted_t0"], delta=tolerance)
-        self.assertAlmostEqual(audit.kappa_at_zero, expected["kappa_at_zero"], delta=tolerance)
-        self.assertAlmostEqual(audit.tau_at_zero, expected["tau_at_zero"], delta=tolerance)
-        self.assertEqual(audit.full_domain.disposition, expected["full_domain_disposition"])
+
+        domain = profile["domain"]
+        self.assertEqual(
+            set(domain),
+            {"full_t0", "full_t1", "restricted_t0", "restricted_t1"},
+        )
+        expected = profile["expected"]
+        self.assertEqual(
+            set(expected),
+            {
+                "psi",
+                "kappa_bound",
+                "kappa_at_zero",
+                "tau_at_zero",
+                "full_domain_disposition",
+                "restricted_domain_disposition",
+                "full_domain_receipt",
+                "restricted_domain_receipt",
+                "audit_receipt",
+                "absolute_tolerance",
+            },
+        )
+        requirements = profile["requirements"]
+        required_flags = {
+            "analytic_monotonicity_basis": True,
+            "unique_curvature_crossing": True,
+            "full_domain_refused": True,
+            "restricted_domain_admitted": True,
+            "same_runtime_receipt_replay": True,
+            "canonical_geometry_unchanged": True,
+            "geometry_receipt_authority": False,
+        }
+        self.assertEqual(set(requirements), set(required_flags))
+        for key, required_value in required_flags.items():
+            self.assertIsInstance(requirements[key], bool)
+            self.assertIs(requirements[key], required_value)
+
+        tolerance = float(expected["absolute_tolerance"])
+        self.assertGreater(tolerance, 0.0)
+        audit = build_reference_spine_audit()
+        replay = build_reference_spine_audit()
+
+        self.assertAlmostEqual(domain["full_t0"], SEED_T0, delta=tolerance)
+        self.assertAlmostEqual(domain["full_t1"], SEED_T1, delta=tolerance)
+        self.assertAlmostEqual(
+            domain["restricted_t0"],
+            restricted_seed_start(),
+            delta=tolerance,
+        )
+        self.assertAlmostEqual(domain["restricted_t1"], SEED_T1, delta=tolerance)
+        self.assertAlmostEqual(expected["psi"], PSI, delta=tolerance)
+        self.assertAlmostEqual(expected["kappa_bound"], KAPPA_MAX, delta=tolerance)
+        self.assertAlmostEqual(audit.t_star, domain["restricted_t0"], delta=tolerance)
+        self.assertAlmostEqual(
+            audit.kappa_at_zero,
+            expected["kappa_at_zero"],
+            delta=tolerance,
+        )
+        self.assertAlmostEqual(
+            audit.tau_at_zero,
+            expected["tau_at_zero"],
+            delta=tolerance,
+        )
+        self.assertEqual(
+            audit.full_domain.disposition,
+            expected["full_domain_disposition"],
+        )
         self.assertEqual(
             audit.restricted_domain.disposition,
             expected["restricted_domain_disposition"],
         )
-        self.assertEqual(audit.full_domain.receipt, expected["full_domain_receipt"])
+        self.assertEqual(
+            audit.full_domain.receipt,
+            expected["full_domain_receipt"],
+        )
         self.assertEqual(
             audit.restricted_domain.receipt,
             expected["restricted_domain_receipt"],
         )
         self.assertEqual(audit.receipt, expected["audit_receipt"])
-        self.assertFalse(audit.geometry_receipt_authority)
+
+        self.assertEqual(
+            audit.full_domain.monotonicity_basis,
+            "analytic-derivative-sign-on-t>=0",
+        )
+        self.assertIs(audit.pass_unique_curvature_crossing, True)
+        self.assertIs(audit.pass_full_domain_refusal, True)
+        self.assertIs(audit.pass_restricted_domain_admission, True)
+        self.assertEqual(audit.receipt, replay.receipt)
+        self.assertIs(audit.geometry_contract_modified, False)
+        self.assertIs(audit.geometry_receipt_authority, False)
 
     def test_cli_exports_reference_spine_audit(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
