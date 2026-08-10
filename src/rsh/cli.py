@@ -25,6 +25,10 @@ from .evidence import (
     write_verify_csv,
 )
 from .geometry import ModelConfig, build_path, logical_sample_indices
+from .reference_spine import (
+    build_reference_spine_audit,
+    write_reference_spine_audit_json,
+)
 from .refinement import (
     evaluate_refinement,
     load_proposal,
@@ -140,6 +144,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="optional JSON report path",
     )
 
+    spine_parser = subparsers.add_parser(
+        "spine-admission",
+        help="audit analytic reference-spine seed admission",
+    )
+    spine_parser.add_argument(
+        "--json",
+        default="",
+        help="optional JSON audit path",
+    )
+
     tissue_parser = subparsers.add_parser(
         "tissue",
         help="run the deterministic geometric tissue reference",
@@ -248,6 +262,25 @@ def main(argv: Sequence[str] | None = None) -> int:
                 output.parent.mkdir(parents=True, exist_ok=True)
                 output.write_text(encoded, encoding="utf-8")
             return 0 if report["pass_all"] else 1
+
+        if args.command == "spine-admission":
+            audit = build_reference_spine_audit()
+            if args.json:
+                write_reference_spine_audit_json(audit, args.json)
+            status = "PASS" if audit.pass_all else "FAIL"
+            print(f"RSH reference spine admission [{status}]")
+            print(f"  full_domain          = {audit.full_domain.disposition}")
+            print(
+                f"  restricted_domain    = "
+                f"{audit.restricted_domain.disposition}"
+            )
+            print(f"  t_star               = {audit.t_star:.15f}")
+            print(f"  kappa(0)             = {audit.kappa_at_zero:.15f}")
+            print(f"  kappa_bound          = {audit.kappa_bound:.15f}")
+            print(f"  seed_hash            = {audit.source_seed_hash}")
+            print(f"  geometry_modified    = {str(audit.geometry_contract_modified).lower()}")
+            print(f"  receipt              = {audit.receipt}")
+            return 0 if audit.pass_all else 1
 
         if args.command == "tissue":
             report = simulate_tissue(_tissue_config_from_args(args))
