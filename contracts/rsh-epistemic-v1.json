@@ -1,0 +1,46 @@
+{
+  "schema": "rsh-epistemic-contract/1",
+  "contract": "RSH-EPISTEMIC-V1",
+  "purpose": "Prevent unsupported promotion of model output, formal-looking text, receipts, measurements, and proofs into stronger scientific claims.",
+  "epistemic_states": ["KNOWN", "RETRIEVED", "INFERRED", "UNKNOWN", "CONFLICT", "FICTION"],
+  "evidence_classes": ["MODEL_PROPOSAL", "TOOL_RECEIPT", "MEASUREMENT", "FORMAL_SYNTAX", "PROOF_RECEIPT", "REJECTED"],
+  "claim_tiers": ["PROPOSAL", "HYPOTHESIS", "EVIDENCE_BACKED", "VERIFIED", "BLOCKED"],
+  "invariants": [
+    "MODEL_OUTPUT_IS_NOT_EXECUTION_EVIDENCE",
+    "FORMAL_SYNTAX_IS_NOT_PROOF",
+    "UNKNOWN_IS_NOT_FALSE",
+    "INFERENCE_IS_NOT_KNOWN_WITHOUT_SUPPORT",
+    "CONFLICT_MUST_REMAIN_VISIBLE",
+    "FICTION_REMAINS_NON_LITERAL",
+    "RECEIPT_IDENTITY_DOES_NOT_IMPLY_EMPIRICAL_TRUTH",
+    "PROOF_RECEIPT_CERTIFIES_ONLY_THE_STATED_PROPOSITION"
+  ],
+  "promotion_rules": {
+    "MODEL_PROPOSAL": {"maximum_tier": "PROPOSAL"},
+    "FORMAL_SYNTAX": {"maximum_tier": "HYPOTHESIS", "proof_checked_flag_is_insufficient_without_proof_receipt": true},
+    "TOOL_RECEIPT": {"requires": ["receipt_present"], "maximum_tier": "EVIDENCE_BACKED"},
+    "MEASUREMENT": {"requires": ["receipt_present", "measurement_identified"], "maximum_tier": "EVIDENCE_BACKED"},
+    "PROOF_RECEIPT": {"requires": ["receipt_present", "proof_checked"], "maximum_tier": "VERIFIED"},
+    "REJECTED": {"maximum_tier": "BLOCKED"}
+  },
+  "epistemic_caps": {
+    "KNOWN": "VERIFIED",
+    "RETRIEVED": "VERIFIED",
+    "INFERRED": "EVIDENCE_BACKED",
+    "UNKNOWN": "HYPOTHESIS",
+    "CONFLICT": "BLOCKED",
+    "FICTION": "PROPOSAL"
+  },
+  "classification_policy": {
+    "natural_language_proof_inference": false,
+    "keyword_or_regex_proof_detection": false,
+    "explicit_metadata_required": true,
+    "conflict_policy": "fail-closed-and-report",
+    "unknown_policy": "preserve-unknown-do-not-coerce-to-false"
+  },
+  "relationship_to_formal_verification": {
+    "formal_surface": "RSH-FORMAL-V1",
+    "formal_surface_changed_by_this_contract": false,
+    "lean_proof_requires_PROOF_RECEIPT_for_VERIFIED_claim": true
+  }
+}
