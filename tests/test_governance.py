@@ -62,6 +62,20 @@ class GovernanceContractTests(unittest.TestCase):
                 )
                 self.assertEqual(decision.tier, ClaimTier(vector["expected_tier"]))
 
+    def test_non_boolean_evidence_flags_fail_closed(self) -> None:
+        for field in ("receipt_present", "proof_checked", "measurement_identified"):
+            kwargs = {
+                "epistemic_state": EpistemicState.KNOWN,
+                "evidence_class": EvidenceClass.PROOF_RECEIPT,
+                "receipt_present": True,
+                "proof_checked": True,
+                "measurement_identified": False,
+            }
+            kwargs[field] = "false"
+            with self.subTest(field=field):
+                with self.assertRaisesRegex(ValueError, rf"{field} must be boolean"):
+                    adjudicate_claim(**kwargs)
+
     def test_formal_syntax_is_never_promoted_to_proof(self) -> None:
         decision = adjudicate_claim(
             epistemic_state=EpistemicState.KNOWN,
