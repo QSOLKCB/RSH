@@ -342,7 +342,10 @@ mod tests {
         let claim_vectors: Vec<ClaimVector> =
             serde_json::from_value(vector["claim_vectors"].clone())
                 .expect("claim vectors must parse");
-        assert!(!claim_vectors.is_empty(), "sealed claim vectors must not be empty");
+        assert!(
+            !claim_vectors.is_empty(),
+            "sealed claim vectors must not be empty"
+        );
         for claim in claim_vectors {
             let decision = adjudicate_claim(
                 claim.epistemic_state,
