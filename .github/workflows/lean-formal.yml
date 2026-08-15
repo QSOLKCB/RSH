@@ -62,7 +62,7 @@ jobs:
           lake update
           lake exe cache get
 
-      - name: Run RSH theorem audit
+      - name: Run RSH theorem audits
         shell: bash
         working-directory: formal/lean
         run: bash audit.sh "$RUNNER_TEMP/rsh-formal-verification-report.txt"
@@ -74,7 +74,7 @@ jobs:
           report="$RUNNER_TEMP/rsh-formal-verification-report.txt"
           if [[ -f "$report" ]]; then
             {
-              echo '## RSH-FORMAL-V1 theorem audit'
+              echo '## RSH-FORMAL-V1 + RSH-GLUBALL-FORMAL-V1 theorem audit'
               echo '```text'
               cat "$report"
               echo '```'
