@@ -71,6 +71,12 @@ def _cap_tier(tier: ClaimTier, cap: ClaimTier) -> ClaimTier:
     return tier if _TIER_RANK[tier] <= _TIER_RANK[cap] else cap
 
 
+def _require_bool(value: object, label: str) -> bool:
+    if not isinstance(value, bool):
+        raise ValueError(f"{label} must be boolean")
+    return value
+
+
 def adjudicate_claim(
     *,
     epistemic_state: EpistemicState,
@@ -85,6 +91,13 @@ def adjudicate_claim(
     Formal-looking text is not proof, model text is not execution evidence,
     unknown is not false, and material conflict blocks promotion.
     """
+    receipt_present = _require_bool(receipt_present, "receipt_present")
+    proof_checked = _require_bool(proof_checked, "proof_checked")
+    measurement_identified = _require_bool(
+        measurement_identified,
+        "measurement_identified",
+    )
+
     if evidence_class is EvidenceClass.REJECTED:
         tier = ClaimTier.BLOCKED
         reason = "evidence-rejected"
