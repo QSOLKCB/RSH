@@ -84,9 +84,7 @@ pub fn adjudicate_claim(
         EvidenceClass::ProofReceipt if !receipt_present || !proof_checked => {
             (ClaimTier::Blocked, "proof-receipt-incomplete".to_owned())
         }
-        EvidenceClass::ProofReceipt => {
-            (ClaimTier::Verified, "proof-receipt-verified".to_owned())
-        }
+        EvidenceClass::ProofReceipt => (ClaimTier::Verified, "proof-receipt-verified".to_owned()),
         EvidenceClass::Measurement if !receipt_present || !measurement_identified => (
             ClaimTier::Blocked,
             "measurement-evidence-incomplete".to_owned(),
@@ -106,10 +104,9 @@ pub fn adjudicate_claim(
             ClaimTier::Hypothesis,
             "formal-syntax-is-not-proof".to_owned(),
         ),
-        EvidenceClass::ModelProposal => (
-            ClaimTier::Proposal,
-            "model-output-is-proposal".to_owned(),
-        ),
+        EvidenceClass::ModelProposal => {
+            (ClaimTier::Proposal, "model-output-is-proposal".to_owned())
+        }
     };
 
     match epistemic_state {
@@ -325,7 +322,8 @@ mod tests {
             .expect("receipt must be string");
         assert_eq!(experiment_receipt(&envelope).unwrap(), expected);
 
-        let ledger: Vec<String> = serde_json::from_value(vector["ledger_receipts"].clone()).unwrap();
+        let ledger: Vec<String> =
+            serde_json::from_value(vector["ledger_receipts"].clone()).unwrap();
         let expected_ledger = vector["expected_ledger_digest"].as_str().unwrap();
         assert_eq!(ledger_digest(&ledger).unwrap(), expected_ledger);
     }
