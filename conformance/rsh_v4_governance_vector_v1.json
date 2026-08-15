@@ -1,0 +1,44 @@
+{
+  "schema": "rsh-v4-governance-vector/1",
+  "contracts": {
+    "epistemic": "RSH-EPISTEMIC-V1",
+    "conformance": "RSH-CONFORMANCE-V1"
+  },
+  "note": "Synthetic cross-runtime serialization fixture; not empirical or hardware execution evidence.",
+  "envelope": {
+    "contract": "RSH-CONFORMANCE-V1",
+    "experiment": "v4-cross-runtime-smoke",
+    "input_sha256": "3101b5eddd04f999c68eb50aec0f993fe8cb609936d4f468e2fef4888f0c9c68",
+    "runtime": {
+      "backend": "python-reference",
+      "implementation": "rsh-geometry",
+      "implementation_version": "4.0.0",
+      "source_revision": "fixture-v4.0.0",
+      "fallback_used": false,
+      "fallback_from": null
+    },
+    "parameters": {
+      "mode": "geometry-verification",
+      "samples": "129"
+    },
+    "seed": 0,
+    "observables": {
+      "geometry_contract": "2.0.0",
+      "result": "pass"
+    }
+  },
+  "canonical_json": "{\"contract\":\"RSH-CONFORMANCE-V1\",\"experiment\":\"v4-cross-runtime-smoke\",\"input_sha256\":\"3101b5eddd04f999c68eb50aec0f993fe8cb609936d4f468e2fef4888f0c9c68\",\"runtime\":{\"backend\":\"python-reference\",\"implementation\":\"rsh-geometry\",\"implementation_version\":\"4.0.0\",\"source_revision\":\"fixture-v4.0.0\",\"fallback_used\":false,\"fallback_from\":null},\"parameters\":{\"mode\":\"geometry-verification\",\"samples\":\"129\"},\"seed\":0,\"observables\":{\"geometry_contract\":\"2.0.0\",\"result\":\"pass\"}}",
+  "expected_receipt": "8528688a511f73e4d1c4be40bbef73146d3f5ca32edc78540c16b1b985618e60",
+  "ledger_receipts": [
+    "8528688a511f73e4d1c4be40bbef73146d3f5ca32edc78540c16b1b985618e60",
+    "20188e5249beee3e2cd8f65201891467a4572a82760075783b1d85d53ad778e0"
+  ],
+  "expected_ledger_digest": "f9f1e3500d46ad855f715a4c01f1f9d10f6a73a310c1d870fbac33878993e8a7",
+  "claim_vectors": [
+    {"name":"model-proposal","epistemic_state":"KNOWN","evidence_class":"MODEL_PROPOSAL","receipt_present":false,"proof_checked":false,"measurement_identified":false,"expected_tier":"PROPOSAL"},
+    {"name":"formal-syntax","epistemic_state":"KNOWN","evidence_class":"FORMAL_SYNTAX","receipt_present":true,"proof_checked":true,"measurement_identified":false,"expected_tier":"HYPOTHESIS"},
+    {"name":"proof-receipt","epistemic_state":"KNOWN","evidence_class":"PROOF_RECEIPT","receipt_present":true,"proof_checked":true,"measurement_identified":false,"expected_tier":"VERIFIED"},
+    {"name":"unknown-proof-cap","epistemic_state":"UNKNOWN","evidence_class":"PROOF_RECEIPT","receipt_present":true,"proof_checked":true,"measurement_identified":false,"expected_tier":"HYPOTHESIS"},
+    {"name":"conflict-blocks","epistemic_state":"CONFLICT","evidence_class":"PROOF_RECEIPT","receipt_present":true,"proof_checked":true,"measurement_identified":false,"expected_tier":"BLOCKED"}
+  ]
+}
