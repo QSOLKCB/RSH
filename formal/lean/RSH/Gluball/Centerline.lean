@@ -39,7 +39,12 @@ theorem derivative_sqNorm (t : ℝ) :
   have hq := Real.sin_sq_add_cos_sq (q * t)
   simp [centerlineDerivative, Vec3.sqNorm, Vec3.dot, speedSq, radialPrime]
   ring_nf at hp hq ⊢
-  nlinarith
+  have hps : Real.sin (p * t) ^ 2 = 1 - Real.cos (p * t) ^ 2 := by
+    nlinarith [hp]
+  have hqs : Real.sin (t * q) ^ 2 = 1 - Real.cos (t * q) ^ 2 := by
+    nlinarith [hq]
+  rw [hps, hqs]
+  ring
 
 theorem speedSq_pos (t : ℝ) : 0 < speedSq t := by
   unfold speedSq q minorRadius
@@ -57,14 +62,22 @@ theorem torusNormal_sqNorm (t : ℝ) : Vec3.sqNorm (torusNormal t) = 1 := by
   have hq := Real.sin_sq_add_cos_sq (q * t)
   simp [torusNormal, Vec3.sqNorm, Vec3.dot]
   ring_nf at hp hq ⊢
-  nlinarith
+  have hps : Real.sin (p * t) ^ 2 = 1 - Real.cos (p * t) ^ 2 := by
+    nlinarith [hp]
+  have hqs : Real.sin (t * q) ^ 2 = 1 - Real.cos (t * q) ^ 2 := by
+    nlinarith [hq]
+  rw [hps, hqs]
+  ring
 
 theorem derivative_dot_torusNormal (t : ℝ) :
     Vec3.dot (centerlineDerivative t) (torusNormal t) = 0 := by
   have hp := Real.sin_sq_add_cos_sq (p * t)
   simp [centerlineDerivative, torusNormal, Vec3.dot, radialPrime]
   ring_nf at hp ⊢
-  nlinarith
+  have hps : Real.sin (p * t) ^ 2 = 1 - Real.cos (p * t) ^ 2 := by
+    nlinarith [hp]
+  rw [hps]
+  ring
 
 end
 
