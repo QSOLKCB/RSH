@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use RSH, please cite this software."
 title: "RSH: Robitaille–Slade Helix Geometry and Evidence Runner"
-version: 3.0.0
+version: 4.0.0
 type: software
 authors:
   - family-names: Robitaille
@@ -16,6 +16,10 @@ keywords:
   - bounded curvature
   - torsion
   - deterministic evidence
+  - epistemic governance
+  - conformance governance
+  - no silent fallback
+  - SHA-256 receipts
   - Lean 4
   - formal verification
   - exact rational geometry
