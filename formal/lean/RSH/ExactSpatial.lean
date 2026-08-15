@@ -80,7 +80,7 @@ def wordCapacity : Nat := 2 ^ 32
 def trit21Capacity : Nat := 3 ^ 21
 
 theorem wordCapacity_lt_trit21Capacity : wordCapacity < trit21Capacity := by
-  native_decide
+  norm_num [wordCapacity, trit21Capacity]
 
 def Word32 := {n : Nat // n < wordCapacity}
 def Trit21Code := {n : Nat // n < trit21Capacity}
