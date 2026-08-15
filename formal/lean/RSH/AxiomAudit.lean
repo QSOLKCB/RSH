@@ -25,9 +25,15 @@ import RSH.Gluball.Main
 #print axioms RSH.Admission.crossing_unique
 #print axioms RSH.Admission.tauDerivativeSignPolynomial_pos
 
+#print axioms RSH.Gluball.radial_hasDerivAt
+#print axioms RSH.Gluball.centerline_x_hasDerivAt
+#print axioms RSH.Gluball.centerline_y_hasDerivAt
+#print axioms RSH.Gluball.centerline_z_hasDerivAt
+#print axioms RSH.Gluball.centerline_hasComponentDerivAt
 #print axioms RSH.Gluball.derivative_sqNorm
 #print axioms RSH.Gluball.speedSq_pos
 #print axioms RSH.Gluball.derivative_ne_zero
+#print axioms RSH.Gluball.centerline_regular_componentwise
 #print axioms RSH.Gluball.torusNormal_sqNorm
 #print axioms RSH.Gluball.derivative_dot_torusNormal
 #print axioms RSH.Gluball.tangent_sqNorm
