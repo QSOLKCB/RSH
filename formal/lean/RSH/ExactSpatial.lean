@@ -70,7 +70,7 @@ def fromCentered (c : Vec3Q) : Vec3Q :=
   ⟨(c.x + 1) / 3, (c.y + 1) / 3, (c.z + 1) / 3⟩
 
 theorem centered_roundtrip (b : Vec3Q) : fromCentered (toCentered b) = b := by
-  ext <;> simp [fromCentered, toCentered] <;> ring
+  ext <;> simp [fromCentered, toCentered]
 
 theorem barycentric_roundtrip (c : Vec3Q) : toCentered (fromCentered c) = c := by
   ext <;> simp [fromCentered, toCentered] <;> ring
@@ -90,8 +90,10 @@ def encodeWord (w : Word32) : Trit21Code :=
 
 theorem encodeWord_injective : Function.Injective encodeWord := by
   intro a b h
+  have hv : (encodeWord a).1 = (encodeWord b).1 :=
+    congrArg (fun x : Trit21Code => x.1) h
   apply Subtype.ext
-  exact congrArg Subtype.val h
+  exact hv
 
 theorem encodeWord_value_roundtrip (w : Word32) : (encodeWord w).1 = w.1 := rfl
 
