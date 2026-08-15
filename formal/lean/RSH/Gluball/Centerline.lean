@@ -3,6 +3,8 @@ import RSH.Gluball.Vector
 
 namespace RSH.Gluball
 
+noncomputable section
+
 open Vec3
 
 /-- Host-torus radial factor `A(t) = R + r cos(qt)`. -/
@@ -63,5 +65,7 @@ theorem derivative_dot_torusNormal (t : ℝ) :
   simp [centerlineDerivative, torusNormal, Vec3.dot, radialPrime]
   ring_nf at hp ⊢
   nlinarith
+
+end
 
 end RSH.Gluball
