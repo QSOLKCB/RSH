@@ -18,7 +18,7 @@ def rshBaseRelease : String := "v4.0.0"
 
 def rshBaseCommit : String := "79b8481639fb4187c41035de4e707545db93f59a"
 
-/-- Torus-knot winding numbers from `GLUBALL-KNOT-V1`. -/
+/-- Frozen GLUBALL winding numbers. -/
 def p : ℝ := 2
 def q : ℝ := 3
 
