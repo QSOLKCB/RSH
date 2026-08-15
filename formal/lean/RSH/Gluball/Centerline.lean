@@ -52,8 +52,7 @@ theorem radial_hasDerivAt (t : ℝ) : HasDerivAt radial (radialPrime t) t := by
     (radialPrime t) t
   have h := (hasDerivAt_const t majorRadius).add
     (HasDerivAt.const_mul minorRadius (cos_mul_parameter_hasDerivAt q t))
-  convert h using 1
-  · ring
+  simpa [radialPrime, mul_comm, mul_left_comm, mul_assoc] using h
 
 /-- The x component of `centerlineDerivative` is the derivative of the centreline x coordinate. -/
 theorem centerline_x_hasDerivAt (t : ℝ) :
@@ -62,8 +61,7 @@ theorem centerline_x_hasDerivAt (t : ℝ) :
     (radial * fun s : ℝ => Real.cos (p * s))
     (radialPrime t * Real.cos (p * t) - p * radial t * Real.sin (p * t)) t
   have h := (radial_hasDerivAt t).mul (cos_mul_parameter_hasDerivAt p t)
-  convert h using 1
-  · ring
+  simpa [sub_eq_add_neg, mul_comm, mul_left_comm, mul_assoc] using h
 
 /-- The y component of `centerlineDerivative` is the derivative of the centreline y coordinate. -/
 theorem centerline_y_hasDerivAt (t : ℝ) :
@@ -72,8 +70,7 @@ theorem centerline_y_hasDerivAt (t : ℝ) :
     (radial * fun s : ℝ => Real.sin (p * s))
     (radialPrime t * Real.sin (p * t) + p * radial t * Real.cos (p * t)) t
   have h := (radial_hasDerivAt t).mul (sin_mul_parameter_hasDerivAt p t)
-  convert h using 1
-  · ring
+  simpa [mul_comm, mul_left_comm, mul_assoc] using h
 
 /-- The z component of `centerlineDerivative` is the derivative of the centreline z coordinate. -/
 theorem centerline_z_hasDerivAt (t : ℝ) :
