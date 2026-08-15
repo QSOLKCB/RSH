@@ -1,43 +1,30 @@
 {
-  "title": "RSH v3.0.0: Machine-Checked Robitaille–Slade Helix Geometry and Deterministic Evidence",
-  "description": "RSH v3.0.0 introduces RSH-FORMAL-V1, a Lean 4 formal theorem surface for exact rational inversive-witness geometry, 32-bit/21-trit address capacity, Frenet–Serret orthonormal-constraint compatibility, exact midpoint translation, and monotone constitutional admission logic. The formalization is intentionally separate from binary64 runtime conformance and does not alter the authority of the canonical geometry oracle or the project's physical/non-physical claim boundaries.",
+  "title": "RSH v4.0.0: Epistemic and Conformance Governance for Deterministic Robitaille–Slade Helix Evidence",
+  "description": "RSH v4.0.0 adds RSH-EPISTEMIC-V1 and RSH-CONFORMANCE-V1: machine-readable evidence/claim classification, explicit runtime identity, no-silent-fallback rules, deterministic SHA-256 experiment receipts, and a sealed Python/Rust cross-runtime governance vector. The v3.0.0 Lean theorem surface RSH-FORMAL-V1, geometry model contract 2.0.0, tissue contract 1.0.0, and scientific authority hierarchy remain unchanged. GLUBALL integration is deliberately deferred to a later additive release.",
   "upload_type": "software",
   "creators": [
-    {
-      "name": "Dr. J. Robitaille"
-    },
-    {
-      "name": "Slade, Trent",
-      "affiliation": "QSOL-IMC"
-    }
+    {"name": "Dr. J. Robitaille"},
+    {"name": "Slade, Trent", "affiliation": "QSOL-IMC"}
   ],
   "contributors": [
-    {
-      "name": "ChatGPT 5.6 Sol Thinking",
-      "type": "Other",
-      "affiliation": "OpenAI"
-    }
+    {"name": "ChatGPT 5.6 Sol", "type": "Other", "affiliation": "OpenAI"}
   ],
-  "version": "3.0.0",
+  "version": "4.0.0",
   "license": "MPL-2.0",
   "keywords": [
     "Robitaille-Slade Helix",
+    "epistemic governance",
+    "deterministic evidence",
+    "cross-runtime conformance",
+    "no silent fallback",
+    "SHA-256 receipts",
     "Lean 4",
     "formal verification",
     "Frenet-Serret",
     "curvature",
-    "torsion",
-    "Sierpinski",
-    "inversive geometry",
-    "rational arithmetic",
-    "deterministic evidence",
-    "cross-runtime conformance"
+    "torsion"
   ],
   "related_identifiers": [
-    {
-      "identifier": "https://github.com/QSOLKCB/RSH",
-      "relation": "isSupplementTo",
-      "scheme": "url"
-    }
+    {"identifier": "https://github.com/QSOLKCB/RSH", "relation": "isSupplementTo", "scheme": "url"}
   ]
 }
