@@ -1,29 +1,56 @@
 # RSH — Robitaille–Slade Helix
 
-**Bounded Frenet–Serret geometry, deterministic evidence, cross-runtime conformance, constitutional tissue simulation, and separately versioned full-path numerical research.**
+**Bounded Frenet–Serret geometry, deterministic evidence, epistemic governance, cross-runtime conformance, constitutional tissue simulation, and separately versioned full-path numerical research.**
 
 RSH constructs a three-dimensional path by prescribing curvature and torsion
 inside explicit Robitaille bounds, integrating the Frenet–Serret frame, and
 translating the exact discrete midpoint to the coordinate origin.
 
 **Authors:** J. Robitaille (DeltaKingZero) and Trent Slade / QSOL-IMC  
-**Release:** 3.0.0  
-**Implementations:** Python geometry oracle and tissue reference + Rust geometry and tissue cores/CLIs + canonical geometry and tissue WASM bridges + WGSL schedule field + versioned C ABI/C++ adapter + optional CUDA schedule kernel + Tier 2 NPU evidence profile + separate Rust/WASM/WGSL full-path and parallel-prefix research stacks
+**Release:** 4.0.0  
+**Implementations:** Python geometry oracle, tissue reference, and v4 governance reference + Rust geometry/tissue/governance cores and CLIs + canonical geometry and tissue WASM bridges + WGSL schedule field + versioned C ABI/C++ adapter + optional CUDA schedule kernel + Tier 2 NPU evidence profile + separate Rust/WASM/WGSL full-path and parallel-prefix research stacks
 
 ## Contract and interface versions
 
 | Surface | Version / identifier |
 |---|---|
-| RSH software release / workspace crates | `3.0.0` |
+| RSH software release / workspace crates | `4.0.0` |
 | Geometry model contract | `2.0.0` |
 | Tissue contract | `1.0.0` |
+| Epistemic governance contract | `RSH-EPISTEMIC-V1` |
+| Conformance governance contract | `RSH-CONFORMANCE-V1` |
+| Lean theorem surface | `RSH-FORMAL-V1` (unchanged from v3.0.0) |
 | Frenet numerical research contract | `1.0.0` / `RSH-FRENET-NUMERICS-V1` |
 | Parallel Frenet research contract | `RSH-FRENET-PARALLEL-V1` |
 | Geometry, numerical, parallel, and tissue raw WASM ABIs | `1` |
 
-Release numbers, scientific contracts, numerical research contracts, and ABI
-versions are intentionally separate. Adding an adapter, test, or workflow does
-not silently revise the geometry or tissue contract.
+Release numbers, scientific contracts, governance contracts, numerical research
+contracts, and ABI versions are intentionally separate. Adding an adapter, test,
+or workflow does not silently revise the geometry, tissue, or formal theorem
+surface.
+
+## RSH v4 governance
+
+RSH v4 adds two machine-readable surfaces without changing the helix equations:
+
+- **`RSH-EPISTEMIC-V1`** separates epistemic state, evidence class, and permitted claim tier. Model output is not execution evidence, formal-looking syntax is not proof, unknown is not false, unresolved conflict remains visible, and proof status is never inferred from prose or keywords.
+- **`RSH-CONFORMANCE-V1`** binds deterministic experiment receipts to explicit backend, implementation version, source revision, fallback state, parameters, seed, and portable observables. It uses domain-separated SHA-256 and excludes wall-clock time from canonical identity.
+
+Requested backends may not silently fall back. If fallback occurs, it must be
+declared, and conformance gates reject it by default unless a consumer explicitly
+permits it. Runtime identity is intentionally part of each receipt, so
+cross-runtime acceptance compares declared portable observables rather than
+forcing unlike runtimes to manufacture equal hashes.
+
+The Python and Rust governance implementations consume the same sealed synthetic
+vector in `conformance/rsh_v4_governance_vector_v1.json`. See
+[`docs/V4_GOVERNANCE.md`](docs/V4_GOVERNANCE.md) and the normative contracts in
+[`contracts/`](contracts/).
+
+GLUBALL is deliberately **not** integrated in v4.0.0. After v4 is merged,
+validated, and tagged, a later additive release may pin GLUBALL v1.0.0 and add
+`RSH-GLUBALL-FORMAL-V1` without replacing the Robitaille–Slade helix or
+`RSH-FORMAL-V1`.
 
 ## Browser laboratories
 
@@ -71,6 +98,11 @@ composes accepted geometry evidence into a bounded deterministic graph
 simulation, creates separate tick and tissue receipt domains, and does not alter
 the geometry contract or geometry receipt.
 
+The v4 Python governance module and `rsh-governance` Rust crate are paired
+reference implementations of the governance contracts. They classify explicit
+evidence metadata and conformance envelopes; they do not redefine geometry,
+tissue dynamics, or Lean propositions.
+
 The canonical Rust geometry implementation reproduces the geometry and
 verification contract as a native core and command-line runner. It is accepted
 through the checked-in cross-runtime conformance record.
@@ -117,6 +149,9 @@ canonical geometry receipt remains an oracle artifact.
 | Tissue centre | shared cell centroid translated to `(0, 0, 0)` for graph comparison |
 | Frame | tangent, normal, and binormal remain orthonormal within tolerance |
 | Python geometry evidence | canonical domain-separated SHA-256 receipt |
+| v4 epistemic promotion | explicit metadata only; no prose/keyword proof inference |
+| v4 conformance identity | SHA-256 receipt binds backend/version/source revision/fallback/parameters/seed/observables |
+| v4 fallback policy | no silent backend fallback; declared fallback rejected by default |
 | Tissue evidence | seed geometry receipt + chained tick receipts + final tissue receipt |
 | Q_f | functional cohesion metric only; no biological, awareness, or qualia claim |
 | Rust geometry acceptance | contract checks plus golden-coordinate conformance |
@@ -553,6 +588,7 @@ can modify a numerical contract.
 | Backend | Executed in routine CI | Result / boundary |
 |---|---:|---|
 | Python geometry 3.10 / 3.12 / 3.14 | yes | reference tests and evidence smoke suite |
+| Python/Rust v4 governance | yes | sealed canonical JSON, SHA-256 receipt, ledger digest, claim tiers, fallback policy |
 | Python tissue 3.10 / 3.12 / 3.14 | yes | constitution, default receipt chain, Q_f vectors, fallback, dry-run policy |
 | Sealed Python tissue goldens | yes | fresh CPython 3.12 report checked explicitly at `1e-12` plus exact receipt/hash gates |
 | Rust canonical geometry | yes | formatting, Clippy, tests, conformance, canonical Rust receipt |
@@ -606,11 +642,13 @@ mapping. Any future GPU logical-index kernel must reproduce the same indices.
 rsh_runner.py                       Direct Python source-checkout runner
 src/rsh/geometry.py                 Python geometry reference
 src/rsh/evidence.py                 Geometry verification and receipts
+src/rsh/governance.py               RSH-EPISTEMIC-V1 / RSH-CONFORMANCE-V1 Python reference
 src/rsh/constitution.py             Machine-checkable tissue constitution
 src/rsh/tissue.py                   Deterministic geometric tissue reference
 src/rsh/refinement.py               Sealed bounded proposal dry-run policy
 src/rsh/cli.py                      Geometry, tissue, and governance CLI
 crates/rsh-core/                    Canonical Rust geometry and evidence library
+crates/rsh-governance/              RSH v4 governance reference crate
 crates/rsh-cli/                     Canonical native geometry runner
 crates/rsh-wasm/                    Canonical raw geometry WASM ABI
 crates/rsh-ffi/                     Versioned C ABI over `rsh-core`
@@ -623,9 +661,12 @@ crates/rsh-parallel-wasm/           Parallel-prefix raw WASM ABI
 crates/rsh-tissue/                  Shared Rust tissue runtime
 crates/rsh-tissue-cli/              Native tissue runner and conformance CLI
 crates/rsh-tissue-wasm/             Raw tissue WASM ABI over `rsh-tissue`
+contracts/                          Machine-readable v4 epistemic/conformance contracts
+release/                            Machine-readable release manifests
 include/rsh_ffi.h                   Public ABI-v1 C/C++ header
 native/cpp/                         Dependency-free C++17 consumer and CMake build
 native/cuda/                        Optional CUDA schedule residual executable
+conformance/rsh_v4_governance_vector_v1.json Sealed Python/Rust governance vector
 conformance/wasm_v2_129.json        Sealed geometry/WASM profile
 conformance/wgsl_v1_4096.json       WebGPU schedule-field profile
 conformance/frenet_path_v1_1025.json Full-path numerical and accelerator profile
@@ -648,6 +689,7 @@ scripts/package_evidence.py         Deterministic evidence archive generator
 fuzz/                               Isolated bounded numerical fuzz target
 web/                                Static Pages laboratories and offline cache
 tests/                              Geometry, tissue, governance, CLI, and tooling tests
+docs/V4_GOVERNANCE.md               v4 epistemic/conformance governance boundary
 docs/PHASE3_WASM.md                 Canonical WebAssembly contract
 docs/PHASE4_WGSL.md                 WebGPU schedule residual boundary
 docs/PHASE5_NATIVE.md               C ABI, C++, and optional CUDA boundary
@@ -670,10 +712,11 @@ implementation behaviour; they are not empirical discoveries.
 
 Receipts prove identity of reports under declared runtime and encoding contracts.
 Cross-runtime tissue acceptance is based on explicit portable observables and
-tolerances, not automatic receipt equality. Accelerator residuals prove numerical
-agreement within published gates. Q_f compares functional factors inside one
-simulation. None of these establishes a physical theory, biological organism,
-consciousness, or subjective experience.
+tolerances, not automatic receipt equality. RSH v4 additionally requires explicit
+evidence classification and runtime identity before claim promotion. Accelerator
+residuals prove numerical agreement within published gates. Q_f compares
+functional factors inside one simulation. None of these establishes a physical
+theory, biological organism, consciousness, or subjective experience.
 
 ## Planned sequence
 
@@ -686,10 +729,14 @@ consciousness, or subjective experience.
 7. **Rust/WASM tissue conformance** — implemented in v2.7.0 from the sealed Python vectors.
 8. **Full-path Frenet numerical research** — implemented in v2.6.0 as a separate f64/WASM/WGSL correctness surface.
 9. **Single-device parallel Frenet research** — implemented under `RSH-FRENET-PARALLEL-V1` with native Rust, compiled WASM, multi-pass WGSL, complete readback, and scoped benchmark policy.
-10. **Multi-device and distributed parallel execution** — future research; current shard summaries provide ordered deterministic groundwork only.
+10. **Lean 4 theorem surface** — frozen in v3.0.0 as `RSH-FORMAL-V1`.
+11. **Epistemic and conformance governance** — implemented in v4.0.0 as `RSH-EPISTEMIC-V1` and `RSH-CONFORMANCE-V1`.
+12. **GLUBALL integration** — next additive release after the v4.0.0 tag; planned theorem surface `RSH-GLUBALL-FORMAL-V1`.
+13. **Multi-device and distributed parallel execution** — future research; current shard summaries provide ordered deterministic groundwork only.
 
-Performance, compositional complexity, or anthropomorphic language never promotes
-an adapter or simulation to scientific authority.
+Performance, compositional complexity, anthropomorphic language, or a visually
+persuasive blue pretzel never promotes an adapter or simulation to scientific
+authority.
 
 ## Licence and citation
 
