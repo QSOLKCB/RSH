@@ -11,6 +11,11 @@ structure Vec3Q where
 
 namespace Vec3Q
 
+@[ext] theorem ext {a b : Vec3Q} (hx : a.x = b.x) (hy : a.y = b.y) (hz : a.z = b.z) : a = b := by
+  cases a
+  cases b
+  simp_all
+
 def zero : Vec3Q := ⟨0, 0, 0⟩
 def add (a b : Vec3Q) : Vec3Q := ⟨a.x + b.x, a.y + b.y, a.z + b.z⟩
 def sub (a b : Vec3Q) : Vec3Q := ⟨a.x - b.x, a.y - b.y, a.z - b.z⟩
