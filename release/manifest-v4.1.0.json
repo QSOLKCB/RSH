@@ -7,7 +7,10 @@
     "base_release": "v4.0.0",
     "base_release_commit": "79b8481639fb4187c41035de4e707545db93f59a",
     "formalization_merge_commit": "124af8283dd69f78031d3a92249fdd7ea4a60508",
-    "tag_target_rule": "v4.1.0 must resolve to the merge commit containing this manifest after portable CI and the Lean theorem audit pass"
+    "release_prep_merge_commit": "f6fc36fe0dd19af6bc6247d4e9f4a19f2500573e",
+    "zenodo_version_doi": "10.5281/zenodo.21959297",
+    "doi_reserved_before_tag": true,
+    "tag_target_rule": "v4.1.0 must resolve to the final merge commit containing this manifest and the pinned Zenodo version DOI after portable CI and the Lean theorem audit pass"
   },
   "software_versions": {
     "python_package": "4.1.0",
@@ -62,6 +65,7 @@
   },
   "archive_metadata": {
     "zenodo_file": ".zenodo.json",
+    "zenodo_version_doi": "10.5281/zenodo.21959297",
     "citation_file": "CITATION.cff",
     "release_notes": "RELEASE_NOTES_v4.1.0.md"
   }

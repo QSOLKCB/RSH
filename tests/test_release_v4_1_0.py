@@ -7,7 +7,9 @@ ROOT = Path(__file__).resolve().parents[1]
 VERSION = "4.1.0"
 RSH_V4_COMMIT = "79b8481639fb4187c41035de4e707545db93f59a"
 FORMALIZATION_MERGE_COMMIT = "124af8283dd69f78031d3a92249fdd7ea4a60508"
+RELEASE_PREP_MERGE_COMMIT = "f6fc36fe0dd19af6bc6247d4e9f4a19f2500573e"
 GLUBALL_V1_COMMIT = "80941183d14531093117e122da0fc32c13d2464b"
+ZENODO_VERSION_DOI = "10.5281/zenodo.21959297"
 
 
 def _read(path: str) -> str:
@@ -38,6 +40,7 @@ class ReleaseV410Test(unittest.TestCase):
         citation = _read("CITATION.cff")
         self.assertIn("RSH-FORMAL-V1", citation)
         self.assertIn("RSH-GLUBALL-FORMAL-V1", citation)
+        self.assertIn(f"doi: {ZENODO_VERSION_DOI}", citation)
 
     def test_release_manifest_pins_frozen_boundaries(self):
         manifest = json.loads(_read("release/manifest-v4.1.0.json"))
@@ -49,7 +52,20 @@ class ReleaseV410Test(unittest.TestCase):
             manifest["release"]["formalization_merge_commit"],
             FORMALIZATION_MERGE_COMMIT,
         )
+        self.assertEqual(
+            manifest["release"]["release_prep_merge_commit"],
+            RELEASE_PREP_MERGE_COMMIT,
+        )
+        self.assertEqual(
+            manifest["release"]["zenodo_version_doi"],
+            ZENODO_VERSION_DOI,
+        )
+        self.assertTrue(manifest["release"]["doi_reserved_before_tag"])
         self.assertEqual(manifest["gluball_source"]["commit"], GLUBALL_V1_COMMIT)
+        self.assertEqual(
+            manifest["archive_metadata"]["zenodo_version_doi"],
+            ZENODO_VERSION_DOI,
+        )
         self.assertEqual(
             manifest["theorem_surfaces"],
             {
@@ -72,6 +88,8 @@ class ReleaseV410Test(unittest.TestCase):
         readme = _read("README.md")
         self.assertIn("RSH-GLUBALL-FORMAL-V1", notes)
         self.assertIn(FORMALIZATION_MERGE_COMMIT, notes)
+        self.assertIn(RELEASE_PREP_MERGE_COMMIT, notes)
+        self.assertIn(ZENODO_VERSION_DOI, notes)
         self.assertIn("RSH-GLUBALL-FORMAL-V1", readme)
         self.assertIn("GLUBALL integration", readme)
 

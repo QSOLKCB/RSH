@@ -7,6 +7,8 @@ This release is pinned to:
 - RSH v4.0.0: `79b8481639fb4187c41035de4e707545db93f59a`
 - GLUBALL v1.0.0: `80941183d14531093117e122da0fc32c13d2464b`
 - merged GLUBALL formalization: `124af8283dd69f78031d3a92249fdd7ea4a60508`
+- v4.1.0 release-prep merge: `f6fc36fe0dd19af6bc6247d4e9f4a19f2500573e`
+- Zenodo version DOI: `10.5281/zenodo.21959297`
 
 ## New theorem surface
 
@@ -99,7 +101,15 @@ A proof receipt certifies the proposition checked by Lean. It does not silently 
 
 The Python package and Rust workspace advance to `4.1.0`. `CITATION.cff`, `.zenodo.json`, and `release/manifest-v4.1.0.json` describe the additive formalization and preserve the exact RSH/GLUBALL source boundaries.
 
-The v4.1.0 tag must resolve to the final merge commit containing the release manifest after portable CI and the Lean theorem audit are green.
+The reserved Zenodo version DOI for this release is:
+
+```text
+10.5281/zenodo.21959297
+```
+
+`CITATION.cff` and the machine-readable release manifest bind that DOI to v4.1.0 before the Git tag is created. The DOI reservation itself is archival identity metadata; it does not change any theorem statement or scientific authority boundary.
+
+The v4.1.0 tag must resolve to the final merge commit containing the release manifest and DOI pin after portable CI and the Lean theorem audit are green.
 
 ## Reproduce the theorem audit
 
