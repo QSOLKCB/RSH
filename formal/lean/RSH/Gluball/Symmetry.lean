@@ -60,7 +60,7 @@ private theorem major_shift (t : ℝ) :
   norm_num [p]
   ring
 
-/-- Exact threefold rotational symmetry from `GLUBALL-KNOT-V1`. -/
+/-- Exact threefold rotational symmetry of the frozen GLUBALL v1.0.0 centreline. -/
 theorem centerline_c3_symmetry (t : ℝ) :
     centerline (t + 2 * Real.pi / 3) = Vec3.rotateZ (4 * Real.pi / 3) (centerline t) := by
   apply Vec3.ext
