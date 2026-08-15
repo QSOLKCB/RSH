@@ -47,26 +47,41 @@ private theorem cos_mul_parameter_hasDerivAt (a t : ℝ) :
 
 /-- The declared radial derivative is the actual derivative of `radial`. -/
 theorem radial_hasDerivAt (t : ℝ) : HasDerivAt radial (radialPrime t) t := by
-  simpa [radial, radialPrime, mul_comm, mul_left_comm, mul_assoc] using
-    (hasDerivAt_const t majorRadius).add
-      (HasDerivAt.const_mul minorRadius (cos_mul_parameter_hasDerivAt q t))
+  change HasDerivAt
+    ((fun _ : ℝ => majorRadius) + fun s : ℝ => minorRadius * Real.cos (q * s))
+    (radialPrime t) t
+  have h := (hasDerivAt_const t majorRadius).add
+    (HasDerivAt.const_mul minorRadius (cos_mul_parameter_hasDerivAt q t))
+  convert h using 1
+  · ring
 
 /-- The x component of `centerlineDerivative` is the derivative of the centreline x coordinate. -/
 theorem centerline_x_hasDerivAt (t : ℝ) :
     HasDerivAt (fun s : ℝ => (centerline s).x) (centerlineDerivative t).x t := by
-  simpa [centerline, centerlineDerivative, sub_eq_add_neg, mul_comm, mul_left_comm, mul_assoc] using
-    (radial_hasDerivAt t).mul (cos_mul_parameter_hasDerivAt p t)
+  change HasDerivAt
+    (radial * fun s : ℝ => Real.cos (p * s))
+    (radialPrime t * Real.cos (p * t) - p * radial t * Real.sin (p * t)) t
+  have h := (radial_hasDerivAt t).mul (cos_mul_parameter_hasDerivAt p t)
+  convert h using 1
+  · ring
 
 /-- The y component of `centerlineDerivative` is the derivative of the centreline y coordinate. -/
 theorem centerline_y_hasDerivAt (t : ℝ) :
     HasDerivAt (fun s : ℝ => (centerline s).y) (centerlineDerivative t).y t := by
-  simpa [centerline, centerlineDerivative, mul_comm, mul_left_comm, mul_assoc] using
-    (radial_hasDerivAt t).mul (sin_mul_parameter_hasDerivAt p t)
+  change HasDerivAt
+    (radial * fun s : ℝ => Real.sin (p * s))
+    (radialPrime t * Real.sin (p * t) + p * radial t * Real.cos (p * t)) t
+  have h := (radial_hasDerivAt t).mul (sin_mul_parameter_hasDerivAt p t)
+  convert h using 1
+  · ring
 
 /-- The z component of `centerlineDerivative` is the derivative of the centreline z coordinate. -/
 theorem centerline_z_hasDerivAt (t : ℝ) :
     HasDerivAt (fun s : ℝ => (centerline s).z) (centerlineDerivative t).z t := by
-  simpa [centerline, centerlineDerivative, mul_comm, mul_left_comm, mul_assoc] using
+  change HasDerivAt
+    (fun s : ℝ => minorRadius * Real.sin (q * s))
+    (minorRadius * q * Real.cos (q * t)) t
+  simpa [mul_comm, mul_left_comm, mul_assoc] using
     HasDerivAt.const_mul minorRadius (sin_mul_parameter_hasDerivAt q t)
 
 /-- The declared vector is the actual centreline derivative, component by component. -/
