@@ -1,0 +1,50 @@
+{
+  "schema": "rsh-conformance-contract/1",
+  "contract": "RSH-CONFORMANCE-V1",
+  "purpose": "Bind deterministic experiment identity to explicit runtime/backend identity while keeping portable observable comparison separate from runtime-specific receipts.",
+  "receipt": {
+    "algorithm": "SHA-256",
+    "domain_utf8_plus_nul": "RSH-CONFORMANCE-V1",
+    "canonical_encoding": "compact-utf8-json-fixed-top-level-field-order-v1",
+    "top_level_field_order": ["contract", "experiment", "input_sha256", "runtime", "parameters", "seed", "observables"],
+    "runtime_field_order": ["backend", "implementation", "implementation_version", "source_revision", "fallback_used", "fallback_from"],
+    "map_key_order": "lexicographic",
+    "wall_clock_in_canonical_identity": false,
+    "canonical_text_domain": "non-empty printable ASCII U+0020..U+007E excluding quote and backslash for experiment/runtime/map keys/map values"
+  },
+  "runtime_identity": {
+    "required_fields": ["backend", "implementation", "implementation_version", "source_revision", "fallback_used", "fallback_from"],
+    "no_silent_fallback": true,
+    "fallback_used_requires_fallback_from": true,
+    "fallback_from_must_differ_from_observed_backend": true,
+    "backend_mismatch_policy": "fail-closed"
+  },
+  "experiment_envelope": {
+    "input_sha256": "lower-case-64-hex",
+    "parameters": "string-to-string-map",
+    "seed": "unsigned-64-bit-integer",
+    "observables": "string-to-string-map"
+  },
+  "comparison": {
+    "portable_observable_fields": ["contract", "experiment", "input_sha256", "parameters", "seed", "observables"],
+    "runtime_receipts_required_to_match_cross_runtime": false,
+    "reason": "runtime identity is intentionally bound into each receipt"
+  },
+  "ledger": {
+    "algorithm": "SHA-256",
+    "domain_utf8_plus_nul": "RSH-CONFORMANCE-LEDGER-V1",
+    "order_sensitive": true,
+    "wall_clock_in_digest": false
+  },
+  "authority_boundaries": {
+    "geometry_contract": "2.0.0",
+    "geometry_contract_changed": false,
+    "tissue_contract_changed": false,
+    "formal_contract": "RSH-FORMAL-V1",
+    "formal_contract_changed": false,
+    "receipt_implies_physical_truth": false,
+    "receipt_implies_empirical_truth": false,
+    "accelerator_promoted_to_geometry_authority": false
+  },
+  "sealed_vector": "conformance/rsh_v4_governance_vector_v1.json"
+}
