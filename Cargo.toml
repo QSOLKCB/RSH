@@ -17,11 +17,11 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "2.7.0"
+version = "3.0.0"
 edition = "2021"
 license = "MPL-2.0"
 repository = "https://github.com/QSOLKCB/RSH"
-authors = ["J. Robitaille", "Trent Slade / QSOL-IMC"]
+authors = ["Dr. J. Robitaille", "Trent Slade / QSOL-IMC"]
 
 [workspace.dependencies]
 serde = { version = "1.0", features = ["derive"] }

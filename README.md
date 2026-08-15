@@ -7,14 +7,14 @@ inside explicit Robitaille bounds, integrating the Frenet–Serret frame, and
 translating the exact discrete midpoint to the coordinate origin.
 
 **Authors:** J. Robitaille (DeltaKingZero) and Trent Slade / QSOL-IMC  
-**Release:** 2.7.0  
+**Release:** 3.0.0  
 **Implementations:** Python geometry oracle and tissue reference + Rust geometry and tissue cores/CLIs + canonical geometry and tissue WASM bridges + WGSL schedule field + versioned C ABI/C++ adapter + optional CUDA schedule kernel + Tier 2 NPU evidence profile + separate Rust/WASM/WGSL full-path and parallel-prefix research stacks
 
 ## Contract and interface versions
 
 | Surface | Version / identifier |
 |---|---|
-| RSH software release / workspace crates | `2.7.0` |
+| RSH software release / workspace crates | `3.0.0` |
 | Geometry model contract | `2.0.0` |
 | Tissue contract | `1.0.0` |
 | Frenet numerical research contract | `1.0.0` / `RSH-FRENET-NUMERICS-V1` |

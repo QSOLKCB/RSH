@@ -1,0 +1,82 @@
+name: RSH Lean 4 formal verification
+
+on:
+  push:
+    branches:
+      - main
+      - agent/v3.0.0-lean-formalization
+    paths:
+      - "formal/lean/**"
+      - "FORMALIZATION.md"
+      - ".github/workflows/lean-formal.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "formal/lean/**"
+      - "FORMALIZATION.md"
+      - ".github/workflows/lean-formal.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  LEAN_VERSION: "4.32.1"
+  LEAN_LINUX_SHA256: "57d5c062a6b4bae6fba511a1704aa124dff461c37d0fc94585637fbb7d951b50"
+
+jobs:
+  lean:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Install pinned official Lean release
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="/tmp/lean-${LEAN_VERSION}-linux.tar.zst"
+          dist="/tmp/rsh-lean-dist"
+          curl -fsSL --retry 5 --retry-delay 2 \
+            "https://github.com/leanprover/lean4/releases/download/v${LEAN_VERSION}/lean-${LEAN_VERSION}-linux.tar.zst" \
+            -o "$archive"
+          printf '%s  %s\n' "$LEAN_LINUX_SHA256" "$archive" | sha256sum -c -
+          mkdir -p "$dist"
+          tar --zstd -xf "$archive" -C "$dist"
+          printf '%s\n' "$dist/lean-${LEAN_VERSION}-linux/bin" >> "$GITHUB_PATH"
+
+      - name: Verify pinned toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          lean --version
+          lake --version
+          test "$(cat formal/lean/lean-toolchain)" = "leanprover/lean4:v${LEAN_VERSION}"
+
+      - name: Resolve pinned Mathlib dependency and cache
+        shell: bash
+        working-directory: formal/lean
+        run: |
+          set -euo pipefail
+          lake update
+          lake exe cache get
+
+      - name: Run RSH theorem audit
+        shell: bash
+        working-directory: formal/lean
+        run: bash audit.sh "$RUNNER_TEMP/rsh-formal-verification-report.txt"
+
+      - name: Publish theorem report
+        if: always()
+        shell: bash
+        run: |
+          report="$RUNNER_TEMP/rsh-formal-verification-report.txt"
+          if [[ -f "$report" ]]; then
+            {
+              echo '## RSH-FORMAL-V1 theorem audit'
+              echo '```text'
+              cat "$report"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
