@@ -1,0 +1,47 @@
+name: Mobile PWA
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  mobile-presentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check generated mobile contract metadata
+        run: python3 scripts/generate_mobile_contract.py --check
+      - name: Validate mobile PWA source
+        run: |
+          test -s web/mobile/index.html
+          test -s web/mobile/style.css
+          test -s web/mobile/app.js
+          test -s web/mobile/geoaudio.js
+          test -s web/mobile/contract.json
+          test -s web/mobile/manifest.webmanifest
+          test -s web/mobile/icon.svg
+          test -s web/mobile/sw.js
+          python3 -m json.tool web/mobile/contract.json >/dev/null
+          python3 -m json.tool web/mobile/manifest.webmanifest >/dev/null
+          node --check web/mobile/app.js
+          node --check web/mobile/geoaudio.js
+          node --check web/mobile/sw.js
+          grep -q 'rsh_wasm.wasm' web/mobile/app.js
+          grep -q 'geometry_receipt_authority: false' web/mobile/index.html
+          grep -q 'RSH-GEOAUDIO-PRESENTATION-V1' web/mobile/geoaudio.js
+          grep -q '"display": "standalone"' web/mobile/manifest.webmanifest
+      - name: Guard mobile evidence state regressions
+        run: |
+          set -euo pipefail
+          grep -q 'geometryGeneration' web/mobile/app.js
+          grep -q 'generation!==state.geometryGeneration||state.payload!==payload' web/mobile/app.js
+          grep -q 'payload.model===state.contract.model' web/mobile/app.js
+          grep -q 'payload.model_version===state.contract.model_version' web/mobile/app.js
+          grep -q 'report.model===state.contract.model' web/mobile/app.js
+          grep -q 'report.version===state.contract.model_version' web/mobile/app.js
+          grep -q 'clearReport("REJECTED")' web/mobile/app.js
+          grep -q 'const gateAllowed=validatePresentationGate(payload);const allowed=status===0&&gateAllowed' web/mobile/app.js
