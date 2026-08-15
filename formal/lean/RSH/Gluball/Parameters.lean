@@ -2,6 +2,8 @@ import Mathlib
 
 namespace RSH.Gluball
 
+noncomputable section
+
 /-- Additive Lean theorem-surface marker for the frozen GLUBALL handoff. -/
 def formalContract : String := "RSH-GLUBALL-FORMAL-V1"
 
@@ -36,5 +38,7 @@ theorem tubeRadius_pos : 0 < tubeRadius := by norm_num [tubeRadius]
 theorem tubeRadius_lt_minorRadius : tubeRadius < minorRadius := by norm_num [tubeRadius, minorRadius]
 theorem p_pos : 0 < p := by norm_num [p]
 theorem q_pos : 0 < q := by norm_num [q]
+
+end
 
 end RSH.Gluball
