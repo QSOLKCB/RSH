@@ -34,3 +34,14 @@ jobs:
           grep -q 'geometry_receipt_authority: false' web/mobile/index.html
           grep -q 'RSH-GEOAUDIO-PRESENTATION-V1' web/mobile/geoaudio.js
           grep -q '"display": "standalone"' web/mobile/manifest.webmanifest
+      - name: Guard mobile evidence state regressions
+        run: |
+          set -euo pipefail
+          grep -q 'geometryGeneration' web/mobile/app.js
+          grep -q 'generation!==state.geometryGeneration||state.payload!==payload' web/mobile/app.js
+          grep -q 'payload.model===state.contract.model' web/mobile/app.js
+          grep -q 'payload.model_version===state.contract.model_version' web/mobile/app.js
+          grep -q 'report.model===state.contract.model' web/mobile/app.js
+          grep -q 'report.version===state.contract.model_version' web/mobile/app.js
+          grep -q 'clearReport("REJECTED")' web/mobile/app.js
+          grep -q 'const gateAllowed=validatePresentationGate(payload);const allowed=status===0&&gateAllowed' web/mobile/app.js
