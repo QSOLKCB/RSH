@@ -2,12 +2,13 @@ import Mathlib
 
 namespace RSH.Gluball
 
+noncomputable section
+
 /-- Minimal exact three-vector over the reals for theorem-facing GLUBALL geometry. -/
 structure Vec3 where
   x : ℝ
   y : ℝ
   z : ℝ
-  deriving Repr
 
 namespace Vec3
 
@@ -80,8 +81,11 @@ theorem sqNorm_cross (a b : Vec3) :
   ring
 
 theorem sqNorm_nonneg (v : Vec3) : 0 ≤ sqNorm v := by
-  simp [sqNorm, dot]
-  positivity
+  unfold sqNorm dot
+  nlinarith [mul_self_nonneg v.x, mul_self_nonneg v.y, mul_self_nonneg v.z]
 
 end Vec3
+
+end
+
 end RSH.Gluball
