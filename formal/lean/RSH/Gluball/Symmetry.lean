@@ -2,6 +2,8 @@ import RSH.Gluball.Centerline
 
 namespace RSH.Gluball
 
+noncomputable section
+
 open Vec3
 
 private theorem cos_major_period (t : ℝ) :
@@ -69,5 +71,7 @@ theorem centerline_c3_symmetry (t : ℝ) :
       Real.cos_add, Real.sin_add]
     ring
   · simp [centerline, minor_shift_sin, Vec3.rotateZ]
+
+end
 
 end RSH.Gluball
