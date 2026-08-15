@@ -1,0 +1,12 @@
+{
+  "name": "RSH Mobile Laboratory",
+  "short_name": "RSH Mobile",
+  "description": "Installable mobile presentation layer for verified RSH Rust/WebAssembly geometry.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#05090c",
+  "theme_color": "#081014",
+  "orientation": "any",
+  "icons": [{"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}

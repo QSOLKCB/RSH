@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#081014">
+  <meta name="description" content="Installable mobile RSH laboratory backed by the existing Rust/WebAssembly core.">
+  <title>RSH Mobile Laboratory</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="../">RSH<span>⁹</span></a>
+    <div><strong>Mobile Laboratory</strong><small>Rust/WASM · installable · offline-first</small></div>
+    <button id="install-button" class="ghost" type="button" hidden>Install</button>
+  </header>
+
+  <main>
+    <section class="hero card">
+      <p class="eyebrow">GHOSTIT-INSPIRED MOBILE SURFACE · NO ANDROID MACHINE CODE</p>
+      <h1>RSH in your pocket.<br><em>Same core, lighter shell.</em></h1>
+      <p>Geometry is executed by the existing <code>rsh-core</code> WebAssembly bridge. This interface only presents accepted evidence, produces a deterministic sonification sidecar, and exposes a non-authoritative control-policy metaphor.</p>
+      <div class="status-line"><span id="runtime-light" class="light loading"></span><strong id="runtime-status">Loading RSH Rust/WASM…</strong></div>
+    </section>
+
+    <nav class="tabs" aria-label="Mobile laboratory sections">
+      <button class="tab active" data-target="geometry" type="button">Geometry</button>
+      <button class="tab" data-target="audio" type="button">GeoAudio</button>
+      <button class="tab" data-target="graph" type="button">Graph</button>
+      <button class="tab" data-target="gate" type="button">Gate</button>
+    </nav>
+
+    <section id="geometry" class="panel active">
+      <form id="geometry-form" class="card controls">
+        <div class="section-title"><div><p class="eyebrow">RSH MOBILE ADAPTER</p><h2>Verified geometry</h2></div><span id="abi-badge" class="badge">ABI —</span></div>
+        <label><span>Samples <output id="samples-value">129</output></span><input id="samples" type="range" min="65" max="1025" step="64" value="129"><small>Odd sample counts preserve the exact discrete midpoint.</small></label>
+        <label><span>Curvature fraction <output id="kappa-value">0.85</output></span><input id="kappa-fraction" type="range" min="0.10" max="1.00" step="0.01" value="0.85"></label>
+        <label><span>Torsion floor <output id="tau-floor-value">0.22</output></span><input id="tau-floor" type="range" min="0.01" max="0.80" step="0.01" value="0.22"></label>
+        <label><span>Torsion amplitude <output id="tau-amplitude-value">0.13</output></span><input id="tau-amplitude" type="range" min="0.00" max="0.40" step="0.01" value="0.13"></label>
+        <button class="primary" id="run-button" type="submit">Run Rust/WASM geometry</button>
+        <p id="run-message" class="message">Waiting for the runtime.</p>
+      </form>
+
+      <section class="card viewport-card">
+        <div class="canvas-head"><div><p class="eyebrow">VISUAL PRESENTATION ONLY</p><h2>Touch helix</h2></div><button id="reset-view" class="ghost" type="button">Reset view</button></div>
+        <canvas id="helix-canvas" width="900" height="760" aria-label="Projected RSH path"></canvas>
+        <p class="boundary">Drag to rotate. Pinch or wheel to zoom. The projection is not geometry evidence.</p>
+      </section>
+
+      <section class="card metrics-card">
+        <div class="section-title"><div><p class="eyebrow">CURRENT CORE REPORT</p><h2 id="report-status">NOT RUN</h2></div><span class="badge safe">CORE AUTHORITY</span></div>
+        <dl class="metrics">
+          <div><dt>Samples</dt><dd id="metric-samples">—</dd></div><div><dt>Centre error</dt><dd id="metric-centre">—</dd></div>
+          <div><dt>Max κ / bound</dt><dd id="metric-kappa">—</dd></div><div><dt>τ range</dt><dd id="metric-tau">—</dd></div>
+          <div><dt>Frame error</dt><dd id="metric-frame">—</dd></div><div><dt>Path length</dt><dd id="metric-path">—</dd></div>
+        </dl>
+        <div class="receipt"><span>RUNTIME RECEIPT</span><code id="metric-receipt">—</code></div>
+        <button id="download-report" class="secondary" type="button" disabled>Download core JSON</button>
+      </section>
+    </section>
+
+    <section id="audio" class="panel">
+      <section class="card">
+        <p class="eyebrow">RSH-GEOAUDIO-PRESENTATION-V1</p><h2>Deterministic κ/τ sonification</h2>
+        <p>Accepted κ and τ samples are mapped to a fixed-point stereo recipe and encoded directly as 48 kHz PCM16 WAV. Browser playback is convenience only; the WAV hash and source geometry receipt are the portable sidecar identity.</p>
+        <dl class="metrics compact"><div><dt>Sample rate</dt><dd>48,000 Hz</dd></div><div><dt>Channels</dt><dd>Stereo PCM16</dd></div><div><dt>Duration</dt><dd>8 seconds</dd></div><div><dt>Authority</dt><dd>Presentation only</dd></div></dl>
+        <button id="build-audio" class="primary" type="button" disabled>Build deterministic WAV</button>
+        <audio id="audio-player" controls preload="none"></audio>
+        <div class="receipt"><span>WAV SHA-256</span><code id="audio-hash">—</code></div>
+        <div class="button-row"><button id="download-wav" class="secondary" type="button" disabled>Download WAV</button><button id="download-audio-manifest" class="secondary" type="button" disabled>Download manifest</button></div>
+        <p id="audio-message" class="message">Run a passing geometry first.</p>
+      </section>
+    </section>
+
+    <section id="graph" class="panel">
+      <section class="card viewport-card">
+        <div class="canvas-head"><div><p class="eyebrow">HELIX GRAPH VISUALISATION</p><h2>Validated samples as nodes</h2></div><label class="inline-control">Node stride <select id="graph-stride"><option value="1">1</option><option value="2" selected>2</option><option value="4">4</option><option value="8">8</option></select></label></div>
+        <canvas id="graph-canvas" width="900" height="760" aria-label="Graph presentation of RSH samples"></canvas>
+        <p class="boundary">Sequential edges are derived only from the accepted Rust/WASM sample order. This graph does not create a new topology contract or receipt.</p>
+      </section>
+    </section>
+
+    <section id="gate" class="panel">
+      <section class="card">
+        <p class="eyebrow">“GEOMETRIC POLICE” · UI METAPHOR ONLY</p><h2>Downstream presentation gate</h2>
+        <p>This panel mirrors GhostIT’s control-policy idea without becoming RSH authority. It reads the core report and contract metadata, then decides whether this UI may enable presentation tools. It never changes κ, τ, path integration, receipts, admission rules, or scientific metrics.</p>
+        <div id="gate-decision" class="decision waiting">WAITING FOR CORE REPORT</div><ul id="gate-checks" class="checks"></ul>
+        <div class="nonclaims"><code>geometry_receipt_authority: false</code><code>geometry_contract_modified: false</code><code>scientific_metric_feedback: false</code><code>autonomous_source_modification: false</code></div>
+      </section>
+      <section class="card"><p class="eyebrow">GENERATED CONTRACT METADATA</p><h2>No hand-maintained mobile invariants</h2><p>The values below are generated from RSH-owned Python constants plus the sealed FFI conformance fixture. CI rejects drift between those sources and this PWA.</p><pre id="contract-preview">Loading…</pre></section>
+    </section>
+  </main>
+  <footer><p>RSH Mobile Laboratory · downstream presentation surface · <a href="../">full browser laboratory</a></p></footer>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
