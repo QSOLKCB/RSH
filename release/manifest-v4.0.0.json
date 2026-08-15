@@ -1,0 +1,59 @@
+{
+  "schema": "rsh-release-manifest/1",
+  "release": {
+    "version": "4.0.0",
+    "tag": "v4.0.0",
+    "status": "release-candidate",
+    "base_release": "v3.0.0",
+    "base_commit": "2f9dea41d112539426e1462cbf37c8fcbd5eec01",
+    "tag_target_rule": "v4.0.0 must resolve to the merge commit containing this manifest with portable CI and governance cross-runtime vectors green"
+  },
+  "new_contracts": {
+    "epistemic": "RSH-EPISTEMIC-V1",
+    "conformance_governance": "RSH-CONFORMANCE-V1"
+  },
+  "preserved_contracts": {
+    "geometry_model": "2.0.0",
+    "formal_theorem_surface": "RSH-FORMAL-V1",
+    "formal_project_version": "3.0.0",
+    "tissue_contract": "1.0.0"
+  },
+  "implementation": {
+    "python_package_version": "4.0.0",
+    "rust_workspace_version": "4.0.0",
+    "python_governance_module": "src/rsh/governance.py",
+    "rust_governance_crate": "crates/rsh-governance",
+    "sealed_cross_runtime_vector": "conformance/rsh_v4_governance_vector_v1.json"
+  },
+  "epistemic_boundaries": {
+    "model_output_is_execution_evidence": false,
+    "formal_syntax_is_proof": false,
+    "unknown_means_false": false,
+    "conflict_may_be_hidden": false,
+    "natural_language_proof_detection": false
+  },
+  "conformance_boundaries": {
+    "receipt_algorithm": "SHA-256",
+    "runtime_identity_required": true,
+    "source_revision_required": true,
+    "silent_backend_fallback_allowed": false,
+    "wall_clock_in_canonical_identity": false,
+    "cross_runtime_receipt_equality_required": false,
+    "portable_observable_comparison_required": true
+  },
+  "source_pattern_provenance": {
+    "origin": "substrate-descended patterns observed during GhostIT Android archive audit",
+    "ghostit_application_code_imported": false,
+    "ghostit_text_heuristics_imported": false,
+    "ghostit_prototype_crypto_imported": false,
+    "policy": "concepts reimplemented independently for RSH authority and evidence boundaries"
+  },
+  "deferred_gluball": {
+    "integrated_in_v4_0_0": false,
+    "required_gluball_release": "v1.0.0",
+    "required_gluball_tag_commit": "80941183d14531093117e122da0fc32c13d2464b",
+    "future_formal_surface": "RSH-GLUBALL-FORMAL-V1",
+    "integration_mode": "additive-after-rsh-v4-freeze",
+    "rsh_v4_tag_must_exist_before_gluball_integration": true
+  }
+}

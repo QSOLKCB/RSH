@@ -4,6 +4,7 @@ members = [
   "crates/rsh-cli",
   "crates/rsh-wasm",
   "crates/rsh-ffi",
+  "crates/rsh-governance",
   "crates/rsh-numerics",
   "crates/rsh-numerics-cli",
   "crates/rsh-numerics-wasm",
@@ -17,7 +18,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "3.0.0"
+version = "4.0.0"
 edition = "2021"
 license = "MPL-2.0"
 repository = "https://github.com/QSOLKCB/RSH"
