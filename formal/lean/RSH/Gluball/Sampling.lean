@@ -38,8 +38,7 @@ theorem uniformFloor_succ_le
       (renderedIndex * logicalCount + renderedCount) / renderedCount ≤
         ((renderedIndex + 1) * logicalCount) / renderedCount :=
     Nat.div_le_div_right hnum
-  rw [Nat.add_div_right (renderedIndex * logicalCount) renderedCount]
-  simpa [uniformFloor] using hdiv
+  simpa [uniformFloor, Nat.add_div_right _ hRendered] using hdiv
 
 /-- Adjacent rendered indices are collision-free under the canonical domain restriction. -/
 theorem uniformFloor_succ_lt
