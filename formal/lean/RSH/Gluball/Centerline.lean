@@ -12,13 +12,13 @@ def radial (t : ℝ) : ℝ := majorRadius + minorRadius * Real.cos (q * t)
 
 def radialPrime (t : ℝ) : ℝ := -minorRadius * q * Real.sin (q * t)
 
-/-- Frozen `GLUBALL-KNOT-V1` centreline. -/
+/-- Frozen GLUBALL v1.0.0 centreline. -/
 def centerline (t : ℝ) : Vec3 :=
   ⟨radial t * Real.cos (p * t),
    radial t * Real.sin (p * t),
    minorRadius * Real.sin (q * t)⟩
 
-/-- Closed-form derivative declared by `GLUBALL-KNOT-V1`. -/
+/-- Closed-form derivative declared by the frozen GLUBALL v1.0.0 geometry. -/
 def centerlineDerivative (t : ℝ) : Vec3 :=
   ⟨radialPrime t * Real.cos (p * t) - p * radial t * Real.sin (p * t),
    radialPrime t * Real.sin (p * t) + p * radial t * Real.cos (p * t),
