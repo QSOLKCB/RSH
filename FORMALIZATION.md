@@ -14,6 +14,8 @@ RSH-GLUBALL-FORMAL-V1
 
 The two surfaces coexist. The GLUBALL work does **not** replace, reinterpret, or weaken `RSH-FORMAL-V1`.
 
+`RSH-GLUBALL-FORMAL-V1` is packaged for archival release in RSH v4.1.0. The release number is software/archive metadata; the theorem-surface identifiers remain the authority boundary for the propositions Lean actually checks.
+
 ## Authors and contribution
 
 - **Dr. J. Robitaille** — author
@@ -91,7 +93,7 @@ and
 C(t)=(A(t)\cos(pt),A(t)\sin(pt),r\sin(qt)),
 \]
 
-Lean formalizes the declared derivative and proves the squared-speed identity
+Lean formalizes the declared derivative, proves `HasDerivAt` for each centreline component, and therefore connects the closed-form derivative to the actual curve rather than treating it as an independent trusted definition. It also proves the squared-speed identity
 
 \[
 \|C'(t)\|^2=p^2A(t)^2+q^2r^2.
