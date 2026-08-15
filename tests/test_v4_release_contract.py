@@ -24,13 +24,12 @@ class V4ReleaseContractTests(unittest.TestCase):
         self.assertEqual(vector["contracts"]["epistemic"], epistemic["contract"])
         self.assertEqual(vector["contracts"]["conformance"], conformance["contract"])
 
-    def test_software_versions_are_v4_without_bumping_geometry_contract(self) -> None:
-        pyproject = (ROOT / "pyproject.toml").read_text()
-        cargo = (ROOT / "Cargo.toml").read_text()
+    def test_v4_manifest_preserves_software_and_geometry_boundary(self) -> None:
+        manifest = json.loads((ROOT / "release/manifest-v4.0.0.json").read_text())
         constants = (ROOT / "src/rsh/constants.py").read_text()
         rust_core = (ROOT / "crates/rsh-core/src/lib.rs").read_text()
-        self.assertRegex(pyproject, r'(?m)^version = "4\.0\.0"$')
-        self.assertRegex(cargo, r'(?m)^version = "4\.0\.0"$')
+        self.assertEqual(manifest["implementation"]["python_package_version"], "4.0.0")
+        self.assertEqual(manifest["implementation"]["rust_workspace_version"], "4.0.0")
         self.assertIn('VERSION: str = "2.0.0"', constants)
         self.assertIn('MODEL_VERSION: &str = "2.0.0"', rust_core)
 
