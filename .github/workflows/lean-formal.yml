@@ -1,0 +1,55 @@
+name: RSH Lean 4 formal verification
+
+on:
+  push:
+    branches:
+      - main
+      - agent/v3.0.0-lean-formalization
+    paths:
+      - "formal/lean/**"
+      - "FORMALIZATION.md"
+      - ".github/workflows/lean-formal.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "formal/lean/**"
+      - "FORMALIZATION.md"
+      - ".github/workflows/lean-formal.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lean:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Build pinned Lean/Mathlib project
+        uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: formal/lean
+          build: true
+          test: false
+          lint: false
+
+      - name: Run RSH theorem audit
+        shell: bash
+        working-directory: formal/lean
+        run: bash audit.sh formal-verification-report.txt
+
+      - name: Publish theorem report
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f formal/lean/formal-verification-report.txt ]]; then
+            {
+              echo '## RSH-FORMAL-V1 theorem audit'
+              echo '```text'
+              cat formal/lean/formal-verification-report.txt
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

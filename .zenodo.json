@@ -1,0 +1,43 @@
+{
+  "title": "RSH v3.0.0: Machine-Checked Robitaille–Slade Helix Geometry and Deterministic Evidence",
+  "description": "RSH v3.0.0 introduces RSH-FORMAL-V1, a Lean 4 formal theorem surface for exact rational inversive-witness geometry, 32-bit/21-trit address capacity, Frenet–Serret orthonormal-constraint compatibility, exact midpoint translation, and monotone constitutional admission logic. The formalization is intentionally separate from binary64 runtime conformance and does not alter the authority of the canonical geometry oracle or the project's physical/non-physical claim boundaries.",
+  "upload_type": "software",
+  "creators": [
+    {
+      "name": "Dr. J. Robitaille"
+    },
+    {
+      "name": "Slade, Trent",
+      "affiliation": "QSOL-IMC"
+    }
+  ],
+  "contributors": [
+    {
+      "name": "ChatGPT 5.6 Sol Thinking",
+      "type": "Other",
+      "affiliation": "OpenAI"
+    }
+  ],
+  "version": "3.0.0",
+  "license": "MPL-2.0",
+  "keywords": [
+    "Robitaille-Slade Helix",
+    "Lean 4",
+    "formal verification",
+    "Frenet-Serret",
+    "curvature",
+    "torsion",
+    "Sierpinski",
+    "inversive geometry",
+    "rational arithmetic",
+    "deterministic evidence",
+    "cross-runtime conformance"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/QSOLKCB/RSH",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ]
+}
