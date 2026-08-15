@@ -12,6 +12,13 @@ Read these files before changing code:
 5. [`COMMANDS.md`](COMMANDS.md) — executable CLI and laboratory commands;
 6. the relevant phase document under [`docs/`](docs/).
 
+For RSH v4 evidence or claim work, additionally read:
+
+7. [`contracts/rsh-epistemic-v1.json`](contracts/rsh-epistemic-v1.json) — normative `RSH-EPISTEMIC-V1` claim/evidence contract;
+8. [`contracts/rsh-conformance-v1.json`](contracts/rsh-conformance-v1.json) — normative `RSH-CONFORMANCE-V1` runtime/evidence contract;
+9. [`docs/V4_GOVERNANCE.md`](docs/V4_GOVERNANCE.md) — human-facing explanation and release boundary;
+10. [`release/manifest-v4.0.0.json`](release/manifest-v4.0.0.json) — v4 release and future-GLUBALL gate metadata.
+
 ## Non-negotiable project boundaries
 
 RSH has multiple implementations, but they do not have equal authority.
@@ -42,11 +49,52 @@ universal_speedup_claim: false
 
 Do not remove or invert these boundaries to make a result look more impressive.
 
+## RSH v4 epistemic and conformance rules
+
+`RSH-EPISTEMIC-V1` and `RSH-CONFORMANCE-V1` are separate governance surfaces.
+They do not revise geometry contract `2.0.0`, tissue contract `1.0.0`, or the
+frozen Lean theorem surface `RSH-FORMAL-V1`.
+
+Agents MUST preserve all of the following:
+
+- `MODEL_OUTPUT_IS_NOT_EXECUTION_EVIDENCE`;
+- `FORMAL_SYNTAX_IS_NOT_PROOF`;
+- `UNKNOWN_IS_NOT_FALSE`;
+- `INFERENCE_IS_NOT_KNOWN_WITHOUT_SUPPORT`;
+- `CONFLICT_MUST_REMAIN_VISIBLE`;
+- `NO_SILENT_PROVIDER_FALLBACK` / no silent backend fallback;
+- runtime backend, implementation version, and source revision are mandatory in
+  v4 conformance envelopes;
+- wall-clock time is not part of canonical deterministic experiment identity;
+- SHA-256 is the v4 conformance-receipt algorithm;
+- cross-runtime acceptance compares declared portable observables rather than
+  erasing runtime identity to force equal receipt hashes.
+
+Never infer proof status from claim prose, keywords, regexes, typography, code
+fences, LaTeX, or phrases such as `QED`. A `VERIFIED` tier from proof evidence
+requires an explicit `PROOF_RECEIPT` with `proof_checked=true`.
+
+If a requested backend is unavailable, report the run as blocked or explicitly
+record a declared fallback. Do not execute another backend and label the result
+as the requested backend. Declared fallback is rejected by default unless a
+specific consumer explicitly permits it.
+
+The v4 governance patterns were independently reimplemented for RSH after a
+substrate-descended pattern audit of GhostIT. Do not copy GhostIT application
+code, text heuristics, prototype cryptography, or provider-specific shortcuts
+into RSH.
+
+GLUBALL is not part of RSH v4.0.0. Do not implement `RSH-GLUBALL-FORMAL-V1`
+until RSH v4.0.0 itself is merged, validated, and tagged. The later GLUBALL
+integration must be additive and must preserve both the RSH helix and
+`RSH-FORMAL-V1`.
+
 ## Repository layout
 
 ```text
 src/rsh/                    Python reference and installed `rsh` CLI
 crates/rsh-core/            canonical Rust geometry implementation
+crates/rsh-governance/      RSH v4 epistemic/conformance reference crate
 crates/rsh-cli/             native Rust geometry CLI
 crates/rsh-wasm/            raw geometry WASM ABI
 crates/rsh-numerics*/       separately versioned full-path numerical research
@@ -56,6 +104,8 @@ crates/rsh-ffi/             Rust C ABI
 native/cpp/                 C++17 consumer and CMake project
 native/cuda/                optional CUDA adapters
 web/                        offline browser laboratories and WGSL shaders
+contracts/                  machine-readable epistemic/conformance contracts
+release/                    machine-readable release manifests
 conformance/                sealed machine-readable profiles
 scripts/                    cross-runtime and hardware validation harnesses
 tests/                      Python unit and CLI tests
@@ -131,6 +181,7 @@ cross-runtime tissue/parallel conformance, follow [`TESTING.md`](TESTING.md).
 |---|---|
 | `src/rsh/**`, `tests/**` | Python compile, unit tests, relevant CLI evidence command |
 | `crates/**` | `cargo fmt`, Clippy, workspace tests, relevant native CLI |
+| `contracts/**`, `release/**`, v4 governance | Python governance tests + Rust `rsh-governance` tests + release-contract checks |
 | `*-wasm`, WASM ABI | host ABI tests, release WASM build, Node conformance harness |
 | `web/**`, WGSL | `node --check`, Pages source checks, browser fallback preserved |
 | `native/cpp/**`, `rsh-ffi` | CMake build, CTest, `scripts/test_cpp_ffi.py` |
