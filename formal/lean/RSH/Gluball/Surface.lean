@@ -31,7 +31,7 @@ theorem surface_sub_centerline (t v : ℝ) :
     Vec3.sub (surfacePoint t v) (centerline t) = tubeOffset t v := by
   apply Vec3.ext <;> simp [surfacePoint, Vec3.sub, Vec3.add]
 
-/-- Exact squared tube-radius invariant for `GLUBALL-KNOT-V1`. -/
+/-- Exact squared tube-radius invariant for the frozen GLUBALL v1.0.0 geometry. -/
 theorem surface_radius_sq (t v : ℝ) :
     Vec3.sqNorm (Vec3.sub (surfacePoint t v) (centerline t)) = tubeRadius ^ 2 := by
   rw [surface_sub_centerline, tubeOffset_sqNorm]
