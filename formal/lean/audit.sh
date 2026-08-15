@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPORT="${1:-formal-verification-report.txt}"
+REPORT="${1:-${TMPDIR:-/tmp}/rsh-formal-verification-report.txt}"
+mkdir -p "$(dirname "$REPORT")"
 
-if grep -R -nE '(^|[^[:alnum:]_])(sorry|admit)([^[:alnum:]_]|$)' RSH --include='*.lean'; then
+mapfile -d '' LEAN_SOURCES < <(find RSH -type f -name '*.lean' -print0)
+LEAN_SOURCES+=(RSH.lean)
+
+if grep -nE '(^|[^[:alnum:]_])(sorry|admit)([^[:alnum:]_]|$)' "${LEAN_SOURCES[@]}"; then
   echo 'RSH formalization contains a forbidden proof hole.' >&2
   exit 1
 fi
 
-if grep -R -nE '^[[:space:]]*((private|protected|noncomputable|unsafe|partial|local)[[:space:]]+)*(axiom|constant)[[:space:]]' RSH --include='*.lean'; then
+if grep -nE '^[[:space:]]*((private|protected|noncomputable|unsafe|partial|local)[[:space:]]+)*(axiom|constant)[[:space:]]' "${LEAN_SOURCES[@]}"; then
   echo 'RSH formalization contains a project-defined axiom or constant declaration.' >&2
   exit 1
 fi
