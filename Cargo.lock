@@ -94,7 +94,7 @@ dependencies = [
 
 [[package]]
 name = "rsh-cli"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "rsh-core",
  "serde_json",
@@ -102,7 +102,7 @@ dependencies = [
 
 [[package]]
 name = "rsh-core"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -111,14 +111,14 @@ dependencies = [
 
 [[package]]
 name = "rsh-ffi"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "rsh-core",
 ]
 
 [[package]]
 name = "rsh-governance"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -127,7 +127,7 @@ dependencies = [
 
 [[package]]
 name = "rsh-numerics"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "rsh-core",
  "serde",
@@ -136,7 +136,7 @@ dependencies = [
 
 [[package]]
 name = "rsh-numerics-cli"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "rsh-core",
  "rsh-numerics",
@@ -145,7 +145,7 @@ dependencies = [
 
 [[package]]
 name = "rsh-numerics-wasm"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "rsh-core",
  "rsh-numerics",
@@ -155,7 +155,7 @@ dependencies = [
 
 [[package]]
 name = "rsh-parallel"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "rsh-core",
  "serde",
@@ -164,7 +164,7 @@ dependencies = [
 
 [[package]]
 name = "rsh-parallel-cli"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "rsh-core",
  "rsh-parallel",
@@ -173,7 +173,7 @@ dependencies = [
 
 [[package]]
 name = "rsh-parallel-wasm"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "rsh-core",
  "rsh-parallel",
@@ -183,7 +183,7 @@ dependencies = [
 
 [[package]]
 name = "rsh-tissue"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "rsh-core",
  "serde",
@@ -193,7 +193,7 @@ dependencies = [
 
 [[package]]
 name = "rsh-tissue-cli"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "rsh-tissue",
  "serde_json",
@@ -201,7 +201,7 @@ dependencies = [
 
 [[package]]
 name = "rsh-tissue-wasm"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "rsh-tissue",
  "serde",
@@ -210,7 +210,7 @@ dependencies = [
 
 [[package]]
 name = "rsh-wasm"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "rsh-core",
  "serde",

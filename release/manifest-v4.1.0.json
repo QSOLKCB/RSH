@@ -1,0 +1,68 @@
+{
+  "schema": "rsh-release-manifest/1",
+  "release": {
+    "version": "4.1.0",
+    "tag": "v4.1.0",
+    "status": "release-ready",
+    "base_release": "v4.0.0",
+    "base_release_commit": "79b8481639fb4187c41035de4e707545db93f59a",
+    "formalization_merge_commit": "124af8283dd69f78031d3a92249fdd7ea4a60508",
+    "tag_target_rule": "v4.1.0 must resolve to the merge commit containing this manifest after portable CI and the Lean theorem audit pass"
+  },
+  "software_versions": {
+    "python_package": "4.1.0",
+    "rust_workspace": "4.1.0"
+  },
+  "theorem_surfaces": {
+    "preserved": "RSH-FORMAL-V1",
+    "additive": "RSH-GLUBALL-FORMAL-V1"
+  },
+  "preserved_contracts": {
+    "geometry_model": "2.0.0",
+    "tissue_contract": "1.0.0",
+    "epistemic_governance": "RSH-EPISTEMIC-V1",
+    "conformance_governance": "RSH-CONFORMANCE-V1",
+    "frenet_numerics": "RSH-FRENET-NUMERICS-V1",
+    "parallel_frenet": "RSH-FRENET-PARALLEL-V1"
+  },
+  "gluball_source": {
+    "release": "v1.0.0",
+    "commit": "80941183d14531093117e122da0fc32c13d2464b",
+    "integration_mode": "additive-formal-theorem-surface",
+    "browser_renderer_is_mathematical_authority": false
+  },
+  "formal_environment": {
+    "lean": "4.32.1",
+    "mathlib_commit": "520045ab14e26149ee970e2e617ca04b09bde5d6",
+    "proof_holes_allowed": false,
+    "project_defined_axioms_allowed": false
+  },
+  "machine_checked_scope": [
+    "exact GLUBALL parameter admissibility",
+    "componentwise derivative linkage for the declared centreline derivative",
+    "squared-speed identity and regularity",
+    "host-torus unit normal and tangent orthogonality",
+    "normalized tangent/binormal frame properties",
+    "exact squared tube-radius invariant",
+    "tube-angle periodicity",
+    "centreline closure",
+    "exact C3 rotational symmetry",
+    "uniform-floor sampling bounds and adjacent collision freedom",
+    "finite mesh-index wrap bounds"
+  ],
+  "claim_boundaries": {
+    "global_thick_tube_embeddedness_proved": false,
+    "ieee754_runtime_identity_proved": false,
+    "browser_render_identity_proved": false,
+    "gpu_wasm_android_correctness_proved": false,
+    "empirical_physics_validated": false,
+    "biological_interpretation_validated": false,
+    "consciousness_sentience_qualia_validated": false,
+    "ternary_triality_topology_proved": false
+  },
+  "archive_metadata": {
+    "zenodo_file": ".zenodo.json",
+    "citation_file": "CITATION.cff",
+    "release_notes": "RELEASE_NOTES_v4.1.0.md"
+  }
+}

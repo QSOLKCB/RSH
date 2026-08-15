@@ -1,6 +1,6 @@
 {
-  "title": "RSH v4.0.0: Epistemic and Conformance Governance for Deterministic Robitaille–Slade Helix Evidence",
-  "description": "RSH v4.0.0 adds RSH-EPISTEMIC-V1 and RSH-CONFORMANCE-V1: machine-readable evidence/claim classification, explicit runtime identity, no-silent-fallback rules, deterministic SHA-256 experiment receipts, and a sealed Python/Rust cross-runtime governance vector. The v3.0.0 Lean theorem surface RSH-FORMAL-V1, geometry model contract 2.0.0, tissue contract 1.0.0, and scientific authority hierarchy remain unchanged. GLUBALL integration is deliberately deferred to a later additive release.",
+  "title": "RSH v4.1.0: Additive GLUBALL Lean 4 Formalization for the Robitaille–Slade Helix Evidence Framework",
+  "description": "RSH v4.1.0 adds the separately versioned theorem surface RSH-GLUBALL-FORMAL-V1, pinned to RSH v4.0.0 and GLUBALL v1.0.0. Lean 4 machine-checks the frozen GLUBALL parameter inequalities, componentwise derivative linkage to the declared centreline, squared-speed positivity and regularity, host-torus normal and frame orthogonality, tube-radius invariance, tube-angle periodicity, centreline closure, exact C3 rotational symmetry, uniform-floor sampling bounds, and mesh-index wrap bounds. The existing RSH-FORMAL-V1 theorem surface and the RSH-EPISTEMIC-V1 / RSH-CONFORMANCE-V1 governance contracts remain intact. The release does not claim global thick-tube embeddedness, IEEE-754 or browser/runtime identity, accelerator correctness beyond declared conformance surfaces, or empirical physical, biological, consciousness, sentience, or qualia validation.",
   "upload_type": "software",
   "creators": [
     {"name": "Dr. J. Robitaille"},
@@ -9,22 +9,26 @@
   "contributors": [
     {"name": "ChatGPT 5.6 Sol", "type": "Other", "affiliation": "OpenAI"}
   ],
-  "version": "4.0.0",
+  "version": "4.1.0",
   "license": "MPL-2.0",
   "keywords": [
     "Robitaille-Slade Helix",
-    "epistemic governance",
-    "deterministic evidence",
-    "cross-runtime conformance",
-    "no silent fallback",
-    "SHA-256 receipts",
+    "GLUBALL",
+    "RSH-GLUBALL-FORMAL-V1",
     "Lean 4",
     "formal verification",
+    "torus-curve geometry",
+    "C3 rotational symmetry",
+    "deterministic sampling",
+    "epistemic governance",
+    "cross-runtime conformance",
+    "deterministic evidence",
     "Frenet-Serret",
     "curvature",
     "torsion"
   ],
   "related_identifiers": [
-    {"identifier": "https://github.com/QSOLKCB/RSH", "relation": "isSupplementTo", "scheme": "url"}
+    {"identifier": "https://github.com/QSOLKCB/RSH", "relation": "isSupplementTo", "scheme": "url"},
+    {"identifier": "https://github.com/QSOLKCB/GLUBALL/releases/tag/v1.0.0", "relation": "references", "scheme": "url"}
   ]
 }

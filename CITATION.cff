@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use RSH, please cite this software."
 title: "RSH: Robitaille–Slade Helix Geometry and Evidence Runner"
-version: 4.0.0
+version: 4.1.0
 type: software
 authors:
   - family-names: Robitaille
@@ -22,6 +22,10 @@ keywords:
   - SHA-256 receipts
   - Lean 4
   - formal verification
+  - RSH-FORMAL-V1
+  - RSH-GLUBALL-FORMAL-V1
+  - GLUBALL
+  - torus-curve geometry
   - exact rational geometry
   - Sierpinski inversive witness
   - geometric tissue
