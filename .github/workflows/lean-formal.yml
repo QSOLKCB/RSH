@@ -65,6 +65,8 @@ jobs:
       - name: Run RSH theorem audits
         shell: bash
         working-directory: formal/lean
+        env:
+          RSH_AUDITED_SOURCE_REVISION: ${{ github.event.pull_request.head.sha || github.sha }}
         run: bash audit.sh "$RUNNER_TEMP/rsh-formal-verification-report.txt"
 
       - name: Publish theorem report
