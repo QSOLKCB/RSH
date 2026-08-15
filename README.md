@@ -7,19 +7,19 @@ inside explicit Robitaille bounds, integrating the Frenet–Serret frame, and
 translating the exact discrete midpoint to the coordinate origin.
 
 **Authors:** J. Robitaille (DeltaKingZero) and Trent Slade / QSOL-IMC  
-**Release:** 4.0.0  
-**Implementations:** Python geometry oracle, tissue reference, and v4 governance reference + Rust geometry/tissue/governance cores and CLIs + canonical geometry and tissue WASM bridges + WGSL schedule field + versioned C ABI/C++ adapter + optional CUDA schedule kernel + Tier 2 NPU evidence profile + separate Rust/WASM/WGSL full-path and parallel-prefix research stacks
+**Release:** 4.1.0  
+**Implementations:** Python geometry oracle, tissue reference, and v4 governance reference + Rust geometry/tissue/governance cores and CLIs + canonical geometry and tissue WASM bridges + WGSL schedule field + versioned C ABI/C++ adapter + optional CUDA schedule kernel + Tier 2 NPU evidence profile + separate Rust/WASM/WGSL full-path and parallel-prefix research stacks + additive Lean 4 GLUBALL theorem surface
 
 ## Contract and interface versions
 
 | Surface | Version / identifier |
 |---|---|
-| RSH software release / workspace crates | `4.0.0` |
+| RSH software release / workspace crates | `4.1.0` |
 | Geometry model contract | `2.0.0` |
 | Tissue contract | `1.0.0` |
 | Epistemic governance contract | `RSH-EPISTEMIC-V1` |
 | Conformance governance contract | `RSH-CONFORMANCE-V1` |
-| Lean theorem surface | `RSH-FORMAL-V1` (unchanged from v3.0.0) |
+| Lean theorem surfaces | `RSH-FORMAL-V1` + additive `RSH-GLUBALL-FORMAL-V1` |
 | Frenet numerical research contract | `1.0.0` / `RSH-FRENET-NUMERICS-V1` |
 | Parallel Frenet research contract | `RSH-FRENET-PARALLEL-V1` |
 | Geometry, numerical, parallel, and tissue raw WASM ABIs | `1` |
@@ -47,10 +47,19 @@ vector in `conformance/rsh_v4_governance_vector_v1.json`. See
 [`docs/V4_GOVERNANCE.md`](docs/V4_GOVERNANCE.md) and the normative contracts in
 [`contracts/`](contracts/).
 
-GLUBALL is deliberately **not** integrated in v4.0.0. After v4 is merged,
-validated, and tagged, a later additive release may pin GLUBALL v1.0.0 and add
-`RSH-GLUBALL-FORMAL-V1` without replacing the Robitaille–Slade helix or
-`RSH-FORMAL-V1`.
+## GLUBALL integration
+
+RSH v4.1.0 adds `RSH-GLUBALL-FORMAL-V1` as a separate Lean theorem surface pinned
+to GLUBALL v1.0.0 at commit
+`80941183d14531093117e122da0fc32c13d2464b`. The integration is additive: it
+does not replace or reinterpret the Robitaille–Slade helix or `RSH-FORMAL-V1`.
+
+The theorem-facing GLUBALL modules prove exact parameter admissibility,
+componentwise derivative linkage, squared-speed regularity, host-torus frame
+properties, the tube-radius invariant, centreline closure, exact C3 rotational
+symmetry, and deterministic uniform-floor sampling/index bounds. The browser
+renderer remains outside mathematical authority, and global thick-tube
+embeddedness remains an explicit nonclaim.
 
 ## Browser laboratories
 
@@ -661,6 +670,7 @@ crates/rsh-parallel-wasm/           Parallel-prefix raw WASM ABI
 crates/rsh-tissue/                  Shared Rust tissue runtime
 crates/rsh-tissue-cli/              Native tissue runner and conformance CLI
 crates/rsh-tissue-wasm/             Raw tissue WASM ABI over `rsh-tissue`
+formal/lean/RSH/Gluball/            Additive RSH-GLUBALL-FORMAL-V1 theorem modules
 contracts/                          Machine-readable v4 epistemic/conformance contracts
 release/                            Machine-readable release manifests
 include/rsh_ffi.h                   Public ABI-v1 C/C++ header
@@ -731,7 +741,7 @@ theory, biological organism, consciousness, or subjective experience.
 9. **Single-device parallel Frenet research** — implemented under `RSH-FRENET-PARALLEL-V1` with native Rust, compiled WASM, multi-pass WGSL, complete readback, and scoped benchmark policy.
 10. **Lean 4 theorem surface** — frozen in v3.0.0 as `RSH-FORMAL-V1`.
 11. **Epistemic and conformance governance** — implemented in v4.0.0 as `RSH-EPISTEMIC-V1` and `RSH-CONFORMANCE-V1`.
-12. **GLUBALL integration** — next additive release after the v4.0.0 tag; planned theorem surface `RSH-GLUBALL-FORMAL-V1`.
+12. **GLUBALL integration** — implemented additively in v4.1.0 as `RSH-GLUBALL-FORMAL-V1`, pinned to GLUBALL v1.0.0.
 13. **Multi-device and distributed parallel execution** — future research; current shard summaries provide ordered deterministic groundwork only.
 
 Performance, compositional complexity, anthropomorphic language, or a visually
