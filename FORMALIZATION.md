@@ -131,7 +131,7 @@ lake exe cache get
 bash audit.sh
 ```
 
-The audit fails on `sorry`, `admit`, or project-defined `axiom`/`constant` declarations, builds the complete library, and prints Lean's axiom report for each release theorem.
+The audit fails on `sorry`, `admit`, or project-defined `axiom`/`constant` declarations across both the root `RSH.lean` module and the `RSH/` module tree, builds the complete library, and prints Lean's axiom report for the advertised release theorem surface. By default, the generated report is written under `${TMPDIR:-/tmp}` rather than into the source tree; CI likewise writes it under the runner temp directory before publishing the report to the job summary.
 
 ## Formal source map
 
