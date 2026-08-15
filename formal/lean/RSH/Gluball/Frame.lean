@@ -2,6 +2,8 @@ import RSH.Gluball.Centerline
 
 namespace RSH.Gluball
 
+noncomputable section
+
 open Vec3
 
 /-- Positive speed reconstructed from the exact squared-speed identity. -/
@@ -49,5 +51,7 @@ theorem tangent_dot_binormal (t : ℝ) : Vec3.dot (tangent t) (binormal t) = 0 :
   rw [tangent, binormal, Vec3.dot_scale_left, Vec3.dot_scale_right]
   rw [binormalRaw, Vec3.dot_comm, Vec3.cross_dot_left]
   ring
+
+end
 
 end RSH.Gluball
