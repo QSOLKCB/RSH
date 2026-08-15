@@ -4,16 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "rsh-geometry"
-version = "2.7.0"
-description = "Bounded Frenet-Serret geometry, deterministic evidence, cross-runtime tissue conformance, and separately versioned full-path numerical research"
+version = "3.0.0"
+description = "Bounded Frenet-Serret geometry, deterministic evidence, cross-runtime conformance, and Lean 4 formal verification"
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MPL-2.0"}
 authors = [
-  {name = "J. Robitaille"},
+  {name = "Dr. J. Robitaille"},
   {name = "Trent Slade", email = "qsolimc@users.noreply.github.com"},
 ]
-keywords = ["geometry", "frenet-serret", "deterministic", "verification", "helix", "tissue-simulation", "functional-cohesion", "constitutional-governance", "rust-tissue", "tissue-conformance", "webassembly", "webgpu", "wgsl", "ffi", "cpp", "cuda", "npu", "hardware-validation", "lie-group-integration", "fuzz-testing", "gpu-path-integration"]
+keywords = ["geometry", "frenet-serret", "deterministic", "verification", "formal-verification", "lean4", "helix", "tissue-simulation", "functional-cohesion", "constitutional-governance", "rust-tissue", "tissue-conformance", "webassembly", "webgpu", "wgsl", "ffi", "cpp", "cuda", "npu", "hardware-validation", "lie-group-integration", "fuzz-testing", "gpu-path-integration"]
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
