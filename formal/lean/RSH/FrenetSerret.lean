@@ -41,34 +41,32 @@ def dB (τ : ℚ) (f : Frame) : Vec3Q := scale (-τ) f.n
 /-- The Frenet–Serret field is tangent to the unit-T constraint. -/
 theorem tangent_norm_compat (κ : ℚ) (f : Frame) :
     dot (dT κ f) f.t + dot f.t (dT κ f) = 0 := by
-  simp [dT, dot_scale_left, dot_scale_right]
+  simp [dT, dot_scale_left, dot_scale_right, f.tn]
 
 /-- The Frenet–Serret field is tangent to the unit-N constraint. -/
 theorem normal_norm_compat (κ τ : ℚ) (f : Frame) :
     dot (dN κ τ f) f.n + dot f.n (dN κ τ f) = 0 := by
-  simp [dN, dot_add_left, dot_add_right, dot_scale_left, dot_scale_right]
+  simp [dN, dot_add_left, dot_add_right, dot_scale_left, dot_scale_right, f.tn, f.nb]
 
 /-- The Frenet–Serret field is tangent to the unit-B constraint. -/
 theorem binormal_norm_compat (τ : ℚ) (f : Frame) :
     dot (dB τ f) f.b + dot f.b (dB τ f) = 0 := by
-  simp [dB, dot_scale_left, dot_scale_right]
+  simp [dB, dot_scale_left, dot_scale_right, f.nb]
 
 /-- Compatibility of the T·N = 0 constraint. -/
 theorem tangent_normal_compat (κ τ : ℚ) (f : Frame) :
     dot (dT κ f) f.n + dot f.t (dN κ τ f) = 0 := by
   simp [dT, dN, dot_add_right, dot_scale_left, dot_scale_right, f.tt, f.nn, f.tb]
-  ring
 
 /-- Compatibility of the T·B = 0 constraint. -/
 theorem tangent_binormal_compat (κ τ : ℚ) (f : Frame) :
     dot (dT κ f) f.b + dot f.t (dB τ f) = 0 := by
-  simp [dT, dB, dot_scale_left, dot_scale_right]
+  simp [dT, dB, dot_scale_left, dot_scale_right, f.nb, f.tn]
 
 /-- Compatibility of the N·B = 0 constraint. -/
 theorem normal_binormal_compat (κ τ : ℚ) (f : Frame) :
     dot (dN κ τ f) f.b + dot f.n (dB τ f) = 0 := by
-  simp [dN, dB, dot_add_left, dot_scale_left, dot_scale_right, f.bb, f.nn]
-  ring
+  simp [dN, dB, dot_add_left, dot_scale_left, dot_scale_right, f.tb, f.bb, f.nn]
 
 /-- Exact coordinate normalisation used by the canonical discrete RSH path. -/
 def translateBy (offset p : Vec3Q) : Vec3Q := sub p offset
