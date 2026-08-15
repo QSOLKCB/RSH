@@ -20,8 +20,11 @@ fi
 lake build
 
 {
-  echo 'RSH v3.0.0 Lean formal verification'
-  echo 'contract: RSH-FORMAL-V1'
+  echo 'RSH Lean formal verification'
+  echo 'existing contract: RSH-FORMAL-V1'
+  echo 'additive contract: RSH-GLUBALL-FORMAL-V1'
+  echo 'RSH base: v4.0.0 @ 79b8481639fb4187c41035de4e707545db93f59a'
+  echo 'GLUBALL source: v1.0.0 @ 80941183d14531093117e122da0fc32c13d2464b'
   echo "toolchain: $(cat lean-toolchain)"
   echo 'mathlib: 520045ab14e26149ee970e2e617ca04b09bde5d6 (v4.32.1)'
   echo
