@@ -34,7 +34,7 @@ GLUBALL v1.0.0
 80941183d14531093117e122da0fc32c13d2464b
 ```
 
-The imported GLUBALL geometry is the frozen `GLUBALL-KNOT-V1` `(2,3)` torus-knot contract with exact rational parameter values corresponding to:
+The imported GLUBALL geometry is the frozen GLUBALL `v1.0.0` `(2,3)` torus-curve contract at the exact commit above, with exact rational parameter values corresponding to:
 
 ```text
 R   = 2.10
