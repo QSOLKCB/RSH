@@ -1,121 +1,188 @@
-# RSH v3.0.0 Formalization
+# RSH Formalization
 
-RSH v3.0.0 introduces `RSH-FORMAL-V1`, the first machine-checked theorem surface for the Robitaille–Slade Helix project.
-
-## Authors and contribution
-
-- **Dr. J. Robitaille** — author
-- **Trent Slade** — author
-- **ChatGPT 5.6 Sol Thinking** — contributor (formalization implementation and proof engineering assistance)
-
-The AI contribution is recorded as a contributor role, not as a human creator/author.
-
-## Scope
-
-The Lean development is intentionally narrower than the complete RSH software platform. It formalizes theorem-shaped invariants that can be stated independently of Python, Rust, WebAssembly, CUDA, WebGPU, operating-system behavior, binary64 rounding, or receipt serialization.
-
-The release theorem surface is named:
+RSH maintains separately versioned machine-checked theorem surfaces. The existing Robitaille–Slade theorem surface remains:
 
 ```text
 RSH-FORMAL-V1
 ```
 
-and lives under `formal/lean/`.
+The additive GLUBALL integration introduces:
 
-## Machine-checked results
+```text
+RSH-GLUBALL-FORMAL-V1
+```
 
-### 1. Exact inversive witness geometry
+The two surfaces coexist. The GLUBALL work does **not** replace, reinterpret, or weaken `RSH-FORMAL-V1`.
 
-The formalization models the three fibre-selected median reflections used by `RSH-F32-SIERPINSKI-INVERSIVE-WITNESS-V1` and the centred rational transformation
+## Authors and contribution
+
+- **Dr. J. Robitaille** — author
+- **Trent Slade** — author
+- **ChatGPT 5.6 Sol Thinking** — contributor (formalization implementation and proof-engineering assistance)
+
+The AI contribution is recorded as a contributor role, not as a human creator/author.
+
+## Frozen source boundaries
+
+`RSH-GLUBALL-FORMAL-V1` is based on two published release boundaries:
+
+```text
+RSH v4.0.0
+79b8481639fb4187c41035de4e707545db93f59a
+
+GLUBALL v1.0.0
+80941183d14531093117e122da0fc32c13d2464b
+```
+
+The imported GLUBALL geometry is the frozen `GLUBALL-KNOT-V1` `(2,3)` torus-knot contract with exact rational parameter values corresponding to:
+
+```text
+R   = 2.10
+r   = 0.85
+rho = 0.34
+p   = 2
+q   = 3
+```
+
+The formal development models those decimal constants as exact rationals. It does not import the browser renderer as mathematical authority.
+
+## RSH-FORMAL-V1
+
+The original theorem surface, introduced in RSH v3.0.0, remains unchanged. It includes machine-checked propositions for:
+
+- exact inversive witness geometry;
+- the exact invariant `r²(T_f(c)) r²(c) = 1/9`;
+- involutive fibre transformations;
+- `2^32 < 3^21` and the associated unsigned-32 / 21-trit capacity embedding;
+- six Frenet–Serret orthonormal-constraint compatibility identities;
+- exact midpoint translation;
+- monotone admission/refusal/uniqueness results;
+- positivity of the torsion derivative-sign polynomial used by the analytic-spine certificate.
+
+These existing statements remain under `formal/lean/RSH/` and retain the marker `RSH-FORMAL-V1`.
+
+## RSH-GLUBALL-FORMAL-V1
+
+The additive theorem surface lives under:
+
+```text
+formal/lean/RSH/Gluball/
+```
+
+### Exact parameter admissibility
+
+Lean checks the frozen parameter inequalities exactly, including:
+
+- `R > r > 0`;
+- `0 < rho < r`;
+- positive winding numbers `p = 2`, `q = 3`.
+
+### Centreline and regularity
+
+For
 
 \[
-T_f(c)=\frac{6}{\lVert c\rVert^2}P_f(c),
+A(t)=R+r\cos(qt)
 \]
 
-where `P_f` is one of the three involutive coordinate reflections.
+and
+
+\[
+C(t)=(A(t)\cos(pt),A(t)\sin(pt),r\sin(qt)),
+\]
+
+Lean formalizes the declared derivative and proves the squared-speed identity
+
+\[
+\|C'(t)\|^2=p^2A(t)^2+q^2r^2.
+\]
+
+Because the second term is strictly positive for the frozen parameters, Lean proves the squared speed is positive and therefore `C'(t)` is never the zero vector.
+
+### Host-torus frame
+
+For the host-torus normal
+
+\[
+N(t)=(\cos(qt)\cos(pt),\cos(qt)\sin(pt),\sin(qt)),
+\]
 
 Lean proves:
 
-- every selected reflection is an involution;
-- every selected reflection preserves squared norm;
-- the transformed squared norm is exactly `36 / ||c||²` when `||c||² != 0`;
-- with `radiusSq(c) = ||c||² / 18`, the exact product invariant is
+- `||N(t)||² = 1`;
+- `C'(t) · N(t) = 0`;
+- the normalized tangent has unit squared norm;
+- the normalized cross-product binormal has unit squared norm;
+- tangent, normal, and binormal are pairwise orthogonal.
 
-  \[
-  r^2(T_f(c))\,r^2(c)=\frac{1}{9};
-  \]
+The GLUBALL frame therefore does not depend on introducing a Frenet-normal assumption.
 
-- applying the same transformation twice recovers the exact source point:
+### Tube surface
 
-  \[
-  T_f(T_f(c))=c.
-  \]
+For
 
-These proofs are over exact rational arithmetic. They do not rely on floating-point tolerances.
+\[
+G(t,v)=C(t)+\rho\bigl(N(t)\cos v+B(t)\sin v\bigr),
+\]
 
-### 2. Unsigned-32 / 21-trit address capacity
+Lean proves the exact squared tube-radius invariant
 
-Lean proves the exact arithmetic fact
+\[
+\|G(t,v)-C(t)\|^2=\rho^2,
+\]
+
+and periodicity in the tube angle `v`.
+
+### Closure and C3 symmetry
+
+Lean proves the frozen centreline identities:
+
+\[
+C(t+2\pi)=C(t)
+\]
+
+and
+
+\[
+C(t+2\pi/3)=R_z(4\pi/3)C(t).
+\]
+
+The C3 statement is an exact rotational-symmetry theorem for the declared centreline; it is not a claim about physical threefold symmetry in nature.
+
+### Deterministic sampling
+
+The theorem-facing model of `GLUBALL-SAMPLING-V1` uses exact natural-number division:
 
 ```text
-2^32 < 3^21
+uniformFloor(L,R,i) = floor(i * L / R)
 ```
 
-and constructs an injective embedding of the RSH unsigned-32 word domain into the numeric capacity represented by 21 ternary digits.
+Lean proves:
 
-This is a capacity/injectivity theorem. It does **not** yet formalize the implementation's concrete base-3 digit extraction procedure; that remains a later theorem surface.
+- the zero rendered index maps to zero;
+- every declared rendered index maps below the logical cardinality;
+- when `R <= L`, adjacent rendered indices advance by at least one logical index and are therefore collision-free;
+- the frozen mesh wrap operations remain inside their `96` and `18` index ranges.
 
-### 3. Frenet–Serret orthonormal-constraint compatibility
+Ternary/triality metadata remains explicitly non-topological and is not promoted into this theorem surface.
 
-For an exact orthonormal frame `(T,N,B)` and the Frenet–Serret vector field
+## Deliberate nonclaims
 
-\[
-T'=\kappa N,\qquad
-N'=-\kappa T+\tau B,\qquad
-B'=-\tau N,
-\]
+Neither theorem surface claims that Lean has established:
 
-Lean proves the six algebraic compatibility identities corresponding to preservation of the three unit-norm and three pairwise-orthogonality constraints.
+- IEEE-754/binary64 execution equivalence for Python, Rust, JavaScript, Kotlin, WASM, C++, CUDA, WebGPU, or Android;
+- bit-identical browser rendering or encoded PNG/WebM output;
+- empirical or experimental physics;
+- biological, consciousness, sentience, or qualia interpretations;
+- global embeddedness/non-self-intersection of the complete thick GLUBALL tube.
 
-This establishes that the exact Frenet–Serret vector field is tangent to the orthonormal-frame constraint surface. It does not claim bit-for-bit correctness of the binary64 midpoint integrator or its numerical re-orthonormalization policy.
+Global tube embeddedness remains a separate theorem target and is **not** smuggled into the release by the local frame/radius proofs.
 
-### 4. Exact midpoint translation identity
-
-Lean proves the coordinate-normalization identity
-
-\[
-p-p=0,
-\]
-
-which is the theorem-facing core of RSH's exact discrete midpoint translation convention. The software still bears responsibility for selecting the intended discrete midpoint sample.
-
-### 5. Admission logic
-
-For strictly decreasing curvature and torsion schedules, Lean proves:
-
-- endpoint bounds certify the complete closed interval;
-- if the initial curvature already exceeds the constitutional ceiling, the interval cannot satisfy the contract;
-- a crossing of a strictly decreasing curvature function with a fixed ceiling is unique.
-
-The analytic-spine module also formalizes and proves positivity of the polynomial used by RSH's torsion derivative-sign certificate for `a > 0` and `t >= 0`.
-
-## What v3.0.0 does not claim
-
-The formalization deliberately does not claim:
-
-- that Lean has certified IEEE-754/binary64 execution of the Python or Rust numerical implementations;
-- that receipts or hashes establish physical truth;
-- that CUDA, WebGPU, NPU, WASM, or C++ implementations become scientific authority;
-- that the complete analytic derivative of the reference-spine curvature has already been formalized;
-- that existence of the numerical value of the unique curvature crossing has been proved from the full closed-form analytic spine in Lean;
-- that the tissue model is biological, conscious, sentient, or a model of qualia;
-- that experimental physics has been validated by these software theorems.
-
-The existing RSH authority hierarchy remains unchanged: machine proofs certify stated mathematical propositions; runtime conformance certifies declared implementation observables; neither silently promotes a physical interpretation.
+RSH v4 governance continues to distinguish proof receipts, tool receipts, measurements, model proposals, and inference. A successful Lean build proves only the propositions checked by the Lean kernel.
 
 ## Reproducibility
 
-The formal project pins:
+The formal project remains pinned to:
 
 ```text
 Lean:    4.32.1
@@ -131,18 +198,28 @@ lake exe cache get
 bash audit.sh
 ```
 
-The audit fails on `sorry`, `admit`, or project-defined `axiom`/`constant` declarations across both the root `RSH.lean` module and the `RSH/` module tree, builds the complete library, and prints Lean's axiom report for the advertised release theorem surface. By default, the generated report is written under `${TMPDIR:-/tmp}` rather than into the source tree; CI likewise writes it under the runner temp directory before publishing the report to the job summary.
+The audit fails on `sorry`, `admit`, or project-defined `axiom`/`constant` declarations across the root `RSH.lean` module and the complete `RSH/` module tree. It builds the complete library and prints Lean's axiom report for both advertised theorem surfaces.
 
 ## Formal source map
 
 ```text
-formal/lean/RSH/Algebra.lean       Exact rational vector algebra
-formal/lean/RSH/ExactSpatial.lean Exact inversive witness and word-capacity theorems
-formal/lean/RSH/FrenetSerret.lean Exact frame-constraint compatibility and centring
-formal/lean/RSH/Admission.lean    Monotone admission/refusal/uniqueness theorems
-formal/lean/RSH/Main.lean         RSH-FORMAL-V1 theorem surface
-formal/lean/RSH/AxiomAudit.lean   Published theorem axiom report
-formal/lean/audit.sh              Proof-hole, axiom, build, and report gate
+formal/lean/RSH/Algebra.lean            Exact rational vector algebra
+formal/lean/RSH/ExactSpatial.lean       Exact inversive witness and word-capacity theorems
+formal/lean/RSH/FrenetSerret.lean       Exact frame-constraint compatibility and centring
+formal/lean/RSH/Admission.lean          Monotone admission/refusal/uniqueness theorems
+formal/lean/RSH/Main.lean               RSH-FORMAL-V1 marker
+
+formal/lean/RSH/Gluball/Parameters.lean Frozen release pins and exact parameters
+formal/lean/RSH/Gluball/Vector.lean     Exact real three-vector algebra
+formal/lean/RSH/Gluball/Centerline.lean Centreline, derivative, speed, host normal
+formal/lean/RSH/Gluball/Frame.lean      Tangent/binormal normalization and orthogonality
+formal/lean/RSH/Gluball/Surface.lean    Tube surface and radius invariant
+formal/lean/RSH/Gluball/Symmetry.lean   Closure and exact C3 rotation
+formal/lean/RSH/Gluball/Sampling.lean   Exact uniform-floor and wrap properties
+formal/lean/RSH/Gluball/Main.lean       RSH-GLUBALL-FORMAL-V1 assembly
+
+formal/lean/RSH/AxiomAudit.lean          Published theorem axiom report
+formal/lean/audit.sh                     Proof-hole, axiom, build, and report gate
 ```
 
 ## Citation boundary
