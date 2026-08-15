@@ -307,7 +307,19 @@ pub fn ledger_digest(receipts: &[String]) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde::Deserialize;
     use serde_json::Value;
+
+    #[derive(Debug, Deserialize)]
+    struct ClaimVector {
+        name: String,
+        epistemic_state: EpistemicState,
+        evidence_class: EvidenceClass,
+        receipt_present: bool,
+        proof_checked: bool,
+        measurement_identified: bool,
+        expected_tier: ClaimTier,
+    }
 
     #[test]
     fn sealed_cross_runtime_vector_matches() {
@@ -326,6 +338,25 @@ mod tests {
             serde_json::from_value(vector["ledger_receipts"].clone()).unwrap();
         let expected_ledger = vector["expected_ledger_digest"].as_str().unwrap();
         assert_eq!(ledger_digest(&ledger).unwrap(), expected_ledger);
+
+        let claim_vectors: Vec<ClaimVector> =
+            serde_json::from_value(vector["claim_vectors"].clone())
+                .expect("claim vectors must parse");
+        assert!(!claim_vectors.is_empty(), "sealed claim vectors must not be empty");
+        for claim in claim_vectors {
+            let decision = adjudicate_claim(
+                claim.epistemic_state,
+                claim.evidence_class,
+                claim.receipt_present,
+                claim.proof_checked,
+                claim.measurement_identified,
+            );
+            assert_eq!(
+                decision.tier, claim.expected_tier,
+                "sealed claim vector {:?} diverged",
+                claim.name
+            );
+        }
     }
 
     #[test]
