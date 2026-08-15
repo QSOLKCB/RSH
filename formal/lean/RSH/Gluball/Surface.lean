@@ -2,6 +2,8 @@ import RSH.Gluball.Frame
 
 namespace RSH.Gluball
 
+noncomputable section
+
 open Vec3
 
 /-- Radius-`rho` offset in the host-normal/binormal plane. -/
@@ -40,5 +42,7 @@ theorem tubeOffset_v_periodic (t v : ℝ) : tubeOffset t (v + 2 * Real.pi) = tub
 /-- The tube coordinate closes exactly in its angular `v` parameter. -/
 theorem surface_v_periodic (t v : ℝ) : surfacePoint t (v + 2 * Real.pi) = surfacePoint t v := by
   simp [surfacePoint, tubeOffset_v_periodic]
+
+end
 
 end RSH.Gluball
